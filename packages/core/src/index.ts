@@ -17,4 +17,7 @@ export {
   type PrincipalKind,
   type PrincipalSpecialKind,
   Tenant,
+  User,
+  USER_ROLES,
+  type UserRole,
 } from './entities/index.js';
