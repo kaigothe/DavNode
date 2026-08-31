@@ -1,6 +1,7 @@
 import { pathToFileURL } from 'node:url';
 import type { DataSource } from 'typeorm';
 import { createDataSource } from '../db/data-source.js';
+import { Collection } from '../entities/collection.entity.js';
 import type { Tenant } from '../entities/tenant.entity.js';
 import type { User } from '../entities/user.entity.js';
 import { DuplicateEntryError } from '../services/errors.js';
@@ -62,18 +63,27 @@ export function parseBootstrapArgs(argv: string[]): BootstrapArgs {
   };
 }
 
-/** The tenant and user created by a successful {@link runBootstrap} call. */
+/** The tenant, user, and root collection created by a successful {@link runBootstrap} call. */
 export interface BootstrapResult {
   tenant: Tenant;
   user: User;
+  rootCollection: Collection;
 }
 
 /**
- * Creates the tenant (with its per-tenant special principals) and its
- * first user — with `role: 'server_admin'`, since there's no admin API
- * yet (that's M9) to promote a user afterward. Exported separately from
- * `main` so it can be exercised directly against a test `DataSource`,
- * without going through argv parsing or process exit handling.
+ * Creates the tenant (with its per-tenant special principals), its first
+ * user — with `role: 'server_admin'`, since there's no admin API yet
+ * (that's M9) to promote a user afterward — and that tenant's WebDAV root
+ * collection (owned by the new user), so there's something to
+ * PROPFIND/MKCOL/PUT against at `/dav/{tenant}/files/` right away.
+ * Exported separately from `main` so it can be exercised directly against
+ * a test `DataSource`, without going through argv parsing or process exit
+ * handling.
+ *
+ * The root collection is created last, after the tenant and user both
+ * exist: a duplicate `args.tenantSlug` is caught at the tenant-creation
+ * step, before this ever runs, so a repeated bootstrap attempt can never
+ * reach — and therefore never duplicate — this step.
  *
  * @throws {@link DuplicateEntryError} If `args.tenantSlug` (or, far less
  * likely on a fresh tenant, `args.username`) is already in use — `main`
@@ -96,7 +106,17 @@ export async function runBootstrap(
     role: 'server_admin',
   });
 
-  return { tenant, user };
+  const collectionRepository = dataSource.getRepository(Collection);
+  const rootCollection = await collectionRepository.save(
+    collectionRepository.create({
+      tenantId: tenant.id,
+      parentCollectionId: null,
+      ownerPrincipalId: user.principalId,
+      displayName: tenant.name,
+    }),
+  );
+
+  return { tenant, user, rootCollection };
 }
 
 async function main(): Promise<void> {
@@ -112,9 +132,12 @@ async function main(): Promise<void> {
   const dataSource = createDataSource();
   await dataSource.initialize();
   try {
-    const { tenant, user } = await runBootstrap(dataSource, args);
+    const { tenant, user, rootCollection } = await runBootstrap(
+      dataSource,
+      args,
+    );
     console.log(
-      `Bootstrap complete: tenant "${tenant.slug}" (${tenant.id}), admin user "${user.username}" (${user.id}).`,
+      `Bootstrap complete: tenant "${tenant.slug}" (${tenant.id}), admin user "${user.username}" (${user.id}), root collection (${rootCollection.id}).`,
     );
   } catch (error) {
     if (error instanceof DuplicateEntryError) {

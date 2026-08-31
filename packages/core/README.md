@@ -101,8 +101,10 @@ mapping.
 There's no admin API yet (that's M9), so
 [`src/cli/bootstrap.ts`](src/cli/bootstrap.ts) is the only way to create a
 tenant and a user to test against — needed from M2 onward. It creates the
-tenant (with its per-tenant special principals) and a first user with
-`role: 'server_admin'`, in one run.
+tenant (with its per-tenant special principals), a first user with
+`role: 'server_admin'`, and that tenant's WebDAV root collection (owned by
+the new user), in one run — so there's immediately something to
+PROPFIND/MKCOL/PUT against at `/dav/{tenant}/files/`.
 
 ```bash
 npm run bootstrap -- \

@@ -1,8 +1,9 @@
-import type { DataSource } from 'typeorm';
+import { IsNull, type DataSource } from 'typeorm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createDataSource } from '../db/data-source.js';
 import {
   ALL_ENTITIES,
+  Collection,
   Credential,
   Principal,
   Tenant,
@@ -60,8 +61,8 @@ describe('runBootstrap', () => {
     await dataSource.destroy();
   });
 
-  it('creates the tenant, its special principals, the admin user, its principal, and its credential in one run', async () => {
-    const { tenant, user } = await runBootstrap(dataSource, {
+  it('creates the tenant, its special principals, the admin user, its principal, its credential, and its root collection in one run', async () => {
+    const { tenant, user, rootCollection } = await runBootstrap(dataSource, {
       tenantSlug: 'acme',
       tenantName: 'Acme Inc.',
       username: 'admin',
@@ -88,9 +89,16 @@ describe('runBootstrap', () => {
       .getRepository(Credential)
       .findOneBy({ userId: user.id, type: 'basic' });
     expect(credential).not.toBeNull();
+
+    expect(rootCollection.parentCollectionId).toBeNull();
+    expect(rootCollection.ownerPrincipalId).toBe(user.principalId);
+    const rootCollections = await dataSource
+      .getRepository(Collection)
+      .findBy({ tenantId: tenant.id, parentCollectionId: IsNull() });
+    expect(rootCollections).toHaveLength(1);
   });
 
-  it('aborts with a DuplicateEntryError on a second run with the same tenant slug', async () => {
+  it('aborts with a DuplicateEntryError on a second run with the same tenant slug, without duplicating the root collection', async () => {
     const args = {
       tenantSlug: 'acme',
       tenantName: 'Acme Inc.',
@@ -108,5 +116,6 @@ describe('runBootstrap', () => {
     // Exactly the first run's rows exist — no partial duplicate state.
     expect(await dataSource.getRepository(Tenant).find()).toHaveLength(1);
     expect(await dataSource.getRepository(User).find()).toHaveLength(1);
+    expect(await dataSource.getRepository(Collection).find()).toHaveLength(1);
   });
 });
