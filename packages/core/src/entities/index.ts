@@ -1,6 +1,20 @@
+import {
+  Principal,
+  PRINCIPAL_KINDS,
+  PRINCIPAL_SPECIAL_KINDS,
+  type PrincipalKind,
+  type PrincipalSpecialKind,
+} from './principal.entity.js';
 import { Tenant } from './tenant.entity.js';
 
-export { Tenant };
+export {
+  Principal,
+  PRINCIPAL_KINDS,
+  PRINCIPAL_SPECIAL_KINDS,
+  type PrincipalKind,
+  type PrincipalSpecialKind,
+  Tenant,
+};
 
 /**
  * Every entity class registered in `@davnode/core`. Used to configure a
@@ -10,4 +24,4 @@ export { Tenant };
  * sources rather than the compiled `dist/` output, such as this package's
  * own test suite.
  */
-export const ALL_ENTITIES = [Tenant];
+export const ALL_ENTITIES = [Tenant, Principal];

@@ -1,5 +1,6 @@
 import { Baseline1788196779874 } from './1788196779874-Baseline.js';
 import { CreateTenants1788210823167 } from './1788210823167-CreateTenants.js';
+import { CreatePrincipals1788211597915 } from './1788211597915-CreatePrincipals.js';
 
 /**
  * Every migration in `@davnode/core`, in chronological order. Used to run
@@ -12,4 +13,5 @@ import { CreateTenants1788210823167 } from './1788210823167-CreateTenants.js';
 export const ALL_MIGRATIONS = [
   Baseline1788196779874,
   CreateTenants1788210823167,
+  CreatePrincipals1788211597915,
 ];

@@ -9,4 +9,12 @@ export {
   type DavNodeDbType,
 } from './db/data-source.js';
 
-export { ALL_ENTITIES, Tenant } from './entities/index.js';
+export {
+  ALL_ENTITIES,
+  Principal,
+  PRINCIPAL_KINDS,
+  PRINCIPAL_SPECIAL_KINDS,
+  type PrincipalKind,
+  type PrincipalSpecialKind,
+  Tenant,
+} from './entities/index.js';
