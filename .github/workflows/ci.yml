@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build --workspaces
+
+  test:
+    needs: lint-and-build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [sqlite, postgres, mysql]
+    # Postgres and MySQL always start as service containers regardless of
+    # which matrix leg is running (GitHub Actions doesn't support
+    # conditionally skipping a service based on the matrix value) — the
+    # sqlite leg just never talks to them.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: davnode
+          POSTGRES_USER: davnode
+          POSTGRES_PASSWORD: davnode
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U davnode"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      mysql:
+        image: mysql:9
+        env:
+          MYSQL_DATABASE: davnode
+          MYSQL_USER: davnode
+          MYSQL_PASSWORD: davnode
+          MYSQL_ROOT_PASSWORD: davnode
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # matrix.db uses the friendly "sqlite" label; DAVNODE_DB_TYPE itself
+      # only accepts "better-sqlite3" (see packages/core/src/db/data-source.ts).
+      DAVNODE_DB_TYPE: ${{ matrix.db == 'sqlite' && 'better-sqlite3' || matrix.db }}
+      DAVNODE_DB_HOST: localhost
+      DAVNODE_DB_PORT: ${{ matrix.db == 'mysql' && '3306' || '5432' }}
+      DAVNODE_DB_NAME: davnode
+      DAVNODE_DB_USER: davnode
+      DAVNODE_DB_PASSWORD: davnode
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspaces
+      - run: npm test --workspaces
