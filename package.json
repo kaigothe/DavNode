@@ -13,15 +13,19 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "docs": "npm run build --workspaces && typedoc"
+    "docs": "npm run build --workspaces && typedoc",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.2",
+    "@commitlint/config-conventional": "^21.2.2",
     "@eslint/js": "^10.0.1",
     "@types/node": "^22.20.1",
     "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsdoc": "^64.3.2",
     "eslint-plugin-tsdoc": "^0.5.2",
+    "husky": "^9.1.7",
     "prettier": "^3.9.6",
     "typedoc": "^0.28.20",
     "typescript": "^6.0.3",
