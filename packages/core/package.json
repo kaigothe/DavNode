@@ -14,6 +14,7 @@
     "migration:revert": "npm run build && typeorm migration:revert -d dist/db/cli-data-source.js"
   },
   "dependencies": {
+    "argon2": "^0.45.1",
     "better-sqlite3": "^12.11.1",
     "mysql2": "^3.24.2",
     "pg": "^8.23.0",

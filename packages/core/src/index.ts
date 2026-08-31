@@ -1,6 +1,8 @@
 /** Current version of the `@davnode/core` package. */
 export const VERSION = '0.0.1';
 
+export { hashPassword, verifyPassword } from './auth/password-hashing.js';
+
 export {
   createDataSource,
   createDataSourceOptions,
