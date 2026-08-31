@@ -62,3 +62,4 @@ export {
   type CreateGroupInput,
   GroupService,
 } from './services/group.service.js';
+export { GroupMembershipService } from './services/group-membership.service.js';
