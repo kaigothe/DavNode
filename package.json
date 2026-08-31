@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "docs": "npm run build --workspaces && typedoc",
+    "bootstrap": "npm run build --workspace=@davnode/core && node packages/core/dist/cli/bootstrap.js",
     "prepare": "husky"
   },
   "devDependencies": {

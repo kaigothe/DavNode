@@ -2,7 +2,7 @@ import type { DataSource } from 'typeorm';
 import { hashPassword } from '../auth/password-hashing.js';
 import { Credential } from '../entities/credential.entity.js';
 import { Principal } from '../entities/principal.entity.js';
-import { User } from '../entities/user.entity.js';
+import { User, type UserRole } from '../entities/user.entity.js';
 import { DuplicateEntryError, NotFoundError } from './errors.js';
 import { isUniqueConstraintViolationError } from './unique-constraint.util.js';
 
@@ -12,6 +12,8 @@ export interface CreateUserInput {
   username: string;
   email: string;
   password: string;
+  /** Defaults to `'member'` (the `User` entity's own column default). */
+  role?: UserRole;
 }
 
 /** Input for {@link UserService.updateUserQuota}. */
@@ -59,6 +61,7 @@ export class UserService {
             tenantId: input.tenantId,
             username: input.username,
             email: input.email,
+            role: input.role ?? 'member',
           }),
         );
       } catch (error) {

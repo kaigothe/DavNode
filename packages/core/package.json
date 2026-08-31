@@ -11,7 +11,8 @@
     "test": "vitest run --root ../.. --project \"$npm_package_name\"",
     "migration:generate": "npm run build && typeorm migration:generate -d dist/db/cli-data-source.js",
     "migration:run": "npm run build && typeorm migration:run -d dist/db/cli-data-source.js",
-    "migration:revert": "npm run build && typeorm migration:revert -d dist/db/cli-data-source.js"
+    "migration:revert": "npm run build && typeorm migration:revert -d dist/db/cli-data-source.js",
+    "bootstrap": "npm run build && node dist/cli/bootstrap.js"
   },
   "dependencies": {
     "argon2": "^0.45.1",

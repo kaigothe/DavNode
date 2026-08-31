@@ -56,6 +56,19 @@ describe('UserService', () => {
       .getRepository(Credential)
       .findOneByOrFail({ userId: user.id });
     expect(credential.type).toBe('basic');
+    expect(user.role).toBe('member');
+  });
+
+  it('creates a user with an explicit role', async () => {
+    const user = await service.createUser({
+      tenantId: tenant.id,
+      username: 'admin',
+      email: 'admin@example.com',
+      password: PASSWORD,
+      role: 'server_admin',
+    });
+
+    expect(user.role).toBe('server_admin');
   });
 
   it('rolls back the entire transaction if credential creation fails', async () => {

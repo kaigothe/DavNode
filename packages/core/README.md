@@ -51,3 +51,47 @@ they're populated by the seed/bootstrap tooling when a tenant is created
 See [`src/principals/special-principals.ts`](src/principals/special-principals.ts)
 for the supported `specialKind` values and their RFC 3744 XML element
 mapping.
+
+## Bootstrapping a first tenant + admin user
+
+There's no admin API yet (that's M9), so
+[`src/cli/bootstrap.ts`](src/cli/bootstrap.ts) is the only way to create a
+tenant and a user to test against — needed from M2 onward. It creates the
+tenant (with its per-tenant special principals) and a first user with
+`role: 'server_admin'`, in one run.
+
+```bash
+npm run bootstrap -- \
+  --tenant-slug=acme \
+  --tenant-name="Acme Inc" \
+  --username=admin \
+  --email=admin@example.com \
+  --password=some-strong-password
+```
+
+Reads the same `DAVNODE_DB_*` environment variables as everything else in
+this package, e.g. against a local SQLite file:
+
+```bash
+DAVNODE_DB_TYPE=better-sqlite3 DAVNODE_DB_FILE=./dev.sqlite npm run bootstrap -- --tenant-slug=acme --tenant-name="Acme Inc" --username=admin --email=admin@example.com --password=some-strong-password
+```
+
+In Docker, run it inside the running container:
+
+```bash
+docker compose exec app npm run bootstrap -- --tenant-slug=acme --tenant-name="Acme Inc" --username=admin --email=admin@example.com --password=some-strong-password
+```
+
+The target database must already have all migrations applied (`npm run
+migration:run` first) — bootstrapping is a data-seeding step, kept
+separate from schema migration.
+
+Running it twice with the same `--tenant-slug` fails with a clear
+"Tenant slug ... is already in use" message and a non-zero exit code,
+rather than a raw database error or a duplicate tenant.
+
+**Known limitation**: `--password` is passed as a plain command-line
+argument, which is visible to other processes/users on the same machine
+(e.g. via `ps aux`) for as long as the command runs. Acceptable for v1,
+since this script is only for local development and initial bootstrap —
+not a general-purpose user-management tool.
