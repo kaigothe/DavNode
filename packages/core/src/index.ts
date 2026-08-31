@@ -31,3 +31,9 @@ export {
   USER_ROLES,
   type UserRole,
 } from './entities/index.js';
+
+export {
+  type ParsedPrincipalUrl,
+  parsePrincipalUrl,
+  toPrincipalUrl,
+} from './principals/principal-url.js';
