@@ -62,6 +62,7 @@ export function createDataSourceOptions(
   }
 
   const entities = [path.join(currentDir, '../entities/*.{js,ts}')];
+  const migrations = [path.join(currentDir, '../migrations/*.{js,ts}')];
 
   switch (rawType) {
     case 'postgres':
@@ -74,6 +75,7 @@ export function createDataSourceOptions(
         database: env.DAVNODE_DB_NAME,
         synchronize: false,
         entities,
+        migrations,
       };
     case 'mysql':
       return {
@@ -85,6 +87,7 @@ export function createDataSourceOptions(
         database: env.DAVNODE_DB_NAME,
         synchronize: false,
         entities,
+        migrations,
       };
     case 'better-sqlite3':
       return {
@@ -92,6 +95,7 @@ export function createDataSourceOptions(
         database: env.DAVNODE_DB_FILE ?? ':memory:',
         synchronize: false,
         entities,
+        migrations,
       };
   }
 }

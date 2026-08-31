@@ -60,7 +60,13 @@ export default tseslint.config(
       // more accurately than this core rule, which doesn't understand
       // ambient TS declarations and produces false positives.
       'no-undef': 'off',
-      '@typescript-eslint/no-unused-vars': 'error',
+      // Underscore-prefixed parameters are a common convention for
+      // required-but-unused arguments (e.g. interface methods that don't
+      // need every parameter, like an empty TypeORM migration).
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_' },
+      ],
     },
   },
   // TSDoc comment enforcement on the public API of package sources
