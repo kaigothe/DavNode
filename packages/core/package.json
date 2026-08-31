@@ -9,5 +9,12 @@
   "scripts": {
     "build": "tsc -b",
     "test": "vitest run --root ../.. --project \"$npm_package_name\""
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "mysql2": "^3.24.2",
+    "pg": "^8.23.0",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^1.1.0"
   }
 }
