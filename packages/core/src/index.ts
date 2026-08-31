@@ -58,3 +58,7 @@ export {
   type UpdateUserQuotaInput,
   UserService,
 } from './services/user.service.js';
+export {
+  type CreateGroupInput,
+  GroupService,
+} from './services/group.service.js';
