@@ -11,13 +11,18 @@ export default tseslint.config(
   // tooling configs that sit outside any package's tsconfig "include".
   ...tseslint.configs.recommended,
   // Type-aware linting (needed for rules like no-floating-promises) only
-  // for package sources, which are actually covered by a tsconfig project.
+  // for package sources that are actually covered by a tsconfig project.
+  // Test files are excluded: each package's build tsconfig omits them (so
+  // they don't end up compiled into dist/), which means they don't belong
+  // to any typed project either.
   ...tseslint.configs.recommendedTypeChecked.map((config) => ({
     ...config,
     files: ['packages/*/src/**/*.ts'],
+    ignores: ['packages/*/src/**/*.test.ts'],
   })),
   {
     files: ['packages/*/src/**/*.ts'],
+    ignores: ['packages/*/src/**/*.test.ts'],
     languageOptions: {
       parserOptions: {
         projectService: true,
