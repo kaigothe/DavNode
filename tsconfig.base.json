@@ -8,6 +8,11 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
+    // Required by TypeORM's decorator-based entity API (@Entity/@Column/...),
+    // which still uses the legacy (pre-TC39) decorator signature and relies
+    // on emitted design-time type metadata to infer column types.
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "declaration": true,
     "sourceMap": true,
     "skipLibCheck": true,

@@ -10,7 +10,11 @@ describe('createDataSource', () => {
   // (see milestones/M0-fundament/03-typeorm-database-setup/03-db-engine-test-matrix.md)
   // switches engines purely through the environment, not separate tests.
   it('initializes and closes against the configured database without any entities', async () => {
-    const dataSource = createDataSource();
+    // Explicitly empty, rather than relying on the default filesystem
+    // glob: that glob dynamically imports whatever `src/entities/` happens
+    // to contain, which only works for plain compiled JavaScript, not the
+    // raw `.ts` sources this test runs against (see DavNodeDbSchema).
+    const dataSource = createDataSource({}, { entities: [], migrations: [] });
 
     await dataSource.initialize();
     expect(dataSource.isInitialized).toBe(true);

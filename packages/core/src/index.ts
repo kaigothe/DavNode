@@ -5,5 +5,8 @@ export {
   createDataSource,
   createDataSourceOptions,
   type DavNodeDbEnv,
+  type DavNodeDbSchema,
   type DavNodeDbType,
 } from './db/data-source.js';
+
+export { ALL_ENTITIES, Tenant } from './entities/index.js';

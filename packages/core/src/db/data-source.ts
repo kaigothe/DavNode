@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import 'reflect-metadata';
 import { DataSource, type DataSourceOptions } from 'typeorm';
+import { SnakeNamingStrategy } from './snake-naming-strategy.js';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -40,19 +41,44 @@ function isDavNodeDbType(value: string): value is DavNodeDbType {
 }
 
 /**
+ * Optional explicit entity/migration classes, overriding the default
+ * filesystem-glob discovery in {@link createDataSourceOptions}.
+ *
+ * The default glob (`src/entities/*.entity.ts` / `dist/entities/*.entity.js`)
+ * dynamically imports whatever it matches at runtime, which only works
+ * for plain compiled JavaScript — a raw `.ts` file using TypeORM's
+ * decorators fails that dynamic import outside of a TypeScript-aware
+ * loader. Passing explicit classes here (loaded via a normal static
+ * `import`, which any TypeScript toolchain already transforms) avoids
+ * that entirely; this is required for this package's own test suite,
+ * which runs directly against `src/`, and is also available to library
+ * consumers who prefer deterministic, bundler-safe class references over
+ * filesystem globbing.
+ */
+export interface DavNodeDbSchema {
+  entities?: DataSourceOptions['entities'];
+  migrations?: DataSourceOptions['migrations'];
+}
+
+/**
  * Builds TypeORM {@link DataSourceOptions} from environment variables.
  * Switching database engines only means changing `DAVNODE_DB_TYPE` and
  * its matching connection variables — no code changes are required.
  *
- * Entities are loaded from `src/entities/` (`dist/entities/` once built),
- * which is still empty at this stage of the project; it is populated
- * with actual entity classes starting in M1.
+ * Entities are loaded from `src/entities/*.entity.ts` (`dist/entities/*.entity.js`
+ * once built) — the `.entity.` suffix keeps the glob from also picking up
+ * co-located `*.test.ts` files or non-entity helper modules in that
+ * directory. Pass `schema` to use explicit classes instead — see
+ * {@link DavNodeDbSchema}.
  *
  * @param env - Environment variables to read; defaults to `process.env`.
+ * @param schema - Explicit entity/migration classes, bypassing the default
+ * filesystem glob.
  * @returns Options ready to pass to `new DataSource(...)`.
  */
 export function createDataSourceOptions(
   env: DavNodeDbEnv = process.env,
+  schema: DavNodeDbSchema = {},
 ): DataSourceOptions {
   const rawType = env.DAVNODE_DB_TYPE ?? 'better-sqlite3';
   if (!isDavNodeDbType(rawType)) {
@@ -61,8 +87,16 @@ export function createDataSourceOptions(
     );
   }
 
-  const entities = [path.join(currentDir, '../entities/*.{js,ts}')];
-  const migrations = [path.join(currentDir, '../migrations/*.{js,ts}')];
+  const entities = schema.entities ?? [
+    path.join(currentDir, '../entities/*.entity.{js,ts}'),
+  ];
+  // Matches the `<timestamp>-<Name>.ts` naming the TypeORM CLI itself
+  // generates (see the Baseline migration), which keeps the glob from
+  // also picking up `migrations/index.ts` (the ALL_MIGRATIONS barrel).
+  const migrations = schema.migrations ?? [
+    path.join(currentDir, '../migrations/[0-9]*-*.{js,ts}'),
+  ];
+  const namingStrategy = new SnakeNamingStrategy();
 
   switch (rawType) {
     case 'postgres':
@@ -76,6 +110,7 @@ export function createDataSourceOptions(
         synchronize: false,
         entities,
         migrations,
+        namingStrategy,
       };
     case 'mysql':
       return {
@@ -88,6 +123,7 @@ export function createDataSourceOptions(
         synchronize: false,
         entities,
         migrations,
+        namingStrategy,
       };
     case 'better-sqlite3':
       return {
@@ -96,18 +132,25 @@ export function createDataSourceOptions(
         synchronize: false,
         entities,
         migrations,
+        namingStrategy,
       };
   }
 }
 
 /**
  * Creates a new TypeORM {@link DataSource} configured from environment
- * variables. See {@link createDataSourceOptions} for the variables read
- * and how each database engine maps to them.
+ * variables. See {@link createDataSourceOptions} for the variables read,
+ * how each database engine maps to them, and the optional `schema`
+ * parameter.
  *
  * @param env - Environment variables to read; defaults to `process.env`.
+ * @param schema - Explicit entity/migration classes, bypassing the default
+ * filesystem glob.
  * @returns An unconnected DataSource; call `.initialize()` to connect.
  */
-export function createDataSource(env: DavNodeDbEnv = process.env): DataSource {
-  return new DataSource(createDataSourceOptions(env));
+export function createDataSource(
+  env: DavNodeDbEnv = process.env,
+  schema: DavNodeDbSchema = {},
+): DataSource {
+  return new DataSource(createDataSourceOptions(env, schema));
 }
