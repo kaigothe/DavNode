@@ -6,13 +6,27 @@ dist/
 build/
 *.tsbuildinfo
 
+# Generated API docs (TypeDoc, see milestones/M0-fundament/06-code-documentation)
+docs/api/
+
 # Environment
 .env
 .env.local
 .env.*.local
 
+# Local/test database files (SQLite via DAVNODE_DB_FILE)
+*.sqlite
+*.sqlite3
+*.db
+
 # Test coverage
 coverage/
+
+# Lint cache
+.eslintcache
+
+# Husky internal runtime directory
+.husky/_/
 
 # Logs
 *.log
