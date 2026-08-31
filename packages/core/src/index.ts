@@ -1,6 +1,8 @@
 /** Current version of the `@davnode/core` package. */
 export const VERSION = '0.0.1';
 
+export { AuthProviderRegistry } from './auth/auth-provider-registry.js';
+export type { AuthProvider } from './auth/auth-provider.interface.js';
 export { hashPassword, verifyPassword } from './auth/password-hashing.js';
 
 export {
