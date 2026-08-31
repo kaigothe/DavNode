@@ -1,0 +1,9 @@
+dist
+coverage
+docs/api
+package-lock.json
+
+# German planning archive — source of truth authored by the project owner,
+# not reformatted by tooling.
+planning
+milestones
