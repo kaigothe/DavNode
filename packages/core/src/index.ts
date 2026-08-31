@@ -11,6 +11,8 @@ export {
 
 export {
   ALL_ENTITIES,
+  Group,
+  GroupMembership,
   Principal,
   PRINCIPAL_KINDS,
   PRINCIPAL_SPECIAL_KINDS,

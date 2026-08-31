@@ -1,3 +1,5 @@
+import { Group } from './group.entity.js';
+import { GroupMembership } from './group-membership.entity.js';
 import {
   Principal,
   PRINCIPAL_KINDS,
@@ -9,6 +11,8 @@ import { Tenant } from './tenant.entity.js';
 import { User, USER_ROLES, type UserRole } from './user.entity.js';
 
 export {
+  Group,
+  GroupMembership,
   Principal,
   PRINCIPAL_KINDS,
   PRINCIPAL_SPECIAL_KINDS,
@@ -28,4 +32,4 @@ export {
  * sources rather than the compiled `dist/` output, such as this package's
  * own test suite.
  */
-export const ALL_ENTITIES = [Tenant, Principal, User];
+export const ALL_ENTITIES = [Tenant, Principal, User, Group, GroupMembership];
