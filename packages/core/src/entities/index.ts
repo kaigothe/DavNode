@@ -1,3 +1,4 @@
+import { Collection } from './collection.entity.js';
 import {
   Credential,
   CREDENTIAL_TYPES,
@@ -16,6 +17,7 @@ import { Tenant } from './tenant.entity.js';
 import { User, USER_ROLES, type UserRole } from './user.entity.js';
 
 export {
+  Collection,
   Credential,
   CREDENTIAL_TYPES,
   type CredentialType,
@@ -47,4 +49,5 @@ export const ALL_ENTITIES = [
   Group,
   GroupMembership,
   Credential,
+  Collection,
 ];

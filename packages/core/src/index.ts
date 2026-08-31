@@ -16,6 +16,7 @@ export {
 
 export {
   ALL_ENTITIES,
+  Collection,
   Credential,
   CREDENTIAL_TYPES,
   type CredentialType,
