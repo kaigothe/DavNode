@@ -2,11 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { createDataSource, createDataSourceOptions } from './data-source.js';
 
 describe('createDataSource', () => {
-  it('initializes and closes against an in-memory SQLite database without any entities', async () => {
-    const dataSource = createDataSource({
-      DAVNODE_DB_TYPE: 'better-sqlite3',
-      DAVNODE_DB_FILE: ':memory:',
-    });
+  // Driven entirely by process.env, not a hardcoded override: with no
+  // DAVNODE_DB_* variables set, this defaults to an in-memory SQLite
+  // database (see createDataSourceOptions). Exporting DAVNODE_DB_TYPE=
+  // postgres/mysql plus the matching connection variables runs this exact
+  // same test against that engine instead — the DB-engine test matrix
+  // (see milestones/M0-fundament/03-typeorm-database-setup/03-db-engine-test-matrix.md)
+  // switches engines purely through the environment, not separate tests.
+  it('initializes and closes against the configured database without any entities', async () => {
+    const dataSource = createDataSource();
 
     await dataSource.initialize();
     expect(dataSource.isInitialized).toBe(true);
