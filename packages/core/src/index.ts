@@ -53,3 +53,8 @@ export {
   TenantService,
   type UpdateTenantQuotaInput,
 } from './services/tenant.service.js';
+export {
+  type CreateUserInput,
+  type UpdateUserQuotaInput,
+  UserService,
+} from './services/user.service.js';
