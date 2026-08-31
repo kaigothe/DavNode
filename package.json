@@ -1,0 +1,10 @@
+{
+  "name": "davnode",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}
