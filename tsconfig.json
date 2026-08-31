@@ -1,0 +1,10 @@
+{
+  // Solution file: no source files of its own, just orchestrates building
+  // all workspace packages in dependency order via `tsc -b`.
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/server" },
+    { "path": "packages/admin-api" }
+  ]
+}

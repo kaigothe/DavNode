@@ -1,0 +1,18 @@
+{
+  // ESM is the module format for this project: Node 22 has mature, stable
+  // ESM support, and @davnode/core is meant to be consumable as a library,
+  // so its build output should not force a CommonJS-only shape on
+  // downstream consumers.
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "declaration": true,
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "composite": true
+  }
+}
