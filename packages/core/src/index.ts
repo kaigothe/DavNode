@@ -11,6 +11,9 @@ export {
 
 export {
   ALL_ENTITIES,
+  Credential,
+  CREDENTIAL_TYPES,
+  type CredentialType,
   Group,
   GroupMembership,
   Principal,

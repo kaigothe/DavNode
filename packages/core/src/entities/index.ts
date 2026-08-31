@@ -1,3 +1,8 @@
+import {
+  Credential,
+  CREDENTIAL_TYPES,
+  type CredentialType,
+} from './credential.entity.js';
 import { Group } from './group.entity.js';
 import { GroupMembership } from './group-membership.entity.js';
 import {
@@ -11,6 +16,9 @@ import { Tenant } from './tenant.entity.js';
 import { User, USER_ROLES, type UserRole } from './user.entity.js';
 
 export {
+  Credential,
+  CREDENTIAL_TYPES,
+  type CredentialType,
   Group,
   GroupMembership,
   Principal,
@@ -32,4 +40,11 @@ export {
  * sources rather than the compiled `dist/` output, such as this package's
  * own test suite.
  */
-export const ALL_ENTITIES = [Tenant, Principal, User, Group, GroupMembership];
+export const ALL_ENTITIES = [
+  Tenant,
+  Principal,
+  User,
+  Group,
+  GroupMembership,
+  Credential,
+];
