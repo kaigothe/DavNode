@@ -42,3 +42,14 @@ export {
   isSpecialPrincipal,
   toSpecialPrincipalXmlElement,
 } from './principals/special-principals.js';
+
+export {
+  CycleDetectedError,
+  DuplicateEntryError,
+  NotFoundError,
+} from './services/errors.js';
+export {
+  type CreateTenantInput,
+  TenantService,
+  type UpdateTenantQuotaInput,
+} from './services/tenant.service.js';
