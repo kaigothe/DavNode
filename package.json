@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "docs": "typedoc"
+    "docs": "npm run build --workspaces && typedoc"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
