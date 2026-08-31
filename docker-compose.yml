@@ -1,9 +1,27 @@
-# Postgres and MySQL services for the DB-engine test matrix (see
+# Local development / reference deployment (see
+# milestones/M0-fundament/04-docker-setup). `docker compose up` starts the
+# app against Postgres by default; `docker compose --profile mysql up` also
+# brings up MySQL for the DB-engine test matrix (see
 # milestones/M0-fundament/03-typeorm-database-setup/03-db-engine-test-matrix.md).
-# The `app` service, named volumes for production use, and an `.env.example`
-# are added on top of this in milestones/M0-fundament/04-docker-setup — this
-# file is extended there, not duplicated.
+#
+# Note: the app's current CMD (packages/server/src/main.ts) is still the M0
+# placeholder entrypoint — it connects, logs success, and exits. Seeing the
+# `app` container finish with exit code 0 is expected until the real
+# Express server lands in M2.
 services:
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DAVNODE_DB_TYPE: postgres
+      DAVNODE_DB_HOST: postgres
+      DAVNODE_DB_PORT: 5432
+      DAVNODE_DB_NAME: davnode
+      DAVNODE_DB_USER: davnode
+      DAVNODE_DB_PASSWORD: davnode
+
   postgres:
     image: postgres:17-alpine
     environment:
@@ -12,6 +30,8 @@ services:
       POSTGRES_PASSWORD: davnode
     ports:
       - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U davnode']
       interval: 5s
@@ -20,6 +40,7 @@ services:
 
   mysql:
     image: mysql:9
+    profiles: [mysql]
     environment:
       MYSQL_DATABASE: davnode
       MYSQL_USER: davnode
@@ -27,8 +48,14 @@ services:
       MYSQL_ROOT_PASSWORD: davnode
     ports:
       - '3306:3306'
+    volumes:
+      - mysql-data:/var/lib/mysql
     healthcheck:
       test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
       interval: 5s
       timeout: 5s
       retries: 5
+
+volumes:
+  postgres-data:
+  mysql-data:
