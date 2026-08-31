@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createDataSource } from '../db/data-source.js';
 import { Credential } from '../entities/credential.entity.js';
 import { ALL_ENTITIES, Principal, Tenant, User } from '../entities/index.js';
-import { ALL_MIGRATIONS } from '../migrations/index.js';
+import { ALL_MIGRATIONS } from '../migrations/sqlite/index.js';
 import { AuthProviderRegistry } from './auth-provider-registry.js';
 import { BasicAuthProvider } from './basic-auth-provider.js';
 import { hashPassword } from './password-hashing.js';

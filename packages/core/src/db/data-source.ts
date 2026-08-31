@@ -41,6 +41,21 @@ function isDavNodeDbType(value: string): value is DavNodeDbType {
 }
 
 /**
+ * Migrations are generated separately per database engine (see
+ * `src/migrations/{sqlite,postgres,mysql}/`), since `migration:generate`
+ * bakes driver-specific raw SQL into each migration file — a migration
+ * generated against SQLite uses syntax Postgres and MySQL both reject
+ * (e.g. double-quoted identifiers, which MySQL treats as string literals
+ * by default). This maps a `DavNodeDbType` to its migrations directory
+ * name.
+ */
+const MIGRATIONS_DIR_BY_DB_TYPE: Record<DavNodeDbType, string> = {
+  'better-sqlite3': 'sqlite',
+  postgres: 'postgres',
+  mysql: 'mysql',
+};
+
+/**
  * Optional explicit entity/migration classes, overriding the default
  * filesystem-glob discovery in {@link createDataSourceOptions}.
  *
@@ -68,8 +83,10 @@ export interface DavNodeDbSchema {
  * Entities are loaded from `src/entities/*.entity.ts` (`dist/entities/*.entity.js`
  * once built) — the `.entity.` suffix keeps the glob from also picking up
  * co-located `*.test.ts` files or non-entity helper modules in that
- * directory. Pass `schema` to use explicit classes instead — see
- * {@link DavNodeDbSchema}.
+ * directory. Migrations are loaded from `src/migrations/<engine>/`
+ * (`sqlite`/`postgres`/`mysql`), since each engine has its own,
+ * separately-generated migration history. Pass `schema` to use explicit
+ * classes instead of either glob — see {@link DavNodeDbSchema}.
  *
  * @param env - Environment variables to read; defaults to `process.env`.
  * @param schema - Explicit entity/migration classes, bypassing the default
@@ -92,9 +109,13 @@ export function createDataSourceOptions(
   ];
   // Matches the `<timestamp>-<Name>.ts` naming the TypeORM CLI itself
   // generates (see the Baseline migration), which keeps the glob from
-  // also picking up `migrations/index.ts` (the ALL_MIGRATIONS barrel).
+  // also picking up `migrations/<engine>/index.ts` (the ALL_MIGRATIONS
+  // barrel).
   const migrations = schema.migrations ?? [
-    path.join(currentDir, '../migrations/[0-9]*-*.{js,ts}'),
+    path.join(
+      currentDir,
+      `../migrations/${MIGRATIONS_DIR_BY_DB_TYPE[rawType]}/[0-9]*-*.{js,ts}`,
+    ),
   ];
   const namingStrategy = new SnakeNamingStrategy();
 

@@ -9,30 +9,74 @@ for the overall repo layout.
 
 Schema changes go through TypeORM migrations, never `synchronize: true`
 (disabled explicitly in [`src/db/data-source.ts`](src/db/data-source.ts)).
-Migrations live in `src/migrations/` and are compiled to `dist/migrations/`
-like any other source file.
 
 All migration commands build the package first, since the TypeORM CLI runs
 against the compiled `dist/db/cli-data-source.js`, and read the same
 `DAVNODE_DB_*` environment variables as the application itself (see
 [`src/db/data-source.ts`](src/db/data-source.ts) for the full list).
 
-```bash
-# Generate a migration from the current entity definitions (diffs the
-# target database against src/entities/). Requires a reachable database.
-npm run migration:generate -- src/migrations/AddSomeTable
+### One migration history per engine
 
-# Apply all pending migrations.
+Migrations live in `src/migrations/{sqlite,postgres,mysql}/`, **one
+independent history per database engine**, not one shared history — the
+`DataSource` picks the matching directory based on `DAVNODE_DB_TYPE`.
+
+This isn't optional: `migration:generate` bakes literal, driver-specific
+SQL into whatever migration file it writes (based on whichever database it
+diffed against). A migration generated against SQLite uses syntax both
+Postgres and MySQL reject outright — e.g. SQLite/Postgres accept
+double-quoted identifiers, but MySQL parses those as string literals and
+throws a syntax error; SQLite's `DEFAULT (0)`/`datetime('now')` default
+syntax doesn't parse on Postgres either. So a single migration file can
+never run correctly on more than one engine — the price of `core`'s
+DB-independence (any of the three engines is a supported target) is
+generating and maintaining each engine's migration history separately.
+
+**Whenever you change an entity, run `migration:generate` three times**,
+once per engine, immediately after applying the same change's previous
+migrations to that engine (see the per-engine examples below) — not just
+against whichever engine you happen to be developing against:
+
+```bash
+npm run migration:generate -- src/migrations/sqlite/AddSomeTable
+npm run migration:generate -- src/migrations/postgres/AddSomeTable
+npm run migration:generate -- src/migrations/mysql/AddSomeTable
+```
+
+(The M1 schema predates this split: `migrations/sqlite/` has one migration
+per M1 sub-task, since that's genuinely how the schema grew over time, while
+`migrations/postgres/` and `migrations/mysql/` each hold a single
+`InitialSchema` migration generated retroactively in one shot — Postgres
+and MySQL never ran an earlier version of that schema, so there was no real
+history to split into separate steps. Every migration from here on is
+generated incrementally, in step, across all three directories.)
+
+Other than living in an engine-specific directory, the workflow is the same
+for all three:
+
+```bash
+# Apply all pending migrations for the configured engine.
 npm run migration:run
 
-# Revert the most recently applied migration.
+# Revert that engine's most recently applied migration.
 npm run migration:revert
 ```
 
-Example against a local SQLite file:
+Examples, one per engine:
 
 ```bash
+# SQLite (a local file)
 DAVNODE_DB_TYPE=better-sqlite3 DAVNODE_DB_FILE=./dev.sqlite npm run migration:run
+
+# Postgres (e.g. via `docker compose up -d postgres`)
+DAVNODE_DB_TYPE=postgres DAVNODE_DB_HOST=localhost DAVNODE_DB_PORT=5432 \
+  DAVNODE_DB_NAME=davnode DAVNODE_DB_USER=davnode DAVNODE_DB_PASSWORD=davnode \
+  npm run migration:run
+
+# MySQL (e.g. via `docker compose --profile mysql up -d mysql`)
+DAVNODE_DB_TYPE=mysql DAVNODE_DB_HOST=localhost DAVNODE_DB_PORT=3306 \
+  DAVNODE_DB_NAME=davnode DAVNODE_DB_USER=davnode DAVNODE_DB_PASSWORD=davnode \
+  npm run migration:run
 ```
 
 ## Special principals

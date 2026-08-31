@@ -1,7 +1,7 @@
 import type { DataSource } from 'typeorm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createDataSource } from '../db/data-source.js';
-import { ALL_MIGRATIONS } from '../migrations/index.js';
+import { ALL_MIGRATIONS } from '../migrations/sqlite/index.js';
 import { ALL_ENTITIES, Principal, Tenant } from './index.js';
 
 describe('Principal entity', () => {

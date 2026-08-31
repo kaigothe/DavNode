@@ -5,7 +5,7 @@ import { verifyPassword } from '../auth/password-hashing.js';
 import { createDataSource } from '../db/data-source.js';
 import { Credential } from '../entities/credential.entity.js';
 import { ALL_ENTITIES, Principal, Tenant, User } from '../entities/index.js';
-import { ALL_MIGRATIONS } from '../migrations/index.js';
+import { ALL_MIGRATIONS } from '../migrations/sqlite/index.js';
 import { DuplicateEntryError, NotFoundError } from './errors.js';
 import { UserService } from './user.service.js';
 

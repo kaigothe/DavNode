@@ -3,7 +3,7 @@ import { EntityManager } from 'typeorm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDataSource } from '../db/data-source.js';
 import { ALL_ENTITIES, Principal, Tenant } from '../entities/index.js';
-import { ALL_MIGRATIONS } from '../migrations/index.js';
+import { ALL_MIGRATIONS } from '../migrations/sqlite/index.js';
 import { DuplicateEntryError, NotFoundError } from './errors.js';
 import { TenantService } from './tenant.service.js';
 

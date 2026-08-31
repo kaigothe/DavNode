@@ -8,7 +8,7 @@ import {
   Tenant,
   User,
 } from '../entities/index.js';
-import { ALL_MIGRATIONS } from '../migrations/index.js';
+import { ALL_MIGRATIONS } from '../migrations/sqlite/index.js';
 import { DuplicateEntryError } from '../services/errors.js';
 import { parseBootstrapArgs, runBootstrap } from './bootstrap.js';
 

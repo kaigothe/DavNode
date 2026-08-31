@@ -8,7 +8,7 @@ import {
   Principal,
   Tenant,
 } from '../entities/index.js';
-import { ALL_MIGRATIONS } from '../migrations/index.js';
+import { ALL_MIGRATIONS } from '../migrations/sqlite/index.js';
 import {
   CycleDetectedError,
   DuplicateEntryError,
