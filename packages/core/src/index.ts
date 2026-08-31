@@ -37,3 +37,8 @@ export {
   parsePrincipalUrl,
   toPrincipalUrl,
 } from './principals/principal-url.js';
+
+export {
+  isSpecialPrincipal,
+  toSpecialPrincipalXmlElement,
+} from './principals/special-principals.js';
