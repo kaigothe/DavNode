@@ -1,10 +1,12 @@
 import { Collection } from './collection.entity.js';
+import { CollectionProperty } from './collection-property.entity.js';
 import {
   Credential,
   CREDENTIAL_TYPES,
   type CredentialType,
 } from './credential.entity.js';
 import { FileContent } from './file-content.entity.js';
+import { FileProperty } from './file-property.entity.js';
 import { FileResource } from './file-resource.entity.js';
 import { Group } from './group.entity.js';
 import { GroupMembership } from './group-membership.entity.js';
@@ -20,10 +22,12 @@ import { User, USER_ROLES, type UserRole } from './user.entity.js';
 
 export {
   Collection,
+  CollectionProperty,
   Credential,
   CREDENTIAL_TYPES,
   type CredentialType,
   FileContent,
+  FileProperty,
   FileResource,
   Group,
   GroupMembership,
@@ -56,4 +60,6 @@ export const ALL_ENTITIES = [
   Collection,
   FileResource,
   FileContent,
+  CollectionProperty,
+  FileProperty,
 ];

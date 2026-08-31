@@ -17,10 +17,12 @@ export {
 export {
   ALL_ENTITIES,
   Collection,
+  CollectionProperty,
   Credential,
   CREDENTIAL_TYPES,
   type CredentialType,
   FileContent,
+  FileProperty,
   FileResource,
   Group,
   GroupMembership,
