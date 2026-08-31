@@ -1,0 +1,14 @@
+node_modules
+**/dist
+**/*.test.ts
+coverage
+docs/api
+
+planning
+milestones
+
+.git
+.github
+
+.vscode
+.idea
