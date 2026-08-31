@@ -74,3 +74,31 @@ jobs:
       - run: npm ci
       - run: npm run build --workspaces
       - run: npm test --workspaces
+
+  release:
+    needs: [lint-and-build, test]
+    # Only push events to main create releases — pull_request runs (and
+    # pushes to any other branch) skip this job. .releaserc.json's own
+    # `branches: ["main"]` would refuse a release anyway, but gating here
+    # avoids even attempting the checkout/install for runs that could
+    # never release.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # semantic-release needs the full commit history (and tags) to
+          # determine the next version, not just the latest commit.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
