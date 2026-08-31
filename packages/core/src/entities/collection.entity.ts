@@ -21,7 +21,6 @@ import { Tenant } from './tenant.entity.js';
  */
 @Entity('collections')
 @Index(['tenantId', 'parentCollectionId'])
-@Index(['tenantId'], { unique: true, where: 'parent_collection_id IS NULL' })
 export class Collection {
   /** Primary key. */
   @PrimaryGeneratedColumn('uuid')
@@ -78,4 +77,21 @@ export class Collection {
   /** Timestamp of the last change to this collection's own properties. */
   @UpdateDateColumn()
   updatedAt!: Date;
+}
+
+// MySQL has no partial/filtered index support: `migration:generate`
+// silently drops a `where` clause instead of erroring, producing a plain
+// UNIQUE(tenant_id) index that's actively wrong (it would cap every
+// tenant at exactly one collection total, not just one root — see
+// migrations/mysql/CreateCollections). Applying this index's decorator
+// conditionally, rather than always via `@Index(...)` above, keeps this
+// package's own entity metadata honest about what the real MySQL schema
+// has — otherwise every future `migration:generate` run against MySQL
+// would keep "discovering" the index as missing and trying to add it
+// back. sqlite/postgres both support the partial index correctly, so
+// they keep it.
+if (process.env.DAVNODE_DB_TYPE !== 'mysql') {
+  Index(['tenantId'], { unique: true, where: 'parent_collection_id IS NULL' })(
+    Collection,
+  );
 }

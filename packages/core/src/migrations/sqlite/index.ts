@@ -5,6 +5,7 @@ import { CreateUsers1788211878093 } from './1788211878093-CreateUsers.js';
 import { CreateGroups1788212097336 } from './1788212097336-CreateGroups.js';
 import { CreateCredentials1788212518999 } from './1788212518999-CreateCredentials.js';
 import { CreateCollections1788216873371 } from './1788216873371-CreateCollections.js';
+import { CreateFileResources1788217588594 } from './1788217588594-CreateFileResources.js';
 
 /**
  * Every SQLite migration in `@davnode/core`, in chronological order. Used
@@ -22,4 +23,5 @@ export const ALL_MIGRATIONS = [
   CreateGroups1788212097336,
   CreateCredentials1788212518999,
   CreateCollections1788216873371,
+  CreateFileResources1788217588594,
 ];

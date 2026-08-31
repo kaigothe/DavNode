@@ -4,6 +4,8 @@ import {
   CREDENTIAL_TYPES,
   type CredentialType,
 } from './credential.entity.js';
+import { FileContent } from './file-content.entity.js';
+import { FileResource } from './file-resource.entity.js';
 import { Group } from './group.entity.js';
 import { GroupMembership } from './group-membership.entity.js';
 import {
@@ -21,6 +23,8 @@ export {
   Credential,
   CREDENTIAL_TYPES,
   type CredentialType,
+  FileContent,
+  FileResource,
   Group,
   GroupMembership,
   Principal,
@@ -50,4 +54,6 @@ export const ALL_ENTITIES = [
   GroupMembership,
   Credential,
   Collection,
+  FileResource,
+  FileContent,
 ];

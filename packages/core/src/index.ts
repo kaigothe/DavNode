@@ -20,6 +20,8 @@ export {
   Credential,
   CREDENTIAL_TYPES,
   type CredentialType,
+  FileContent,
+  FileResource,
   Group,
   GroupMembership,
   Principal,
