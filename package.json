@@ -12,7 +12,8 @@
   "scripts": {
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "docs": "typedoc"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -22,6 +23,7 @@
     "eslint-plugin-jsdoc": "^64.3.2",
     "eslint-plugin-tsdoc": "^0.5.2",
     "prettier": "^3.9.6",
+    "typedoc": "^0.28.20",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.68.0",
     "vitest": "^4.1.11"

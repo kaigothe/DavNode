@@ -1,0 +1,13 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPointStrategy": "packages",
+  "entryPoints": ["packages/core", "packages/server", "packages/admin-api"],
+  "out": "docs/api",
+  "readme": "none",
+  "externalSymbolLinkMappings": {
+    "typeorm": {
+      "DataSource": "https://typeorm.io/data-source",
+      "DataSourceOptions": "https://typeorm.io/data-source-options"
+    }
+  }
+}
