@@ -25,6 +25,11 @@ export {
   hasPrivilege,
   getCurrentUserPrivilegeSet,
 } from './acl/evaluate-privilege.js';
+export {
+  parseAclRequestBody,
+  type AclRequestAce,
+  type AclRequestBody,
+} from './acl/acl-request-parser.js';
 
 export {
   createDataSource,
@@ -104,6 +109,7 @@ export {
   type MultistatusResourceResult,
   buildMultistatusResponse,
 } from './webdav/xml/multistatus-builder.js';
+export { buildErrorResponse } from './webdav/xml/error-response-builder.js';
 export {
   DAV_NAMESPACE,
   type ProppatchOperation,

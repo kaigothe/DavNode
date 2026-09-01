@@ -2,6 +2,7 @@ import type { DataSource } from '@davnode/core';
 import express from 'express';
 import { createBasicAuthMiddleware } from './http/basic-auth.middleware.js';
 import { errorHandlerMiddleware } from './http/error-handler.middleware.js';
+import { registerAclRoute } from './http/routes/acl.route.js';
 import { registerCopyRoute } from './http/routes/copy.route.js';
 import { registerDeleteRoute } from './http/routes/delete.route.js';
 import { registerGetRoute } from './http/routes/get.route.js';
@@ -37,7 +38,11 @@ export function createApp(dataSource: DataSource): express.Express {
   // createOwnerOnlyAuthorizationMiddleware. COPY (and MOVE) are the
   // exception: they check two resources (source and destination parent),
   // which that single-resolver middleware isn't shaped for, so they do
-  // the same ownership check inline instead — see copy.route.ts.
+  // the same ownership check inline instead — see copy.route.ts. ACL is
+  // the first route to use the real ACL-evaluation engine (`hasPrivilege`,
+  // checking `write-acl`) instead of this placeholder — the other M2
+  // routes are switched over in M3's last big task
+  // (milestones/M3-webdav-acl/07-replace-placeholder-authorization).
   registerPropfindRoute(app, dataSource);
   registerProppatchRoute(app, dataSource);
   registerMkcolRoute(app, dataSource);
@@ -46,6 +51,7 @@ export function createApp(dataSource: DataSource): express.Express {
   registerDeleteRoute(app, dataSource);
   registerCopyRoute(app, dataSource);
   registerMoveRoute(app, dataSource);
+  registerAclRoute(app, dataSource);
 
   // Must stay last: Express only treats a 4-argument middleware as an
   // error handler, and only for errors from middleware/routes mounted

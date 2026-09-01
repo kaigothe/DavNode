@@ -20,3 +20,19 @@ declare global {
     }
   }
 }
+
+/**
+ * `@types/express-serve-static-core` already declares most WebDAV
+ * extension methods (`mkcol`, `propfind`, `proppatch`, `copy`, `move`,
+ * ...) on `IRouter` — Express itself derives its method list from
+ * Node's `http.METHODS`, which does include `ACL`, but that particular
+ * one is missing from the `@types` package's otherwise-thorough list.
+ * Adding it here (rather than casting `app` at each call site) keeps
+ * `app.acl(...)` (`acl.route.ts`) as fully typed as every other DAV
+ * route registration.
+ */
+declare module 'express-serve-static-core' {
+  interface IRouter {
+    acl: IRouterMatcher<this>;
+  }
+}
