@@ -11,40 +11,11 @@ import {
   type MultistatusResourceResult,
   type PropertyValue,
   type PropfindRequestBody,
-  type Tenant,
   type WebDavTreeResource,
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
 import { createOwnerOnlyAuthorizationMiddleware } from '../owner-only-authorization.middleware.js';
-
-/**
- * Path segments after `/files`, from the route's `{/*splat}` wildcard.
- * Express 5's types still describe every route param as `string` (a
- * known gap for wildcard captures — path-to-regexp v8 actually returns
- * an array), so this reads `req.params.splat` untyped rather than via
- * a `Request<...>` generic that would just assert the wrong shape.
- */
-function pathSegments(req: Request): string[] {
-  const splat: unknown = (req.params as Record<string, unknown>).splat;
-  return Array.isArray(splat) ? (splat as string[]) : [];
-}
-
-/**
- * `req.tenant`, guaranteed set by this point (tenant-resolution and
- * basic-auth both run before this route and both require it — see
- * `tenant-resolution.middleware.ts`/`basic-auth.middleware.ts`).
- *
- * @throws An `Error` if `req.tenant` isn't set — a misconfiguration
- * (wrong mounting order), not a client-facing condition.
- */
-function requireTenant(req: Request): Tenant {
-  if (!req.tenant) {
-    throw new Error(
-      'PROPFIND route requires the tenant-resolution middleware to run first (req.tenant is not set)',
-    );
-  }
-  return req.tenant;
-}
+import { pathSegments, requireTenant } from './dav-path.util.js';
 
 /** The resource's own path segment: a `Collection`'s `displayName`, or a `FileResource`'s `name`. */
 function resourceName(resource: WebDavTreeResource): string {

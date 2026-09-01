@@ -11,6 +11,7 @@ import {
   Tenant,
 } from '../../entities/index.js';
 import { ALL_MIGRATIONS } from '../../migrations/sqlite/index.js';
+import type { ProppatchOperation } from '../xml/request-parser.js';
 import { DeadPropertyService } from './dead-property.service.js';
 
 describe('DeadPropertyService', () => {
@@ -131,6 +132,106 @@ describe('DeadPropertyService', () => {
       expect(properties).toEqual([
         { namespace: 'urn:example:ns', name: 'reviewed', value: 'true' },
       ]);
+    });
+  });
+
+  describe('applyOperations', () => {
+    it('creates a new dead property on a collection via set', async () => {
+      const operations: ProppatchOperation[] = [
+        {
+          kind: 'set',
+          property: { namespace: 'urn:example:ns', name: 'color' },
+          value: 'blue',
+        },
+      ];
+
+      await service.applyOperations(collection, operations);
+
+      expect(await service.listForCollection(collection.id)).toEqual([
+        { namespace: 'urn:example:ns', name: 'color', value: 'blue' },
+      ]);
+    });
+
+    it('creates a new dead property on a file resource via set', async () => {
+      const operations: ProppatchOperation[] = [
+        {
+          kind: 'set',
+          property: { namespace: 'urn:example:ns', name: 'reviewed' },
+          value: 'true',
+        },
+      ];
+
+      await service.applyOperations(file, operations);
+
+      expect(await service.listForFileResource(file.id)).toEqual([
+        { namespace: 'urn:example:ns', name: 'reviewed', value: 'true' },
+      ]);
+    });
+
+    it('overwrites an existing value in place, without creating a duplicate row', async () => {
+      const property = { namespace: 'urn:example:ns', name: 'color' };
+      await service.applyOperations(collection, [
+        { kind: 'set', property, value: 'blue' },
+      ]);
+
+      await service.applyOperations(collection, [
+        { kind: 'set', property, value: 'green' },
+      ]);
+
+      expect(await service.listForCollection(collection.id)).toEqual([
+        { namespace: 'urn:example:ns', name: 'color', value: 'green' },
+      ]);
+      const rows = await dataSource
+        .getRepository(CollectionProperty)
+        .findBy({ collectionId: collection.id });
+      expect(rows).toHaveLength(1);
+    });
+
+    it('removes an existing dead property', async () => {
+      const property = { namespace: 'urn:example:ns', name: 'color' };
+      await service.applyOperations(collection, [
+        { kind: 'set', property, value: 'blue' },
+      ]);
+
+      await service.applyOperations(collection, [{ kind: 'remove', property }]);
+
+      expect(await service.listForCollection(collection.id)).toEqual([]);
+    });
+
+    it('treats removing a never-set property as a no-op, not an error', async () => {
+      await expect(
+        service.applyOperations(collection, [
+          {
+            kind: 'remove',
+            property: { namespace: 'urn:example:ns', name: 'never-set' },
+          },
+        ]),
+      ).resolves.toBeUndefined();
+
+      expect(await service.listForCollection(collection.id)).toEqual([]);
+    });
+
+    it('applies multiple operations in one call', async () => {
+      await service.applyOperations(collection, [
+        {
+          kind: 'set',
+          property: { namespace: 'urn:example:ns', name: 'color' },
+          value: 'blue',
+        },
+        {
+          kind: 'set',
+          property: { namespace: 'urn:example:ns', name: 'size' },
+          value: 'large',
+        },
+      ]);
+
+      const properties = await service.listForCollection(collection.id);
+      expect(properties).toEqual(
+        expect.arrayContaining([
+          { namespace: 'urn:example:ns', name: 'color', value: 'blue' },
+          { namespace: 'urn:example:ns', name: 'size', value: 'large' },
+        ]),
+      );
     });
   });
 });

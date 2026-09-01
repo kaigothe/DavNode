@@ -3,6 +3,7 @@ import express from 'express';
 import { createBasicAuthMiddleware } from './http/basic-auth.middleware.js';
 import { errorHandlerMiddleware } from './http/error-handler.middleware.js';
 import { registerPropfindRoute } from './http/routes/propfind.route.js';
+import { registerProppatchRoute } from './http/routes/proppatch.route.js';
 import { createTenantResolutionMiddleware } from './http/tenant-resolution.middleware.js';
 
 /**
@@ -29,6 +30,7 @@ export function createApp(dataSource: DataSource): express.Express {
   // its own resolver for "what resource does this request target" — see
   // createOwnerOnlyAuthorizationMiddleware.
   registerPropfindRoute(app, dataSource);
+  registerProppatchRoute(app, dataSource);
 
   // Must stay last: Express only treats a 4-argument middleware as an
   // error handler, and only for errors from middleware/routes mounted
