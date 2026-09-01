@@ -10,6 +10,7 @@ import { CreateFileResources1788217588594 } from './1788217588594-CreateFileReso
 import { CreateDeadProperties1788218170869 } from './1788218170869-CreateDeadProperties.js';
 import { CreateCollectionChanges1788275224055 } from './1788275224055-CreateCollectionChanges.js';
 import { CreateAces1788279306695 } from './1788279306695-CreateAces.js';
+import { CreateLocks1788292075341 } from './1788292075341-CreateLocks.js';
 
 /**
  * Every SQLite migration in `@davnode/core`, in chronological order. Used
@@ -34,4 +35,5 @@ export const ALL_MIGRATIONS: Array<new () => MigrationInterface> = [
   CreateDeadProperties1788218170869,
   CreateCollectionChanges1788275224055,
   CreateAces1788279306695,
+  CreateLocks1788292075341,
 ];

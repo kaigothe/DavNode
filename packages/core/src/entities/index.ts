@@ -9,6 +9,13 @@ import {
   COLLECTION_CHANGE_ACTIONS,
   type CollectionChangeAction,
 } from './collection-change.entity.js';
+import {
+  CollectionLock,
+  LOCK_DEPTH_VALUES,
+  LOCK_SCOPE_VALUES,
+  type LockDepth,
+  type LockScope,
+} from './collection-lock.entity.js';
 import { CollectionProperty } from './collection-property.entity.js';
 import {
   Credential,
@@ -17,6 +24,7 @@ import {
 } from './credential.entity.js';
 import { FileAce } from './file-ace.entity.js';
 import { FileContent } from './file-content.entity.js';
+import { FileLock } from './file-lock.entity.js';
 import { FileProperty } from './file-property.entity.js';
 import { FileResource } from './file-resource.entity.js';
 import { Group } from './group.entity.js';
@@ -39,12 +47,18 @@ export {
   CollectionChange,
   COLLECTION_CHANGE_ACTIONS,
   type CollectionChangeAction,
+  CollectionLock,
+  LOCK_DEPTH_VALUES,
+  LOCK_SCOPE_VALUES,
+  type LockDepth,
+  type LockScope,
   CollectionProperty,
   Credential,
   CREDENTIAL_TYPES,
   type CredentialType,
   FileAce,
   FileContent,
+  FileLock,
   FileProperty,
   FileResource,
   Group,
@@ -83,4 +97,6 @@ export const ALL_ENTITIES = [
   CollectionChange,
   CollectionAce,
   FileAce,
+  CollectionLock,
+  FileLock,
 ];
