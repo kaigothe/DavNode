@@ -1,3 +1,14 @@
+# [1.6.0](https://github.com/kaigothe/DavNode/compare/v1.5.0...v1.6.0) (2026-09-01)
+
+
+### Features
+
+* **core:** add ACL live properties ([adfdfd2](https://github.com/kaigothe/DavNode/commit/adfdfd29b7db3048ccc55322ca917e0e5dacf7f1))
+* **core:** add principal-property-search REPORT ([181dfd0](https://github.com/kaigothe/DavNode/commit/181dfd09a41ebcc2d67902b3f366d4134b8ac9e5))
+* **server:** add generic REPORT dispatcher ([de8d9ff](https://github.com/kaigothe/DavNode/commit/de8d9ff0d77a6c7c80311e4fecbbb505eadb75d1))
+* **server:** add principals-collection PROPFIND route ([8f2b025](https://github.com/kaigothe/DavNode/commit/8f2b0253799313a19d91301129f50ad4f678c2ac))
+* **server:** replace owner-only placeholder with real ACL authorization ([c73d5b3](https://github.com/kaigothe/DavNode/commit/c73d5b3793608f4a9797653a8ce413d2dd7f59a5))
+
 # [1.5.0](https://github.com/kaigothe/DavNode/compare/v1.4.0...v1.5.0) (2026-09-01)
 
 
