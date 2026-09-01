@@ -194,4 +194,74 @@ describe('GroupMembershipService', () => {
       membershipService.resolveEffectiveMembers(groupA.id),
     ).resolves.toBeDefined();
   });
+
+  it('resolveGroupsForPrincipal finds direct membership', async () => {
+    const groupA = await group('a');
+    const alice = await user('alice');
+    await membershipService.addMember(groupA.id, alice.id);
+
+    const groups = await membershipService.resolveGroupsForPrincipal(
+      alice.id,
+    );
+    expect(groups.map((g) => g.id)).toEqual([groupA.id]);
+  });
+
+  it('resolveGroupsForPrincipal finds transitive membership over two nested groups', async () => {
+    const groupA = await group('a');
+    const groupB = await group('b');
+    const groupC = await group('c');
+    const alice = await user('alice');
+
+    // alice is a member of C, C is a member of B, B is a member of A —
+    // alice should be resolved as a member of B and A too.
+    await membershipService.addMember(groupC.id, alice.id);
+    await membershipService.addMember(groupB.id, groupC.principalId);
+    await membershipService.addMember(groupA.id, groupB.principalId);
+
+    const groups = await membershipService.resolveGroupsForPrincipal(
+      alice.id,
+    );
+    const groupIds = groups.map((g) => g.id).sort();
+    expect(groupIds).toEqual([groupA.id, groupB.id, groupC.id].sort());
+  });
+
+  it('resolveGroupsForPrincipal terminates even if a cycle exists in the data', async () => {
+    const groupA = await group('a');
+    const groupB = await group('b');
+    const memberships = dataSource.getRepository(GroupMembership);
+    await memberships.save(
+      memberships.create({
+        groupId: groupA.id,
+        memberPrincipalId: groupB.principalId,
+      }),
+    );
+    await memberships.save(
+      memberships.create({
+        groupId: groupB.id,
+        memberPrincipalId: groupA.principalId,
+      }),
+    );
+
+    await expect(
+      membershipService.resolveGroupsForPrincipal(groupA.principalId),
+    ).resolves.toBeDefined();
+  });
+
+  it('resolveGroupsForPrincipal dedupes diamond memberships (same ancestor group reachable via two paths)', async () => {
+    const top = await group('top');
+    const left = await group('left');
+    const right = await group('right');
+    const shared = await user('shared');
+
+    await membershipService.addMember(top.id, left.principalId);
+    await membershipService.addMember(top.id, right.principalId);
+    await membershipService.addMember(left.id, shared.id);
+    await membershipService.addMember(right.id, shared.id);
+
+    const groups = await membershipService.resolveGroupsForPrincipal(
+      shared.id,
+    );
+    const topOccurrences = groups.filter((g) => g.id === top.id);
+    expect(topOccurrences).toHaveLength(1);
+  });
 });

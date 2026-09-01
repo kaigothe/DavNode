@@ -119,6 +119,77 @@ export class GroupMembershipService {
   }
 
   /**
+   * Resolves every group `principalId` is, directly or transitively, a
+   * member of — the reverse traversal of {@link resolveEffectiveMembers}:
+   * instead of expanding a group downward into its members, this expands
+   * a principal upward into every group that (eventually) contains it.
+   * Being a member of a nested group (e.g. B, itself a member of A) makes
+   * a principal a member of every ancestor (A) too. Dedupes across
+   * diamond memberships and terminates even if the underlying data
+   * contains a cycle, via the same visited-ids guard as the forward
+   * traversal.
+   *
+   * Used by the ACL evaluation engine to check whether an ACE naming a
+   * group as its principal applies to the requesting user.
+   *
+   * @returns The resolved groups, in no particular order.
+   */
+  async resolveGroupsForPrincipal(principalId: string): Promise<Group[]> {
+    const groupIds = await this.collectTransitiveGroupIds(principalId);
+    if (groupIds.size === 0) {
+      return [];
+    }
+    return this.dataSource.getRepository(Group).findBy({ id: In([...groupIds]) });
+  }
+
+  /**
+   * Breadth-first traversal of the group-membership graph, walked in
+   * reverse (member principal → containing group) starting at
+   * `startPrincipalId`, collecting every reachable containing group's id.
+   * `visitedPrincipalIds` guards against re-expanding the same principal
+   * twice — both for efficiency, and so a cycle in the data can't cause
+   * an infinite loop.
+   */
+  private async collectTransitiveGroupIds(
+    startPrincipalId: string,
+  ): Promise<Set<string>> {
+    const groupIds = new Set<string>();
+    const visitedPrincipalIds = new Set<string>();
+    const queue: string[] = [startPrincipalId];
+
+    const membershipRepository = this.dataSource.getRepository(GroupMembership);
+    const groupRepository = this.dataSource.getRepository(Group);
+
+    while (queue.length > 0) {
+      const currentPrincipalId = queue.shift();
+      if (
+        currentPrincipalId === undefined ||
+        visitedPrincipalIds.has(currentPrincipalId)
+      ) {
+        continue;
+      }
+      visitedPrincipalIds.add(currentPrincipalId);
+
+      const memberships = await membershipRepository.findBy({
+        memberPrincipalId: currentPrincipalId,
+      });
+
+      for (const membership of memberships) {
+        groupIds.add(membership.groupId);
+
+        const parentGroup = await groupRepository.findOneByOrFail({
+          id: membership.groupId,
+        });
+        if (!visitedPrincipalIds.has(parentGroup.principalId)) {
+          queue.push(parentGroup.principalId);
+        }
+      }
+    }
+
+    return groupIds;
+  }
+
+  /**
    * Breadth-first traversal of the group-membership graph starting at
    * `startGroupId`, collecting every reachable member principal id
    * (including nested groups' own principal ids). `visitedGroupIds`
