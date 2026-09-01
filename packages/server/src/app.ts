@@ -2,6 +2,7 @@ import type { DataSource } from '@davnode/core';
 import express from 'express';
 import { createBasicAuthMiddleware } from './http/basic-auth.middleware.js';
 import { errorHandlerMiddleware } from './http/error-handler.middleware.js';
+import { registerDeleteRoute } from './http/routes/delete.route.js';
 import { registerGetRoute } from './http/routes/get.route.js';
 import { registerMkcolRoute } from './http/routes/mkcol.route.js';
 import { registerPropfindRoute } from './http/routes/propfind.route.js';
@@ -37,6 +38,7 @@ export function createApp(dataSource: DataSource): express.Express {
   registerMkcolRoute(app, dataSource);
   registerGetRoute(app, dataSource);
   registerPutRoute(app, dataSource);
+  registerDeleteRoute(app, dataSource);
 
   // Must stay last: Express only treats a 4-argument middleware as an
   // error handler, and only for errors from middleware/routes mounted
