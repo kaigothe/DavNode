@@ -1,3 +1,13 @@
+# [1.5.0](https://github.com/kaigothe/DavNode/compare/v1.4.0...v1.5.0) (2026-09-01)
+
+
+### Features
+
+* **core:** add collectAces ACE collection with inheritance ([0916f4f](https://github.com/kaigothe/DavNode/commit/0916f4f4b432a54afccbdaf14dc2eba19306a992))
+* **core:** add hasPrivilege grant/deny evaluation algorithm ([2c1eeef](https://github.com/kaigothe/DavNode/commit/2c1eeef5cc26d7eda90b3a95a135875ed67e6082))
+* **core:** add resolveGroupsForPrincipal to GroupMembershipService ([2296650](https://github.com/kaigothe/DavNode/commit/2296650b2cec5ccd1641ac6650c9595006b6b951))
+* **server:** add ACL route ([990fc77](https://github.com/kaigothe/DavNode/commit/990fc7767cc612fbcf3a2e196e3a2b79025a5143))
+
 # [1.4.0](https://github.com/kaigothe/DavNode/compare/v1.3.0...v1.4.0) (2026-09-01)
 
 
