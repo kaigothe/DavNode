@@ -1,3 +1,20 @@
+# [1.1.0](https://github.com/kaigothe/DavNode/compare/v1.0.0...v1.1.0) (2026-08-31)
+
+
+### Features
+
+* **core:** add argon2id password hashing utility ([e6b734d](https://github.com/kaigothe/DavNode/commit/e6b734d308243ec27153a6e31a50db0958248d38))
+* **core:** add BasicAuthProvider ([816ca12](https://github.com/kaigothe/DavNode/commit/816ca12f8c544d9043e7649a834572eaae5b4e11))
+* **core:** add Credential entity for pluggable auth ([73c7c8d](https://github.com/kaigothe/DavNode/commit/73c7c8d2e2285bd88e21245561be31c3598c75ab))
+* **core:** add Group and GroupMembership entities ([6a2a23b](https://github.com/kaigothe/DavNode/commit/6a2a23b8852ea04656af3e0a5b0fa4e9eba14cd4))
+* **core:** add pluggable AuthProvider interface and registry ([3366190](https://github.com/kaigothe/DavNode/commit/3366190fd21408c8773991e852061f11b68c161c))
+* **core:** add Principal entity for ACL identity references ([7314533](https://github.com/kaigothe/DavNode/commit/7314533cc449cbeb436a0687e8434f3d2230e00b))
+* **core:** add principal URL mapping for user/group principals ([837926b](https://github.com/kaigothe/DavNode/commit/837926bbee4f9f2d3a4ab65dafe6da39f47e0467))
+* **core:** add special-principals RFC 3744 XML element mapping ([1903f5a](https://github.com/kaigothe/DavNode/commit/1903f5ac7c55d8ea69e24d4344f273a975093b84))
+* **core:** add Tenant entity with multi-tenancy quota fields ([7831cfe](https://github.com/kaigothe/DavNode/commit/7831cfe87f1c3206afa4b5d64c69314dd2fc902b))
+* **core:** add TenantService with transactional bootstrap ([60dd5e5](https://github.com/kaigothe/DavNode/commit/60dd5e592115fdca90ad1d4a6740c23cb7ec5d16))
+* **core:** add User entity with per-tenant username uniqueness ([dc1462c](https://github.com/kaigothe/DavNode/commit/dc1462c79121d15e951952c7f137fc22e3866322))
+
 # 1.0.0 (2026-08-31)
 
 
