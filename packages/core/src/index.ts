@@ -15,6 +15,12 @@ export {
   createOwnerAllAce,
   type OwnerAceResourceType,
 } from './acl/create-owner-ace.js';
+export {
+  collectAces,
+  collectWebDavAces,
+  type AceLike,
+  type CollectedAce,
+} from './acl/collect-aces.js';
 
 export {
   createDataSource,
