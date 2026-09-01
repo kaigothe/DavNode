@@ -1,4 +1,4 @@
-import type { DataSource } from '@davnode/core';
+import { ReportRegistry, type DataSource } from '@davnode/core';
 import express from 'express';
 import { createBasicAuthMiddleware } from './http/basic-auth.middleware.js';
 import { errorHandlerMiddleware } from './http/error-handler.middleware.js';
@@ -12,6 +12,7 @@ import { registerPrincipalsRoute } from './http/routes/principals.route.js';
 import { registerPropfindRoute } from './http/routes/propfind.route.js';
 import { registerProppatchRoute } from './http/routes/proppatch.route.js';
 import { registerPutRoute } from './http/routes/put.route.js';
+import { registerReportRoute } from './http/routes/report.route.js';
 import { createTenantResolutionMiddleware } from './http/tenant-resolution.middleware.js';
 
 /**
@@ -54,6 +55,11 @@ export function createApp(dataSource: DataSource): express.Express {
   registerMoveRoute(app, dataSource);
   registerAclRoute(app, dataSource);
   registerPrincipalsRoute(app, dataSource);
+
+  // REPORT handlers register themselves into this registry (e.g. M3's
+  // principal-property-search) — see report.route.ts.
+  const reportRegistry = new ReportRegistry();
+  registerReportRoute(app, dataSource, reportRegistry);
 
   // Must stay last: Express only treats a 4-argument middleware as an
   // error handler, and only for errors from middleware/routes mounted

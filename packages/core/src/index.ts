@@ -144,3 +144,10 @@ export {
 } from './webdav/resource-path-resolver.js';
 export { CollectionChangeService } from './webdav/collection-change.service.js';
 export { ResourceTreeService } from './webdav/resource-tree.service.js';
+export {
+  ReportRegistry,
+  parseReportRootElement,
+  type ReportContext,
+  type ReportHandler,
+  type ReportResult,
+} from './webdav/report-registry.js';
