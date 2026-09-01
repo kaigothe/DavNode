@@ -1,4 +1,9 @@
 import { Collection } from './collection.entity.js';
+import {
+  CollectionChange,
+  COLLECTION_CHANGE_ACTIONS,
+  type CollectionChangeAction,
+} from './collection-change.entity.js';
 import { CollectionProperty } from './collection-property.entity.js';
 import {
   Credential,
@@ -22,6 +27,9 @@ import { User, USER_ROLES, type UserRole } from './user.entity.js';
 
 export {
   Collection,
+  CollectionChange,
+  COLLECTION_CHANGE_ACTIONS,
+  type CollectionChangeAction,
   CollectionProperty,
   Credential,
   CREDENTIAL_TYPES,
@@ -62,4 +70,5 @@ export const ALL_ENTITIES = [
   FileContent,
   CollectionProperty,
   FileProperty,
+  CollectionChange,
 ];

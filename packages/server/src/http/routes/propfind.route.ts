@@ -15,7 +15,7 @@ import {
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
 import { createOwnerOnlyAuthorizationMiddleware } from '../owner-only-authorization.middleware.js';
-import { pathSegments, requireTenant } from './dav-path.util.js';
+import { pathSegments, requireTenant } from './dav-request.util.js';
 
 /** The resource's own path segment: a `Collection`'s `displayName`, or a `FileResource`'s `name`. */
 function resourceName(resource: WebDavTreeResource): string {

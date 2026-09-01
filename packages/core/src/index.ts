@@ -20,6 +20,9 @@ export { ALL_MIGRATIONS as ALL_SQLITE_MIGRATIONS } from './migrations/sqlite/ind
 export {
   ALL_ENTITIES,
   Collection,
+  CollectionChange,
+  COLLECTION_CHANGE_ACTIONS,
+  type CollectionChangeAction,
   CollectionProperty,
   Credential,
   CREDENTIAL_TYPES,
@@ -100,3 +103,4 @@ export {
   ResourcePathResolver,
   type WebDavTreeResource,
 } from './webdav/resource-path-resolver.js';
+export { CollectionChangeService } from './webdav/collection-change.service.js';

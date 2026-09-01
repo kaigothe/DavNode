@@ -1,4 +1,4 @@
-import type { Tenant } from '@davnode/core';
+import type { Principal, Tenant } from '@davnode/core';
 import type { Request } from 'express';
 
 /**
@@ -29,4 +29,21 @@ export function requireTenant(req: Request): Tenant {
     );
   }
   return req.tenant;
+}
+
+/**
+ * `req.principal`, guaranteed set by this point on every
+ * `/dav/:tenantSlug` route (basic-auth runs first and requires it — see
+ * `basic-auth.middleware.ts`).
+ *
+ * @throws An `Error` if `req.principal` isn't set — a misconfiguration
+ * (wrong mounting order), not a client-facing condition.
+ */
+export function requirePrincipal(req: Request): Principal {
+  if (!req.principal) {
+    throw new Error(
+      'This route requires the basic-auth middleware to run first (req.principal is not set)',
+    );
+  }
+  return req.principal;
 }
