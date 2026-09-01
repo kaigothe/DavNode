@@ -3,6 +3,7 @@ import { DAV_NAMESPACE } from '../webdav/xml/request-parser.js';
 import { escapeXmlText } from '../webdav/xml/xml-value.js';
 import type {
   PropertyProvider,
+  PropertyProviderContext,
   PropertyValue,
 } from '../webdav/properties/property-provider.interface.js';
 import {
@@ -37,6 +38,7 @@ export class PrincipalLiveProperties
   // eslint-disable-next-line @typescript-eslint/require-await -- must match the async PropertyProvider interface even though this implementation has no actual await.
   async listLiveProperties(
     resource: PrincipalTreeResource,
+    _context: PropertyProviderContext,
   ): Promise<PropertyValue[]> {
     if (resource instanceof VirtualPrincipalCollection) {
       const displayName = resource.kind === 'root' ? 'principals' : resource.kind;

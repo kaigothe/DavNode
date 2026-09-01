@@ -1,4 +1,9 @@
-import { ReportRegistry, type DataSource } from '@davnode/core';
+import {
+  DAV_NAMESPACE,
+  PrincipalPropertySearchReportHandler,
+  ReportRegistry,
+  type DataSource,
+} from '@davnode/core';
 import express from 'express';
 import { createBasicAuthMiddleware } from './http/basic-auth.middleware.js';
 import { errorHandlerMiddleware } from './http/error-handler.middleware.js';
@@ -56,9 +61,14 @@ export function createApp(dataSource: DataSource): express.Express {
   registerAclRoute(app, dataSource);
   registerPrincipalsRoute(app, dataSource);
 
-  // REPORT handlers register themselves into this registry (e.g. M3's
-  // principal-property-search) — see report.route.ts.
+  // REPORT handlers register themselves into this registry — see
+  // report.route.ts.
   const reportRegistry = new ReportRegistry();
+  reportRegistry.register(
+    DAV_NAMESPACE,
+    'principal-property-search',
+    new PrincipalPropertySearchReportHandler(),
+  );
   registerReportRoute(app, dataSource, reportRegistry);
 
   // Must stay last: Express only treats a 4-argument middleware as an

@@ -31,6 +31,12 @@ export {
   type AclRequestBody,
 } from './acl/acl-request-parser.js';
 export { AclPropertiesProvider } from './acl/acl-properties-provider.js';
+export {
+  parsePrincipalPropertySearchRequestBody,
+  PrincipalPropertySearchReportHandler,
+  type PropertySearchCriterion,
+  type PrincipalPropertySearchRequestBody,
+} from './acl/principal-property-search-report.js';
 
 export {
   createDataSource,
