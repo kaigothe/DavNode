@@ -1,3 +1,12 @@
+# [1.4.0](https://github.com/kaigothe/DavNode/compare/v1.3.0...v1.4.0) (2026-09-01)
+
+
+### Features
+
+* **core:** add CollectionAce and FileAce entities ([68292fc](https://github.com/kaigothe/DavNode/commit/68292fc37f22761557fc3c8780a7d77331d73e2e))
+* **core:** add default-owner ACE creation to resource-creation paths ([df72807](https://github.com/kaigothe/DavNode/commit/df72807b292b58742c9c327da4e7e28a7ee23b04))
+* **core:** add privilege aggregation resolution ([4778655](https://github.com/kaigothe/DavNode/commit/47786553304ffc2558fd53fe6290c1c8be3d9103))
+
 # [1.3.0](https://github.com/kaigothe/DavNode/compare/v1.2.0...v1.3.0) (2026-09-01)
 
 
