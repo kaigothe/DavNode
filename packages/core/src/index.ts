@@ -156,6 +156,14 @@ export {
 } from './webdav/resource-path-resolver.js';
 export { CollectionChangeService } from './webdav/collection-change.service.js';
 export { ResourceTreeService } from './webdav/resource-tree.service.js';
+
+export {
+  getEffectiveLocks,
+  type EffectiveLock,
+} from './webdav/locking/collect-locks.js';
+export { wouldConflict } from './webdav/locking/check-lock-conflict.js';
+export { hasValidLockToken } from './webdav/locking/check-lock-token.js';
+
 export {
   ReportRegistry,
   parseReportRootElement,
