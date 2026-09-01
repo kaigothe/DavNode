@@ -8,6 +8,7 @@ import { registerDeleteRoute } from './http/routes/delete.route.js';
 import { registerGetRoute } from './http/routes/get.route.js';
 import { registerMkcolRoute } from './http/routes/mkcol.route.js';
 import { registerMoveRoute } from './http/routes/move.route.js';
+import { registerPrincipalsRoute } from './http/routes/principals.route.js';
 import { registerPropfindRoute } from './http/routes/propfind.route.js';
 import { registerProppatchRoute } from './http/routes/proppatch.route.js';
 import { registerPutRoute } from './http/routes/put.route.js';
@@ -52,6 +53,7 @@ export function createApp(dataSource: DataSource): express.Express {
   registerCopyRoute(app, dataSource);
   registerMoveRoute(app, dataSource);
   registerAclRoute(app, dataSource);
+  registerPrincipalsRoute(app, dataSource);
 
   // Must stay last: Express only treats a 4-argument middleware as an
   // error handler, and only for errors from middleware/routes mounted

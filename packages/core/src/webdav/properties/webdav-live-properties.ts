@@ -42,7 +42,7 @@ function property(name: string, value: string): PropertyValue {
  * `planning/05-data-model.md`), so this provider omits them for
  * collections rather than fabricating a value.
  */
-export class WebDavLiveProperties implements PropertyProvider {
+export class WebDavLiveProperties implements PropertyProvider<WebDavResource> {
   /**
    * See {@link PropertyProvider.listLiveProperties}. Ignores `context` —
    * every property here is derived purely from `resource`'s own columns.

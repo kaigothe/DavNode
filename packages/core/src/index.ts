@@ -85,6 +85,13 @@ export {
 } from './principals/special-principals.js';
 
 export {
+  VirtualPrincipalCollection,
+  type PrincipalTreeResource,
+  type VirtualPrincipalCollectionKind,
+} from './principals/principal-tree-resource.js';
+export { PrincipalLiveProperties } from './principals/principal-live-properties.js';
+
+export {
   CycleDetectedError,
   DuplicateEntryError,
   NotFoundError,

@@ -37,7 +37,7 @@ const FAKE_CONTEXT: PropertyProviderContext = {
  * proving the registry doesn't need to know about a provider's
  * concrete type ahead of time.
  */
-class DummyPropertyProvider implements PropertyProvider {
+class DummyPropertyProvider implements PropertyProvider<WebDavResource> {
   async listLiveProperties(_resource: WebDavResource): Promise<PropertyValue[]> {
     return [
       {
@@ -57,7 +57,7 @@ class DummyPropertyProvider implements PropertyProvider {
 
 describe('PropertyProviderRegistry', () => {
   it('returns no properties and no live-property matches with nothing registered', async () => {
-    const registry = new PropertyProviderRegistry();
+    const registry = new PropertyProviderRegistry<WebDavResource>();
 
     await expect(
       registry.listLiveProperties(makeCollection(), FAKE_CONTEXT),
@@ -66,7 +66,7 @@ describe('PropertyProviderRegistry', () => {
   });
 
   it('delegates to a single registered provider', async () => {
-    const registry = new PropertyProviderRegistry();
+    const registry = new PropertyProviderRegistry<WebDavResource>();
     registry.register(new WebDavLiveProperties());
 
     const properties = await registry.listLiveProperties(
@@ -79,7 +79,7 @@ describe('PropertyProviderRegistry', () => {
   });
 
   it('merges properties from multiple registered providers (extensibility for M3+)', async () => {
-    const registry = new PropertyProviderRegistry();
+    const registry = new PropertyProviderRegistry<WebDavResource>();
     registry.register(new WebDavLiveProperties());
     registry.register(new DummyPropertyProvider());
 
@@ -97,7 +97,7 @@ describe('PropertyProviderRegistry', () => {
   });
 
   it('treats a namespace/name as live if any registered provider does', () => {
-    const registry = new PropertyProviderRegistry();
+    const registry = new PropertyProviderRegistry<WebDavResource>();
     registry.register(new WebDavLiveProperties());
     registry.register(new DummyPropertyProvider());
 

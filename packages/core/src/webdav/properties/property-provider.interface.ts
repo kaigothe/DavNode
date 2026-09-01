@@ -49,17 +49,24 @@ export interface PropertyValue extends PropertyName {
  * the `*_properties` tables (see
  * `milestones/M2-webdav-core/01-webdav-domain-entities/03-dead-properties-tables.md`).
  *
- * Implemented by {@link WebDavLiveProperties} for the core WebDAV
- * property set (which ignores `context` — it only ever needs
- * `resource`) and by M3's `AclPropertiesProvider`, both registered into
- * a {@link PropertyProviderRegistry} so later milestones (M5/M6
- * CalDAV/CardDAV properties) can contribute more live properties
- * without PROPFIND/PROPPATCH needing further interface changes.
+ * Generic over the resource type (`TResource`) so the same mechanism
+ * backs more than one resource tree with its own, unrelated property
+ * set — the WebDAV file tree (`WebDavLiveProperties`/
+ * `AclPropertiesProvider`, resource type {@link WebDavResource}) and,
+ * from M3's principals-collection-route sub-task on, the `/principals/`
+ * tree (`PrincipalLiveProperties`, resource type `PrincipalTreeResource`
+ * — a `Principal`, not a `Collection`/`FileResource`, so it needs its
+ * own `PropertyProviderRegistry<PrincipalTreeResource>` instance rather
+ * than joining the file tree's). Each is registered into its own
+ * {@link PropertyProviderRegistry} so later milestones (M5/M6
+ * CalDAV/CardDAV properties on either tree) can contribute more live
+ * properties without PROPFIND/PROPPATCH needing further interface
+ * changes.
  */
-export interface PropertyProvider {
+export interface PropertyProvider<TResource> {
   /** Every live property this provider defines for `resource`. */
   listLiveProperties(
-    resource: WebDavResource,
+    resource: TResource,
     context: PropertyProviderContext,
   ): Promise<PropertyValue[]>;
 

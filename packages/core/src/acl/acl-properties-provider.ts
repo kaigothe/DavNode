@@ -238,7 +238,7 @@ const SUPPORTED_PRIVILEGE_SET_VALUE = ((): string => {
  * externally-inherited ACLs to describe beyond what `DAV:acl` already
  * reports).
  */
-export class AclPropertiesProvider implements PropertyProvider {
+export class AclPropertiesProvider implements PropertyProvider<WebDavResource> {
   /** See {@link PropertyProvider.listLiveProperties}. */
   async listLiveProperties(
     resource: WebDavResource,

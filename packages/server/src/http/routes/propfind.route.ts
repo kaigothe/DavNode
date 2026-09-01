@@ -13,6 +13,7 @@ import {
   type PropertyProviderContext,
   type PropertyValue,
   type PropfindRequestBody,
+  type WebDavResource,
   type WebDavTreeResource,
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
@@ -48,7 +49,7 @@ function childHref(parentHref: string, child: WebDavTreeResource): string {
 async function resolveProperties(
   resource: WebDavTreeResource,
   requestBody: PropfindRequestBody,
-  registry: PropertyProviderRegistry,
+  registry: PropertyProviderRegistry<WebDavResource>,
   deadProperties: DeadPropertyService,
   context: PropertyProviderContext,
 ): Promise<MultistatusPropertyResult[]> {
@@ -98,7 +99,7 @@ export function registerPropfindRoute(
 ): void {
   const resourcePathResolver = new ResourcePathResolver(dataSource);
   const deadProperties = new DeadPropertyService(dataSource);
-  const registry = new PropertyProviderRegistry();
+  const registry = new PropertyProviderRegistry<WebDavResource>();
   registry.register(new WebDavLiveProperties());
   registry.register(new AclPropertiesProvider());
 
