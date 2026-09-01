@@ -6,6 +6,7 @@ import { registerGetRoute } from './http/routes/get.route.js';
 import { registerMkcolRoute } from './http/routes/mkcol.route.js';
 import { registerPropfindRoute } from './http/routes/propfind.route.js';
 import { registerProppatchRoute } from './http/routes/proppatch.route.js';
+import { registerPutRoute } from './http/routes/put.route.js';
 import { createTenantResolutionMiddleware } from './http/tenant-resolution.middleware.js';
 
 /**
@@ -35,6 +36,7 @@ export function createApp(dataSource: DataSource): express.Express {
   registerProppatchRoute(app, dataSource);
   registerMkcolRoute(app, dataSource);
   registerGetRoute(app, dataSource);
+  registerPutRoute(app, dataSource);
 
   // Must stay last: Express only treats a 4-argument middleware as an
   // error handler, and only for errors from middleware/routes mounted
