@@ -1,6 +1,7 @@
 import type { DataSource } from '@davnode/core';
 import express from 'express';
 import { createBasicAuthMiddleware } from './http/basic-auth.middleware.js';
+import { errorHandlerMiddleware } from './http/error-handler.middleware.js';
 import { createTenantResolutionMiddleware } from './http/tenant-resolution.middleware.js';
 
 /**
@@ -24,6 +25,17 @@ export function createApp(dataSource: DataSource): express.Express {
   // so any authenticated request just gets Express's own default 404.
   app.use('/dav/:tenantSlug', createTenantResolutionMiddleware(dataSource));
   app.use('/dav/:tenantSlug', createBasicAuthMiddleware(dataSource));
+
+  // Owner-only authorization (the M2 placeholder for M3's ACL engine) is
+  // applied per-route rather than globally here: each DAV route supplies
+  // its own resolver for "what resource does this request target" — see
+  // createOwnerOnlyAuthorizationMiddleware. The first routes to use it are
+  // added in milestones/M2-webdav-core/06-resource-crud.
+
+  // Must stay last: Express only treats a 4-argument middleware as an
+  // error handler, and only for errors from middleware/routes mounted
+  // before it.
+  app.use(errorHandlerMiddleware);
 
   return app;
 }
