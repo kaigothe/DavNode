@@ -21,6 +21,10 @@ export {
   type AceLike,
   type CollectedAce,
 } from './acl/collect-aces.js';
+export {
+  hasPrivilege,
+  getCurrentUserPrivilegeSet,
+} from './acl/evaluate-privilege.js';
 
 export {
   createDataSource,

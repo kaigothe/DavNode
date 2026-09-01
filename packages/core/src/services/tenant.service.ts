@@ -6,17 +6,23 @@ import { DuplicateEntryError, NotFoundError } from './errors.js';
 import { isUniqueConstraintViolationError } from './unique-constraint.util.js';
 
 /**
- * The special principals created for every new tenant. `owner` and
- * `self` are deliberately excluded: RFC 3744 resolves those two
- * *contextually* ("the resource's owner", "the requesting principal
- * itself"), so — unlike `all`/`authenticated`/`unauthenticated`, which
- * are fixed, context-independent identities — they don't need a
- * persisted per-tenant row of their own.
+ * The special principals created for every new tenant. `self` is
+ * deliberately excluded: RFC 3744 resolves it *contextually* ("the
+ * requesting principal itself"), which is already covered by the ACL
+ * evaluation engine always including the requesting principal's own id
+ * in its matching set (M3) — no persisted row needed. `owner` **does**
+ * need a persisted row (added in M3, milestones/M3-webdav-acl/03-acl-evaluation-engine):
+ * unlike `self`, an ACE granting to `DAV:owner` is a *reusable* rule
+ * ("whoever ends up owning this resource", not a concrete identity
+ * known at ACE-creation time) — `CollectionAce.principalId`/
+ * `FileAce.principalId` are foreign keys, so such an ACE can only exist
+ * if a `DAV:owner` principal row exists for it to reference.
  */
 const TENANT_SPECIAL_KINDS: readonly PrincipalSpecialKind[] = [
   'all',
   'authenticated',
   'unauthenticated',
+  'owner',
 ];
 
 /** Input for {@link TenantService.createTenant}. */
@@ -41,9 +47,9 @@ export class TenantService {
 
   /**
    * Creates a tenant and its per-tenant special principals (`all`,
-   * `authenticated`, `unauthenticated`) in a single transaction: either
-   * both the tenant and all three principals exist afterward, or none of
-   * them do.
+   * `authenticated`, `unauthenticated`, `owner`) in a single
+   * transaction: either both the tenant and all four principals exist
+   * afterward, or none of them do.
    *
    * @throws {@link DuplicateEntryError} If `slug` is already in use.
    */

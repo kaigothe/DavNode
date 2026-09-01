@@ -78,7 +78,7 @@ describe('runBootstrap', () => {
     const specialPrincipals = await dataSource
       .getRepository(Principal)
       .findBy({ tenantId: tenant.id, kind: 'special' });
-    expect(specialPrincipals).toHaveLength(3);
+    expect(specialPrincipals).toHaveLength(4);
 
     expect(user.role).toBe('server_admin');
     const userPrincipal = await dataSource

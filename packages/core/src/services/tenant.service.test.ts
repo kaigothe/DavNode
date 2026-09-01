@@ -26,7 +26,7 @@ describe('TenantService', () => {
     await dataSource.destroy();
   });
 
-  it('creates a tenant and its 3 special principals', async () => {
+  it('creates a tenant and its 4 special principals', async () => {
     const tenant = await service.createTenant({
       slug: 'acme',
       name: 'Acme Inc.',
@@ -35,9 +35,9 @@ describe('TenantService', () => {
     const principals = await dataSource
       .getRepository(Principal)
       .findBy({ tenantId: tenant.id });
-    expect(principals).toHaveLength(3);
+    expect(principals).toHaveLength(4);
     expect(principals.map((p) => p.specialKind).sort()).toEqual(
-      ['all', 'authenticated', 'unauthenticated'].sort(),
+      ['all', 'authenticated', 'owner', 'unauthenticated'].sort(),
     );
     expect(principals.every((p) => p.kind === 'special')).toBe(true);
   });
