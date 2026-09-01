@@ -1,3 +1,11 @@
+# [1.3.0](https://github.com/kaigothe/DavNode/compare/v1.2.0...v1.3.0) (2026-09-01)
+
+
+### Features
+
+* **server:** add COPY route ([29f18d2](https://github.com/kaigothe/DavNode/commit/29f18d2b4985267216861144ba8018f195022c8b))
+* **server:** add MOVE route ([91b9da6](https://github.com/kaigothe/DavNode/commit/91b9da64e923cb15e1b74b255de45c92f2fdc355))
+
 # [1.2.0](https://github.com/kaigothe/DavNode/compare/v1.1.0...v1.2.0) (2026-09-01)
 
 
