@@ -163,6 +163,15 @@ export {
 } from './webdav/locking/collect-locks.js';
 export { wouldConflict } from './webdav/locking/check-lock-conflict.js';
 export { hasValidLockToken } from './webdav/locking/check-lock-token.js';
+export {
+  buildActiveLockXml,
+  buildLockDiscoveryContent,
+  type RootedLock,
+} from './webdav/locking/lock-discovery.js';
+export {
+  parseLockInfoRequestBody,
+  type LockInfoRequestBody,
+} from './webdav/locking/lock-request-parser.js';
 
 export {
   ReportRegistry,

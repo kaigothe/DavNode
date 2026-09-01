@@ -11,6 +11,7 @@ import { registerAclRoute } from './http/routes/acl.route.js';
 import { registerCopyRoute } from './http/routes/copy.route.js';
 import { registerDeleteRoute } from './http/routes/delete.route.js';
 import { registerGetRoute } from './http/routes/get.route.js';
+import { registerLockRoute } from './http/routes/lock.route.js';
 import { registerMkcolRoute } from './http/routes/mkcol.route.js';
 import { registerMoveRoute } from './http/routes/move.route.js';
 import { registerPrincipalsRoute } from './http/routes/principals.route.js';
@@ -57,6 +58,7 @@ export function createApp(dataSource: DataSource): express.Express {
   registerCopyRoute(app, dataSource);
   registerMoveRoute(app, dataSource);
   registerAclRoute(app, dataSource);
+  registerLockRoute(app, dataSource);
   registerPrincipalsRoute(app, dataSource);
 
   // REPORT handlers register themselves into this registry — see
