@@ -7,6 +7,10 @@ export { BasicAuthProvider } from './auth/basic-auth-provider.js';
 export { hashPassword, verifyPassword } from './auth/password-hashing.js';
 
 export { ALL_PRIVILEGES, type Privilege } from './acl/privilege.js';
+export {
+  expandPrivilege,
+  privilegeSatisfies,
+} from './acl/privilege-aggregation.js';
 
 export {
   createDataSource,
