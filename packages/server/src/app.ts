@@ -19,6 +19,7 @@ import { registerPropfindRoute } from './http/routes/propfind.route.js';
 import { registerProppatchRoute } from './http/routes/proppatch.route.js';
 import { registerPutRoute } from './http/routes/put.route.js';
 import { registerReportRoute } from './http/routes/report.route.js';
+import { registerUnlockRoute } from './http/routes/unlock.route.js';
 import { createTenantResolutionMiddleware } from './http/tenant-resolution.middleware.js';
 
 /**
@@ -59,6 +60,7 @@ export function createApp(dataSource: DataSource): express.Express {
   registerMoveRoute(app, dataSource);
   registerAclRoute(app, dataSource);
   registerLockRoute(app, dataSource);
+  registerUnlockRoute(app, dataSource);
   registerPrincipalsRoute(app, dataSource);
 
   // REPORT handlers register themselves into this registry — see

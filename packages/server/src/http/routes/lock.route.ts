@@ -26,6 +26,7 @@ import {
   computeLockExpiresAt,
   extractIfHeaderLockToken,
   grantLockTimeout,
+  isCollectionLock,
 } from './lock.util.js';
 
 /** Sends a `423 Locked`/`412 Precondition Failed` with an RFC 4918 §16 `<D:error>` body naming `condition`. */
@@ -108,7 +109,7 @@ async function persistRefreshedTimeout(
   timeoutSeconds: number,
   expiresAt: Date,
 ): Promise<void> {
-  if ('collectionId' in lock) {
+  if (isCollectionLock(lock)) {
     await dataSource
       .getRepository(CollectionLock)
       .update({ id: lock.id }, { timeoutSeconds, expiresAt });

@@ -1,3 +1,17 @@
+import type { CollectionLock, EffectiveLock } from '@davnode/core';
+
+/**
+ * Whether `lock` came from `collection_locks` (has a `collectionId`)
+ * rather than `file_locks` — `EffectiveLock` doesn't say which table a
+ * given lock came from on its own, so both the LOCK-refresh and UNLOCK
+ * handlers need this to pick the right repository to act on.
+ */
+export function isCollectionLock(
+  lock: EffectiveLock,
+): lock is EffectiveLock & CollectionLock {
+  return 'collectionId' in lock;
+}
+
 /**
  * Default granted lock lifetime (RFC 4918 §10.7) when the client sends
  * no `Timeout` header, or none of its preferences parse: one hour.
@@ -83,5 +97,27 @@ export function extractIfHeaderLockToken(
     return null;
   }
   const match = IF_HEADER_STATE_TOKEN.exec(headerValue);
+  return match ? match[1] : null;
+}
+
+const LOCK_TOKEN_HEADER_PATTERN = /^<(.+)>$/;
+
+/**
+ * Parses the `Lock-Token` request header UNLOCK uses to name the lock
+ * to remove (RFC 4918 §10.5, §9.11) — a bare `Coded-URL`
+ * (`"<" absolute-URI ">"`), unlike the `If` header's parenthesized
+ * form {@link extractIfHeaderLockToken} handles.
+ *
+ * @returns The token inside the angle brackets, or `null` if
+ * `headerValue` is `undefined` or not a well-formed `Coded-URL` — RFC
+ * 4918 §9.11.1 maps "no lock token was provided" to `400 Bad Request`.
+ */
+export function parseLockTokenHeader(
+  headerValue: string | undefined,
+): string | null {
+  if (headerValue === undefined) {
+    return null;
+  }
+  const match = LOCK_TOKEN_HEADER_PATTERN.exec(headerValue.trim());
   return match ? match[1] : null;
 }
