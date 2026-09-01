@@ -1,5 +1,6 @@
 import type { DataSource } from '@davnode/core';
 import express from 'express';
+import { createBasicAuthMiddleware } from './http/basic-auth.middleware.js';
 import { createTenantResolutionMiddleware } from './http/tenant-resolution.middleware.js';
 
 /**
@@ -16,12 +17,13 @@ export function createApp(dataSource: DataSource): express.Express {
 
   // Every DAV route lives under /dav/{tenantSlug}/... (path-prefix
   // tenancy) and needs the resolved Tenant before anything else runs —
-  // including the auth middleware mounted after this one, since
-  // usernames are only unique per tenant. Route mounting for specific
-  // resource types (/files/, and later /calendars//addressbooks/) happens
-  // in later milestones' sub-tasks; this app has no routes of its own
-  // yet, so any other request just gets Express's own default 404.
+  // including the auth middleware mounted right after, since usernames
+  // are only unique per tenant. Route mounting for specific resource
+  // types (/files/, and later /calendars//addressbooks/) happens in
+  // later milestones' sub-tasks; this app has no routes of its own yet,
+  // so any authenticated request just gets Express's own default 404.
   app.use('/dav/:tenantSlug', createTenantResolutionMiddleware(dataSource));
+  app.use('/dav/:tenantSlug', createBasicAuthMiddleware(dataSource));
 
   return app;
 }

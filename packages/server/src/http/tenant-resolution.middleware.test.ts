@@ -76,28 +76,16 @@ describe('createTenantResolutionMiddleware', () => {
   });
 
   describe('mounted in the real app', () => {
-    it('makes req.tenant available to routes mounted after it, for a known slug', async () => {
-      const app = createApp(dataSource);
-      app.get('/dav/:tenantSlug/probe', (req, res) => {
-        res.json({ tenantId: req.tenant?.id ?? null });
-      });
-      const server = app.listen(0);
-      const address = server.address() as AddressInfo;
-
-      try {
-        const response = await fetch(
-          `http://127.0.0.1:${address.port}/dav/acme/probe`,
-        );
-        expect(response.status).toBe(200);
-        await expect(response.json()).resolves.toEqual({
-          tenantId: tenant.id,
-        });
-      } finally {
-        await new Promise<void>((resolve) => server.close(() => resolve()));
-      }
-    });
-
-    it('responds 404 for an unknown slug before any route runs', async () => {
+    // A "known slug reaches a downstream route with req.tenant set" case
+    // isn't covered here: createApp also mounts the basic-auth middleware
+    // right after tenant-resolution, so reaching a route now needs valid
+    // credentials too — that full chain (tenant resolution succeeding
+    // *and* auth succeeding *and* the route being reached) is exactly
+    // what basic-auth.middleware.test.ts's own "mounted in the real app"
+    // tests verify, without duplicating a second user/credential setup
+    // here. The unit test above already directly verifies req.tenant
+    // attachment on its own.
+    it('responds 404 for an unknown slug before any route — or auth — runs', async () => {
       const app = createApp(dataSource);
       const probe = vi.fn((_req: Request, res: Response) => {
         res.json({ reached: true });
