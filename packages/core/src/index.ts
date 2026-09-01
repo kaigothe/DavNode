@@ -13,6 +13,9 @@ export {
   type DavNodeDbSchema,
   type DavNodeDbType,
 } from './db/data-source.js';
+export type { DataSource } from 'typeorm';
+
+export { ALL_MIGRATIONS as ALL_SQLITE_MIGRATIONS } from './migrations/sqlite/index.js';
 
 export {
   ALL_ENTITIES,

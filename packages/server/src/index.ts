@@ -1,6 +1,6 @@
 import type { Server } from 'node:http';
 import { pathToFileURL } from 'node:url';
-import { createDataSource } from '@davnode/core';
+import { createDataSource, type DataSource } from '@davnode/core';
 import { createApp } from './app.js';
 
 /** Default HTTP port, used when `DAVNODE_HTTP_PORT` isn't set. */
@@ -18,7 +18,7 @@ export interface StartServerOptions {
 /** A started server and the DataSource backing it, so both can be closed together. */
 export interface RunningServer {
   server: Server;
-  dataSource: ReturnType<typeof createDataSource>;
+  dataSource: DataSource;
 }
 
 /**
@@ -41,7 +41,7 @@ export async function startServer(
   const dataSource = createDataSource(env);
   await dataSource.initialize();
 
-  const app = createApp();
+  const app = createApp(dataSource);
   const port = env.DAVNODE_HTTP_PORT
     ? Number(env.DAVNODE_HTTP_PORT)
     : DEFAULT_HTTP_PORT;
