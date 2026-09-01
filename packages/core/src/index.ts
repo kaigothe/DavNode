@@ -6,6 +6,8 @@ export type { AuthProvider } from './auth/auth-provider.interface.js';
 export { BasicAuthProvider } from './auth/basic-auth-provider.js';
 export { hashPassword, verifyPassword } from './auth/password-hashing.js';
 
+export { ALL_PRIVILEGES, type Privilege } from './acl/privilege.js';
+
 export {
   createDataSource,
   createDataSourceOptions,
@@ -20,6 +22,9 @@ export { ALL_MIGRATIONS as ALL_SQLITE_MIGRATIONS } from './migrations/sqlite/ind
 export {
   ALL_ENTITIES,
   Collection,
+  CollectionAce,
+  GRANT_DENY_VALUES,
+  type GrantDeny,
   CollectionChange,
   COLLECTION_CHANGE_ACTIONS,
   type CollectionChangeAction,
@@ -27,6 +32,7 @@ export {
   Credential,
   CREDENTIAL_TYPES,
   type CredentialType,
+  FileAce,
   FileContent,
   FileProperty,
   FileResource,

@@ -1,5 +1,10 @@
 import { Collection } from './collection.entity.js';
 import {
+  CollectionAce,
+  GRANT_DENY_VALUES,
+  type GrantDeny,
+} from './collection-ace.entity.js';
+import {
   CollectionChange,
   COLLECTION_CHANGE_ACTIONS,
   type CollectionChangeAction,
@@ -10,6 +15,7 @@ import {
   CREDENTIAL_TYPES,
   type CredentialType,
 } from './credential.entity.js';
+import { FileAce } from './file-ace.entity.js';
 import { FileContent } from './file-content.entity.js';
 import { FileProperty } from './file-property.entity.js';
 import { FileResource } from './file-resource.entity.js';
@@ -27,6 +33,9 @@ import { User, USER_ROLES, type UserRole } from './user.entity.js';
 
 export {
   Collection,
+  CollectionAce,
+  GRANT_DENY_VALUES,
+  type GrantDeny,
   CollectionChange,
   COLLECTION_CHANGE_ACTIONS,
   type CollectionChangeAction,
@@ -34,6 +43,7 @@ export {
   Credential,
   CREDENTIAL_TYPES,
   type CredentialType,
+  FileAce,
   FileContent,
   FileProperty,
   FileResource,
@@ -71,4 +81,6 @@ export const ALL_ENTITIES = [
   CollectionProperty,
   FileProperty,
   CollectionChange,
+  CollectionAce,
+  FileAce,
 ];
