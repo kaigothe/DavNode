@@ -56,15 +56,26 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
-    env:
-      # matrix.db uses the friendly "sqlite" label; DAVNODE_DB_TYPE itself
-      # only accepts "better-sqlite3" (see packages/core/src/db/data-source.ts).
-      DAVNODE_DB_TYPE: ${{ matrix.db == 'sqlite' && 'better-sqlite3' || matrix.db }}
-      DAVNODE_DB_HOST: localhost
-      DAVNODE_DB_PORT: ${{ matrix.db == 'mysql' && '3306' || '5432' }}
-      DAVNODE_DB_NAME: davnode
-      DAVNODE_DB_USER: davnode
-      DAVNODE_DB_PASSWORD: davnode
+    # No DAVNODE_DB_* env here (deliberately, not an oversight): every test
+    # in the suite builds its own SQLite DataSource directly (e.g.
+    # `createDataSource({}, { entities: ALL_ENTITIES, migrations:
+    # ALL_SQLITE_MIGRATIONS })`), regardless of which matrix leg is
+    # running, so `npm test --workspaces` doesn't read these at all today.
+    # Setting DAVNODE_DB_TYPE per leg here previously did real harm even
+    # though nothing consumed it for a connection: a couple of entities
+    # (file-content.entity.ts's blob column type,
+    # collection.entity.ts's conditional partial-unique-index decorator)
+    # read process.env.DAVNODE_DB_TYPE directly at module-load time to
+    # pick driver-specific schema shape, so the postgres/mysql legs built
+    # Postgres/MySQL-shaped entity metadata against an actual SQLite
+    # connection, which SQLite's driver rejects outright.
+    #
+    # The matrix and the Postgres/MySQL service containers stay in place
+    # as scaffolding for the tracked follow-up (making the suite actually
+    # connect to each leg's real engine, per planning/02-roadmap.md's M0
+    # "Testmatrix Postgres/SQLite/MySQL") — that work should also revisit
+    # the two entities above, since they'd need to stop trusting ambient
+    # env once tests genuinely vary DAVNODE_DB_TYPE per run.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
