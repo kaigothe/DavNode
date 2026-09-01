@@ -39,6 +39,4 @@ RUN mkdir -p /app/data
 ENV DAVNODE_DB_TYPE=better-sqlite3
 ENV DAVNODE_DB_FILE=/app/data/davnode.sqlite
 
-# Placeholder entrypoint (see packages/server/src/main.ts) until the real
-# Express server lands in M2.
-CMD ["node", "packages/server/dist/main.js"]
+CMD ["node", "packages/server/dist/index.js"]

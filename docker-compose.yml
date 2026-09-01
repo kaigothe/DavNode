@@ -3,17 +3,14 @@
 # app against Postgres by default; `docker compose --profile mysql up` also
 # brings up MySQL for the DB-engine test matrix (see
 # milestones/M0-fundament/03-typeorm-database-setup/03-db-engine-test-matrix.md).
-#
-# Note: the app's current CMD (packages/server/src/main.ts) is still the M0
-# placeholder entrypoint — it connects, logs success, and exits. Seeing the
-# `app` container finish with exit code 0 is expected until the real
-# Express server lands in M2.
 services:
   app:
     build: .
     depends_on:
       postgres:
         condition: service_healthy
+    ports:
+      - '8080:8080'
     environment:
       DAVNODE_DB_TYPE: postgres
       DAVNODE_DB_HOST: postgres

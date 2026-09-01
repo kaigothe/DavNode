@@ -16,7 +16,7 @@
     "test": "vitest run",
     "docs": "npm run build --workspaces && typedoc",
     "bootstrap": "npm run build --workspace=@davnode/core && node packages/core/dist/cli/bootstrap.js",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.2",
