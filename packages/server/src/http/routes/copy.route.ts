@@ -8,6 +8,10 @@ import {
 } from '@davnode/core';
 import type { Express, Request } from 'express';
 import {
+  checkLockEnforcement,
+  sendLockEnforcementError,
+} from '../lock-enforcement.middleware.js';
+import {
   pathSegments,
   requirePrincipal,
   requireTenant,
@@ -32,6 +36,13 @@ import {
  * **Tenant boundary**: `Destination` must resolve to the *same* tenant
  * as the request's own — a project-specific rule beyond RFC 4918 itself
  * (tenants are isolated mandates), rejected with `403`.
+ *
+ * **Lock enforcement** (M4) is inline for the same reason authorization
+ * is: only the destination parent, and only when an existing
+ * destination is about to be overwritten — see `checkLockEnforcement`
+ * and `milestones/M4-locking-sync/05-lock-enforcement-middleware`.
+ * Always checked after the corresponding privilege check, so missing
+ * privilege is still `403`, not `423`.
  *
  * **Depth** only matters for a `Collection` source: `0` copies just the
  * empty collection, `infinity` (or a missing header) copies the whole
@@ -134,6 +145,23 @@ export function registerCopyRoute(app: Express, dataSource: DataSource): void {
       const overwrite = parseOverwriteHeader(req.header('Overwrite'));
       if (existingTarget && !overwrite) {
         res.sendStatus(412);
+        return;
+      }
+
+      // Lock enforcement (M4): only the destination parent, and only
+      // when an existing destination is about to be overwritten — the
+      // source is never checked (COPY never modifies it), and a plain
+      // create-into-a-locked-parent isn't checked either, unlike
+      // MKCOL/PUT (see milestones/M4-locking-sync/
+      // 05-lock-enforcement-middleware/01-if-header-enforcement.md's
+      // table).
+      if (
+        existingTarget &&
+        !(await checkLockEnforcement(dataSource, req.header('If'), [
+          destParent,
+        ]))
+      ) {
+        sendLockEnforcementError(res);
         return;
       }
 

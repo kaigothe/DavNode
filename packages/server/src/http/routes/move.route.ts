@@ -9,6 +9,10 @@ import {
 } from '@davnode/core';
 import type { Express, Request } from 'express';
 import {
+  checkLockEnforcement,
+  sendLockEnforcementError,
+} from '../lock-enforcement.middleware.js';
+import {
   pathSegments,
   requirePrincipal,
   requireTenant,
@@ -30,8 +34,13 @@ import {
  * but with different privileges (RFC 3744 §7): `unbind` on the
  * source's *parent* collection (not the source itself — removing it
  * from that collection is what needs authorizing) and `bind` on the
- * destination's parent, same as COPY. The differences from COPY beyond
- * that are the ones that matter:
+ * destination's parent, same as COPY. Lock enforcement (M4) is inline
+ * too, right after both privilege checks pass — but covers *three*
+ * resources here (source, source's parent, destination's parent),
+ * unlike COPY's destination-parent-only check (see
+ * `checkLockEnforcement` and
+ * `milestones/M4-locking-sync/05-lock-enforcement-middleware`). The
+ * differences from COPY beyond that are the ones that matter:
  *
  * - **Depth**: RFC 4918 §9.9.3 requires a MOVE on a collection to act
  *   as `Depth: infinity`; the only header value a client may send is
@@ -134,6 +143,21 @@ export function registerMoveRoute(app: Express, dataSource: DataSource): void {
         !(await hasPrivilege(dataSource.manager, principal, destParent, 'bind'))
       ) {
         res.sendStatus(403);
+        return;
+      }
+
+      // Lock enforcement (M4): the source, its parent (removing it from
+      // there), and the destination parent (adding it there) — see
+      // milestones/M4-locking-sync/05-lock-enforcement-middleware/
+      // 01-if-header-enforcement.md's table.
+      if (
+        !(await checkLockEnforcement(dataSource, req.header('If'), [
+          source,
+          sourceParent,
+          destParent,
+        ]))
+      ) {
+        sendLockEnforcementError(res);
         return;
       }
 

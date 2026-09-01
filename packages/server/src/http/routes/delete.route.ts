@@ -7,6 +7,7 @@ import {
 } from '@davnode/core';
 import type { Express, Request } from 'express';
 import { createAclAuthorizationMiddleware } from '../acl-authorization.middleware.js';
+import { createLockEnforcementMiddleware } from '../lock-enforcement.middleware.js';
 import {
   pathSegments,
   requireTenant,
@@ -29,6 +30,11 @@ import {
  * `milestones/M2-webdav-core/06-resource-crud/04-delete.md`: the
  * descendants no longer exist as independent resources for sync
  * purposes once their own subtree is gone.
+ *
+ * A lock on the target *or* its parent (M4, e.g. an unlocked file
+ * inside a `Depth: infinity`-locked collection) needs a covering
+ * `If`-header token — `createLockEnforcementMiddleware` runs after ACL
+ * authorization, so missing privilege is still `403`, not `423`.
  */
 export function registerDeleteRoute(
   app: Express,
@@ -53,6 +59,25 @@ export function registerDeleteRoute(
       // of privilege, so no check is needed here in that case either.
       const parent = await resolveParentCollection(dataSource, target);
       return parent ? { resource: parent, privilege: 'unbind' } : null;
+    }),
+    createLockEnforcementMiddleware(dataSource, async (req) => {
+      const target = await resourcePathResolver.resolve(
+        requireTenant(req).id,
+        pathSegments(req),
+      );
+      if (!target) {
+        return null;
+      }
+      // Both the target and its parent are within the scope of a lock
+      // that would need to be honored: deleting the target requires
+      // covering any lock directly on (or inherited by) it, and
+      // deleting it out of its parent requires covering any lock on
+      // (or inherited by) the parent too. The tenant root has no
+      // parent, but the handler already forbids deleting it (403)
+      // regardless of locks, so — same as the ACL check above — no
+      // check is needed in that case either.
+      const parent = await resolveParentCollection(dataSource, target);
+      return parent ? { resources: [target, parent] } : null;
     }),
     async (req: Request, res): Promise<void> => {
       const tenant = requireTenant(req);

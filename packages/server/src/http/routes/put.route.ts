@@ -10,6 +10,7 @@ import {
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
 import { createAclAuthorizationMiddleware } from '../acl-authorization.middleware.js';
+import { createLockEnforcementMiddleware } from '../lock-enforcement.middleware.js';
 import {
   pathSegments,
   requirePrincipal,
@@ -50,6 +51,11 @@ function computeEtag(content: Buffer): string {
  * `milestones/M2-webdav-core/00-setting-goal.md`) — this is where
  * `applyQuotaDelta` will be called once M8 exists (see
  * `milestones/M8-quota/02-webdav-quota-integration/01-put-delete-retrofit.md`).
+ *
+ * A locked target (overwrite) or locked parent (create, M4) needs a
+ * covering `If`-header token — `createLockEnforcementMiddleware` runs
+ * after ACL authorization, so missing privilege is still `403`, not
+ * `423`.
  */
 export function registerPutRoute(app: Express, dataSource: DataSource): void {
   const resourcePathResolver = new ResourcePathResolver(dataSource);
@@ -73,6 +79,22 @@ export function registerPutRoute(app: Express, dataSource: DataSource): void {
         segments.slice(0, -1),
       );
       return parent ? { resource: parent, privilege: 'bind' } : null;
+    }),
+    createLockEnforcementMiddleware(dataSource, async (req) => {
+      const tenant = requireTenant(req);
+      const segments = pathSegments(req);
+      if (segments.length === 0) {
+        return null;
+      }
+      const target = await resourcePathResolver.resolve(tenant.id, segments);
+      if (target) {
+        return { resources: [target] };
+      }
+      const parent = await resourcePathResolver.resolve(
+        tenant.id,
+        segments.slice(0, -1),
+      );
+      return parent ? { resources: [parent] } : null;
     }),
     async (req: Request, res): Promise<void> => {
       const tenant = requireTenant(req);

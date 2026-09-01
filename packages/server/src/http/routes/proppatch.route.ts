@@ -11,6 +11,7 @@ import {
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
 import { createAclAuthorizationMiddleware } from '../acl-authorization.middleware.js';
+import { createLockEnforcementMiddleware } from '../lock-enforcement.middleware.js';
 import { pathSegments, requireTenant } from './dav-request.util.js';
 
 /**
@@ -36,6 +37,10 @@ import { pathSegments, requireTenant } from './dav-request.util.js';
  * commits completely or, on an unexpected failure, rolls back
  * completely (surfaced as a `500` by the error-handler middleware, not
  * a partial `207`).
+ *
+ * A locked target (M4) needs a covering `If`-header token —
+ * `createLockEnforcementMiddleware` runs after ACL authorization, so
+ * missing privilege is still `403`, not `423`.
  */
 export function registerProppatchRoute(
   app: Express,
@@ -55,6 +60,13 @@ export function registerProppatchRoute(
         pathSegments(req),
       );
       return target ? { resource: target, privilege: 'write-properties' } : null;
+    }),
+    createLockEnforcementMiddleware(dataSource, async (req) => {
+      const target = await resourcePathResolver.resolve(
+        requireTenant(req).id,
+        pathSegments(req),
+      );
+      return target ? { resources: [target] } : null;
     }),
     async (req: Request, res): Promise<void> => {
       const tenant = requireTenant(req);

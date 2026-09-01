@@ -7,6 +7,7 @@ import {
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
 import { createAclAuthorizationMiddleware } from '../acl-authorization.middleware.js';
+import { createLockEnforcementMiddleware } from '../lock-enforcement.middleware.js';
 import {
   pathSegments,
   requirePrincipal,
@@ -32,6 +33,11 @@ import {
  * On success, records a `collection_changes` entry and bumps the
  * parent's `syncSeq` (`CollectionChangeService`,
  * `milestones/M2-webdav-core/06-resource-crud`).
+ *
+ * A parent collection locked `Depth: infinity` (M4) needs a covering
+ * `If`-header token — `createLockEnforcementMiddleware` runs after ACL
+ * authorization, so a `403` for missing privilege still takes priority
+ * over a `423` for a missing token.
  */
 export function registerMkcolRoute(app: Express, dataSource: DataSource): void {
   const resourcePathResolver = new ResourcePathResolver(dataSource);
@@ -51,6 +57,18 @@ export function registerMkcolRoute(app: Express, dataSource: DataSource): void {
         segments.slice(0, -1),
       );
       return parent ? { resource: parent, privilege: 'bind' } : null;
+    }),
+    createLockEnforcementMiddleware(dataSource, async (req) => {
+      const tenant = requireTenant(req);
+      const segments = pathSegments(req);
+      if (segments.length === 0) {
+        return null;
+      }
+      const parent = await resourcePathResolver.resolve(
+        tenant.id,
+        segments.slice(0, -1),
+      );
+      return parent ? { resources: [parent] } : null;
     }),
     async (req: Request, res): Promise<void> => {
       if (typeof req.body === 'string' && req.body.trim() !== '') {
