@@ -30,6 +30,7 @@ export {
   type AclRequestAce,
   type AclRequestBody,
 } from './acl/acl-request-parser.js';
+export { AclPropertiesProvider } from './acl/acl-properties-provider.js';
 
 export {
   createDataSource,
@@ -123,6 +124,7 @@ export {
 export { PropertyProviderRegistry } from './webdav/properties/property-provider-registry.js';
 export type {
   PropertyProvider,
+  PropertyProviderContext,
   PropertyValue,
   WebDavResource,
 } from './webdav/properties/property-provider.interface.js';

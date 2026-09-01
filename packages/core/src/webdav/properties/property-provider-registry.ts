@@ -1,5 +1,6 @@
 import type {
   PropertyProvider,
+  PropertyProviderContext,
   PropertyValue,
   WebDavResource,
 } from './property-provider.interface.js';
@@ -26,10 +27,16 @@ export class PropertyProviderRegistry implements PropertyProvider {
   }
 
   /** The union of every registered provider's live properties for `resource`. */
-  listLiveProperties(resource: WebDavResource): PropertyValue[] {
-    return this.providers.flatMap((provider) =>
-      provider.listLiveProperties(resource),
+  async listLiveProperties(
+    resource: WebDavResource,
+    context: PropertyProviderContext,
+  ): Promise<PropertyValue[]> {
+    const perProvider = await Promise.all(
+      this.providers.map((provider) =>
+        provider.listLiveProperties(resource, context),
+      ),
     );
+    return perProvider.flat();
   }
 
   /** Whether any registered provider treats `namespace`/`name` as a live property. */

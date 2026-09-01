@@ -6,7 +6,9 @@ import {
   CollectionProperty,
   createDataSource,
   FileResource,
+  Principal,
   TenantService,
+  toPrincipalUrl,
   UserService,
   type DataSource,
   type Tenant,
@@ -87,11 +89,27 @@ describe('PROPFIND route', () => {
     });
   }
 
+  /**
+   * Each `<D:response>`'s own `<D:href>` (a direct child, appearing
+   * before its `<D:propstat>` blocks) — not every `<D:href>` in the
+   * document, since a property value (e.g. M3's `DAV:owner`/`DAV:acl`)
+   * can itself embed nested `<D:href>` elements that aren't a
+   * resource's own href.
+   */
   function responseHrefs(xml: string): string[] {
     const root = create(xml).root();
-    return root
-      .filter((n) => n.node.localName === 'href', false, true)
-      .map((n) => n.node.textContent ?? '');
+    const hrefs: string[] = [];
+    root.each((responseNode) => {
+      if (responseNode.node.localName !== 'response') {
+        return;
+      }
+      responseNode.each((child) => {
+        if (child.node.localName === 'href') {
+          hrefs.push(child.node.textContent ?? '');
+        }
+      });
+    });
+    return hrefs;
   }
 
   it('Depth: 0 on a collection returns only the collection itself', async () => {
@@ -254,6 +272,43 @@ describe('PROPFIND route', () => {
       .filter((n) => n.node.localName === 'color', false, true)
       .map((n) => n.node.textContent);
     expect(colorValues).toEqual(['blue']);
+  });
+
+  it('a prop request for DAV:owner returns the correct principal URL', async () => {
+    const requestBody = `<D:propfind xmlns:D="DAV:"><D:prop><D:owner/></D:prop></D:propfind>`;
+
+    const response = await propfind('/dav/acme/files', {
+      depth: '0',
+      body: requestBody,
+    });
+
+    expect(response.status).toBe(207);
+    const body = await response.text();
+    const alicePrincipal = await dataSource
+      .getRepository(Principal)
+      .findOneByOrFail({ id: alice.principalId });
+    expect(body).toContain(
+      `<D:href>${toPrincipalUrl(alicePrincipal, tenant)}</D:href>`,
+    );
+  });
+
+  it('a prop request for DAV:current-user-principal never returns <D:unauthenticated/>', async () => {
+    const requestBody = `<D:propfind xmlns:D="DAV:"><D:prop><D:current-user-principal/></D:prop></D:propfind>`;
+
+    const response = await propfind('/dav/acme/files', {
+      depth: '0',
+      body: requestBody,
+    });
+
+    expect(response.status).toBe(207);
+    const body = await response.text();
+    expect(body).not.toContain('unauthenticated');
+    const alicePrincipal = await dataSource
+      .getRepository(Principal)
+      .findOneByOrFail({ id: alice.principalId });
+    expect(body).toContain(
+      `<D:href>${toPrincipalUrl(alicePrincipal, tenant)}</D:href>`,
+    );
   });
 
   it('returns 404 for a path that does not exist', async () => {

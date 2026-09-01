@@ -4,6 +4,7 @@ import { DAV_NAMESPACE } from '../xml/request-parser.js';
 import { escapeXmlText } from '../xml/xml-value.js';
 import type {
   PropertyProvider,
+  PropertyProviderContext,
   PropertyValue,
   WebDavResource,
 } from './property-provider.interface.js';
@@ -42,8 +43,15 @@ function property(name: string, value: string): PropertyValue {
  * collections rather than fabricating a value.
  */
 export class WebDavLiveProperties implements PropertyProvider {
-  /** See {@link PropertyProvider.listLiveProperties}. */
-  listLiveProperties(resource: WebDavResource): PropertyValue[] {
+  /**
+   * See {@link PropertyProvider.listLiveProperties}. Ignores `context` —
+   * every property here is derived purely from `resource`'s own columns.
+   */
+  // eslint-disable-next-line @typescript-eslint/require-await -- must match the async PropertyProvider interface even though this implementation has no actual await.
+  async listLiveProperties(
+    resource: WebDavResource,
+    _context: PropertyProviderContext,
+  ): Promise<PropertyValue[]> {
     const properties: PropertyValue[] = [
       property('creationdate', resource.createdAt.toISOString()),
       property('getlastmodified', resource.updatedAt.toUTCString()),

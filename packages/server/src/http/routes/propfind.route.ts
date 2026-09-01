@@ -1,4 +1,5 @@
 import {
+  AclPropertiesProvider,
   buildMultistatusResponse,
   Collection,
   DeadPropertyService,
@@ -9,13 +10,18 @@ import {
   type DataSource,
   type MultistatusPropertyResult,
   type MultistatusResourceResult,
+  type PropertyProviderContext,
   type PropertyValue,
   type PropfindRequestBody,
   type WebDavTreeResource,
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
 import { createOwnerOnlyAuthorizationMiddleware } from '../owner-only-authorization.middleware.js';
-import { pathSegments, requireTenant } from './dav-request.util.js';
+import {
+  pathSegments,
+  requirePrincipal,
+  requireTenant,
+} from './dav-request.util.js';
 
 /** The resource's own path segment: a `Collection`'s `displayName`, or a `FileResource`'s `name`. */
 function resourceName(resource: WebDavTreeResource): string {
@@ -44,8 +50,9 @@ async function resolveProperties(
   requestBody: PropfindRequestBody,
   registry: PropertyProviderRegistry,
   deadProperties: DeadPropertyService,
+  context: PropertyProviderContext,
 ): Promise<MultistatusPropertyResult[]> {
-  const live = registry.listLiveProperties(resource);
+  const live = await registry.listLiveProperties(resource, context);
   const dead =
     resource instanceof Collection
       ? await deadProperties.listForCollection(resource.id)
@@ -93,6 +100,7 @@ export function registerPropfindRoute(
   const deadProperties = new DeadPropertyService(dataSource);
   const registry = new PropertyProviderRegistry();
   registry.register(new WebDavLiveProperties());
+  registry.register(new AclPropertiesProvider());
 
   app.propfind(
     '/dav/:tenantSlug/files{/*splat}',
@@ -108,6 +116,7 @@ export function registerPropfindRoute(
       }
 
       const tenant = requireTenant(req);
+      const principal = requirePrincipal(req);
       const segments = pathSegments(req);
       const target = await resourcePathResolver.resolve(tenant.id, segments);
       if (!target) {
@@ -118,6 +127,11 @@ export function registerPropfindRoute(
       const requestBody = parsePropfindRequestBody(
         typeof req.body === 'string' ? req.body : null,
       );
+      const context: PropertyProviderContext = {
+        tenant,
+        principal,
+        manager: dataSource.manager,
+      };
 
       const resources: MultistatusResourceResult[] = [
         {
@@ -127,6 +141,7 @@ export function registerPropfindRoute(
             requestBody,
             registry,
             deadProperties,
+            context,
           ),
         },
       ];
@@ -141,6 +156,7 @@ export function registerPropfindRoute(
               requestBody,
               registry,
               deadProperties,
+              context,
             ),
           });
         }

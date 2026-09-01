@@ -1,7 +1,18 @@
+import type { EntityManager } from 'typeorm';
 import { describe, expect, it } from 'vitest';
 import { Collection } from '../../entities/collection.entity.js';
 import { FileResource } from '../../entities/file-resource.entity.js';
+import type { Principal } from '../../entities/principal.entity.js';
+import type { Tenant } from '../../entities/tenant.entity.js';
+import type { PropertyProviderContext } from './property-provider.interface.js';
 import { WebDavLiveProperties } from './webdav-live-properties.js';
+
+/** `WebDavLiveProperties` never reads `context` — this stands in for one it will never touch. */
+const FAKE_CONTEXT: PropertyProviderContext = {
+  tenant: { id: 'tenant-1', slug: 'acme' } as Tenant,
+  principal: { id: 'principal-1' } as Principal,
+  manager: {} as EntityManager,
+};
 
 function makeCollection(overrides: Partial<Collection> = {}): Collection {
   return Object.assign(new Collection(), {
@@ -35,9 +46,10 @@ function makeFileResource(overrides: Partial<FileResource> = {}): FileResource {
 
 describe('WebDavLiveProperties', () => {
   describe('listLiveProperties', () => {
-    it('reports resourcetype = <D:collection/> for a Collection', () => {
-      const properties = new WebDavLiveProperties().listLiveProperties(
+    it('reports resourcetype = <D:collection/> for a Collection', async () => {
+      const properties = await new WebDavLiveProperties().listLiveProperties(
         makeCollection(),
+        FAKE_CONTEXT,
       );
 
       const resourcetype = properties.find((p) => p.name === 'resourcetype');
@@ -48,9 +60,10 @@ describe('WebDavLiveProperties', () => {
       });
     });
 
-    it('reports an empty resourcetype for a FileResource', () => {
-      const properties = new WebDavLiveProperties().listLiveProperties(
+    it('reports an empty resourcetype for a FileResource', async () => {
+      const properties = await new WebDavLiveProperties().listLiveProperties(
         makeFileResource(),
+        FAKE_CONTEXT,
       );
 
       const resourcetype = properties.find((p) => p.name === 'resourcetype');
@@ -61,9 +74,10 @@ describe('WebDavLiveProperties', () => {
       });
     });
 
-    it('derives displayname from Collection.displayName', () => {
-      const properties = new WebDavLiveProperties().listLiveProperties(
+    it('derives displayname from Collection.displayName', async () => {
+      const properties = await new WebDavLiveProperties().listLiveProperties(
         makeCollection({ displayName: 'Tom & Jerry' }),
+        FAKE_CONTEXT,
       );
 
       expect(properties.find((p) => p.name === 'displayname')).toEqual({
@@ -73,9 +87,10 @@ describe('WebDavLiveProperties', () => {
       });
     });
 
-    it('derives displayname from FileResource.name', () => {
-      const properties = new WebDavLiveProperties().listLiveProperties(
+    it('derives displayname from FileResource.name', async () => {
+      const properties = await new WebDavLiveProperties().listLiveProperties(
         makeFileResource({ name: 'report <final>.txt' }),
+        FAKE_CONTEXT,
       );
 
       expect(properties.find((p) => p.name === 'displayname')).toEqual({
@@ -85,13 +100,14 @@ describe('WebDavLiveProperties', () => {
       });
     });
 
-    it('derives getcontentlength/getcontenttype/getetag for a FileResource', () => {
-      const properties = new WebDavLiveProperties().listLiveProperties(
+    it('derives getcontentlength/getcontenttype/getetag for a FileResource', async () => {
+      const properties = await new WebDavLiveProperties().listLiveProperties(
         makeFileResource({
           sizeBytes: 42,
           contentType: 'text/plain',
           etag: '"xyz"',
         }),
+        FAKE_CONTEXT,
       );
 
       expect(properties.find((p) => p.name === 'getcontentlength')?.value).toBe(
@@ -103,9 +119,10 @@ describe('WebDavLiveProperties', () => {
       expect(properties.find((p) => p.name === 'getetag')?.value).toBe('"xyz"');
     });
 
-    it('omits file-only properties for a Collection', () => {
-      const properties = new WebDavLiveProperties().listLiveProperties(
+    it('omits file-only properties for a Collection', async () => {
+      const properties = await new WebDavLiveProperties().listLiveProperties(
         makeCollection(),
+        FAKE_CONTEXT,
       );
 
       expect(
@@ -117,12 +134,13 @@ describe('WebDavLiveProperties', () => {
       expect(properties.find((p) => p.name === 'getetag')).toBeUndefined();
     });
 
-    it("reports creationdate/getlastmodified from the resource's own timestamps", () => {
-      const properties = new WebDavLiveProperties().listLiveProperties(
+    it("reports creationdate/getlastmodified from the resource's own timestamps", async () => {
+      const properties = await new WebDavLiveProperties().listLiveProperties(
         makeCollection({
           createdAt: new Date('2024-01-01T00:00:00.000Z'),
           updatedAt: new Date('2024-06-15T12:30:00.000Z'),
         }),
+        FAKE_CONTEXT,
       );
 
       expect(properties.find((p) => p.name === 'creationdate')?.value).toBe(
@@ -133,9 +151,10 @@ describe('WebDavLiveProperties', () => {
       );
     });
 
-    it('reports empty supportedlock/lockdiscovery (no real locking until M4)', () => {
-      const properties = new WebDavLiveProperties().listLiveProperties(
+    it('reports empty supportedlock/lockdiscovery (no real locking until M4)', async () => {
+      const properties = await new WebDavLiveProperties().listLiveProperties(
         makeCollection(),
+        FAKE_CONTEXT,
       );
 
       expect(properties.find((p) => p.name === 'supportedlock')?.value).toBe(
