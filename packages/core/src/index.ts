@@ -71,3 +71,18 @@ export {
   GroupService,
 } from './services/group.service.js';
 export { GroupMembershipService } from './services/group-membership.service.js';
+
+export {
+  type MultistatusPropertyResult,
+  type MultistatusResourceResult,
+  buildMultistatusResponse,
+} from './webdav/xml/multistatus-builder.js';
+export {
+  DAV_NAMESPACE,
+  type ProppatchOperation,
+  type ProppatchRequestBody,
+  type PropertyName,
+  type PropfindRequestBody,
+  parsePropfindRequestBody,
+  parseProppatchRequestBody,
+} from './webdav/xml/request-parser.js';
