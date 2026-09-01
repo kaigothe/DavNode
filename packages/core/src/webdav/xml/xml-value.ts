@@ -39,6 +39,20 @@ export function asElement(node: {
 }
 
 /**
+ * Escapes `text` for use as XML text content (not inside an attribute).
+ * Useful wherever a live property's value (e.g. `displayname`, taken
+ * directly from a `Collection`/`FileResource` column) needs to become
+ * an already-escaped value string without going through a parsed XML
+ * element the way `serializeElementChildren` does.
+ */
+export function escapeXmlText(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/**
  * Serializes `element`'s children — text, a single nested element (e.g.
  * `resourcetype`'s `<D:collection/>`), or a mix of both — into one
  * self-contained XML string: plain text is escaped, element content is

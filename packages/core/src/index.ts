@@ -86,3 +86,11 @@ export {
   parsePropfindRequestBody,
   parseProppatchRequestBody,
 } from './webdav/xml/request-parser.js';
+
+export { PropertyProviderRegistry } from './webdav/properties/property-provider-registry.js';
+export type {
+  PropertyProvider,
+  PropertyValue,
+  WebDavResource,
+} from './webdav/properties/property-provider.interface.js';
+export { WebDavLiveProperties } from './webdav/properties/webdav-live-properties.js';
