@@ -3,8 +3,10 @@ import {
   ALL_ENTITIES,
   ALL_SQLITE_MIGRATIONS,
   Collection,
+  CollectionAce,
   CollectionChange,
   createDataSource,
+  createOwnerAllAce,
   FileResource,
   TenantService,
   UserService,
@@ -56,6 +58,12 @@ describe('MOVE route', () => {
         ownerPrincipalId: alice.principalId,
         displayName: 'root',
       }),
+    );
+    await createOwnerAllAce(
+      dataSource.manager,
+      'collection',
+      root.id,
+      alice.principalId,
     );
 
     const app = createApp(dataSource);
@@ -264,17 +272,45 @@ describe('MOVE route', () => {
     expect(response.status).toBe(404);
   });
 
-  it('returns 403 when the source is owned by a different principal', async () => {
+  it('returns 403 when the requester lacks unbind on the source parent collection', async () => {
+    // MOVE's source check is unbind on the source's *parent* (RFC 3744
+    // §7), not the source's own ownership. bobCollection is still
+    // nested under alice's own root, so — via correct RFC 3744
+    // inheritance — she'd otherwise inherit her own root ACE's grant
+    // there too; an explicit deny ACE is what actually isolates it.
     const bob = await new UserService(dataSource).createUser({
       tenantId: tenant.id,
       username: 'bob',
       email: 'bob@example.com',
       password: PASSWORD,
     });
+    const bobCollection = await dataSource.getRepository(Collection).save(
+      dataSource.getRepository(Collection).create({
+        tenantId: tenant.id,
+        parentCollectionId: root.id,
+        ownerPrincipalId: bob.principalId,
+        displayName: 'bobs-folder',
+      }),
+    );
+    await createOwnerAllAce(
+      dataSource.manager,
+      'collection',
+      bobCollection.id,
+      bob.principalId,
+    );
+    await dataSource.getRepository(CollectionAce).save(
+      dataSource.getRepository(CollectionAce).create({
+        collectionId: bobCollection.id,
+        principalId: alice.principalId,
+        privilege: 'all',
+        grantDeny: 'deny',
+        position: 1,
+      }),
+    );
     const bobFile = await dataSource.getRepository(FileResource).save(
       dataSource.getRepository(FileResource).create({
         tenantId: tenant.id,
-        collectionId: root.id,
+        collectionId: bobCollection.id,
         name: 'secret.txt',
         contentType: 'text/plain',
         etag: '"1"',
@@ -284,7 +320,7 @@ describe('MOVE route', () => {
     );
 
     const response = await move(
-      `/dav/acme/files/${bobFile.name}`,
+      `/dav/acme/files/${bobCollection.displayName}/${bobFile.name}`,
       '/dav/acme/files/moved.txt',
       { username: 'alice' },
     );

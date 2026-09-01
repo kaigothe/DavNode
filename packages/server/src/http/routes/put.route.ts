@@ -9,7 +9,7 @@ import {
   type DataSource,
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
-import { createOwnerOnlyAuthorizationMiddleware } from '../owner-only-authorization.middleware.js';
+import { createAclAuthorizationMiddleware } from '../acl-authorization.middleware.js';
 import {
   pathSegments,
   requirePrincipal,
@@ -58,7 +58,7 @@ export function registerPutRoute(app: Express, dataSource: DataSource): void {
   app.put(
     '/dav/:tenantSlug/files{/*splat}',
     express.raw({ type: () => true, limit: '100mb' }),
-    createOwnerOnlyAuthorizationMiddleware(async (req) => {
+    createAclAuthorizationMiddleware(dataSource, async (req) => {
       const tenant = requireTenant(req);
       const segments = pathSegments(req);
       if (segments.length === 0) {
@@ -66,9 +66,13 @@ export function registerPutRoute(app: Express, dataSource: DataSource): void {
       }
       const target = await resourcePathResolver.resolve(tenant.id, segments);
       if (target) {
-        return target;
+        return { resource: target, privilege: 'write-content' };
       }
-      return resourcePathResolver.resolve(tenant.id, segments.slice(0, -1));
+      const parent = await resourcePathResolver.resolve(
+        tenant.id,
+        segments.slice(0, -1),
+      );
+      return parent ? { resource: parent, privilege: 'bind' } : null;
     }),
     async (req: Request, res): Promise<void> => {
       const tenant = requireTenant(req);

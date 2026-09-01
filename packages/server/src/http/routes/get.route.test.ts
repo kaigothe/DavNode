@@ -4,6 +4,8 @@ import {
   ALL_SQLITE_MIGRATIONS,
   Collection,
   createDataSource,
+  createOwnerAllAce,
+  FileAce,
   FileContent,
   FileResource,
   TenantService,
@@ -58,6 +60,12 @@ describe('GET route', () => {
         displayName: 'root',
       }),
     );
+    await createOwnerAllAce(
+      dataSource.manager,
+      'collection',
+      root.id,
+      alice.principalId,
+    );
 
     file = await dataSource.getRepository(FileResource).save(
       dataSource.getRepository(FileResource).create({
@@ -70,6 +78,7 @@ describe('GET route', () => {
         ownerPrincipalId: alice.principalId,
       }),
     );
+    await createOwnerAllAce(dataSource.manager, 'file', file.id, alice.principalId);
     await dataSource.getRepository(FileContent).save(
       dataSource.getRepository(FileContent).create({
         fileResourceId: file.id,
@@ -149,6 +158,10 @@ describe('GET route', () => {
   });
 
   it('returns 403 for a file owned by a different principal', async () => {
+    // bobFile is nested under alice's own root, so — via correct RFC
+    // 3744 inheritance — she'd otherwise inherit her own root ACE's
+    // grant there too; an explicit deny ACE is what actually isolates
+    // it.
     const bob = await new UserService(dataSource).createUser({
       tenantId: tenant.id,
       username: 'bob',
@@ -164,6 +177,16 @@ describe('GET route', () => {
         etag: '"1"',
         sizeBytes: 6,
         ownerPrincipalId: bob.principalId,
+      }),
+    );
+    await createOwnerAllAce(dataSource.manager, 'file', bobFile.id, bob.principalId);
+    await dataSource.getRepository(FileAce).save(
+      dataSource.getRepository(FileAce).create({
+        fileResourceId: bobFile.id,
+        principalId: alice.principalId,
+        privilege: 'all',
+        grantDeny: 'deny',
+        position: 1,
       }),
     );
     await dataSource.getRepository(FileContent).save(

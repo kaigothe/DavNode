@@ -1,4 +1,10 @@
-import type { Principal, Tenant } from '@davnode/core';
+import {
+  Collection,
+  type DataSource,
+  type Principal,
+  type Tenant,
+  type WebDavTreeResource,
+} from '@davnode/core';
 import type { Request } from 'express';
 
 /**
@@ -46,4 +52,29 @@ export function requirePrincipal(req: Request): Principal {
     );
   }
   return req.principal;
+}
+
+/**
+ * The `Collection` `resource` lives directly inside — its
+ * `parentCollectionId` for a `Collection`, its `collectionId` for a
+ * `FileResource`. Used by DELETE/MOVE's authorization checks, which
+ * (RFC 3744 §7) evaluate `unbind` against a resource's *parent*, not
+ * the resource itself.
+ *
+ * @returns The parent `Collection`, or `null` for the tenant's root
+ * collection (which has no parent — callers already special-case
+ * deleting/moving the root elsewhere).
+ */
+export async function resolveParentCollection(
+  dataSource: DataSource,
+  resource: WebDavTreeResource,
+): Promise<Collection | null> {
+  const parentId =
+    resource instanceof Collection
+      ? resource.parentCollectionId
+      : resource.collectionId;
+  if (parentId === null) {
+    return null;
+  }
+  return dataSource.getRepository(Collection).findOneBy({ id: parentId });
 }

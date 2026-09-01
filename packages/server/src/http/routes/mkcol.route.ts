@@ -6,7 +6,7 @@ import {
   type DataSource,
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
-import { createOwnerOnlyAuthorizationMiddleware } from '../owner-only-authorization.middleware.js';
+import { createAclAuthorizationMiddleware } from '../acl-authorization.middleware.js';
 import {
   pathSegments,
   requirePrincipal,
@@ -40,13 +40,17 @@ export function registerMkcolRoute(app: Express, dataSource: DataSource): void {
   app.mkcol(
     '/dav/:tenantSlug/files{/*splat}',
     express.text({ type: () => true }),
-    createOwnerOnlyAuthorizationMiddleware(async (req) => {
+    createAclAuthorizationMiddleware(dataSource, async (req) => {
       const tenant = requireTenant(req);
       const segments = pathSegments(req);
       if (segments.length === 0) {
         return null;
       }
-      return resourcePathResolver.resolve(tenant.id, segments.slice(0, -1));
+      const parent = await resourcePathResolver.resolve(
+        tenant.id,
+        segments.slice(0, -1),
+      );
+      return parent ? { resource: parent, privilege: 'bind' } : null;
     }),
     async (req: Request, res): Promise<void> => {
       if (typeof req.body === 'string' && req.body.trim() !== '') {

@@ -6,8 +6,12 @@ import {
   type DataSource,
 } from '@davnode/core';
 import type { Express, Request } from 'express';
-import { createOwnerOnlyAuthorizationMiddleware } from '../owner-only-authorization.middleware.js';
-import { pathSegments, requireTenant } from './dav-request.util.js';
+import { createAclAuthorizationMiddleware } from '../acl-authorization.middleware.js';
+import {
+  pathSegments,
+  requireTenant,
+  resolveParentCollection,
+} from './dav-request.util.js';
 
 /**
  * Registers the DELETE route for `/dav/{tenantSlug}/files{/*path}`:
@@ -36,9 +40,20 @@ export function registerDeleteRoute(
 
   app.delete(
     '/dav/:tenantSlug/files{/*splat}',
-    createOwnerOnlyAuthorizationMiddleware((req) =>
-      resourcePathResolver.resolve(requireTenant(req).id, pathSegments(req)),
-    ),
+    createAclAuthorizationMiddleware(dataSource, async (req) => {
+      const target = await resourcePathResolver.resolve(
+        requireTenant(req).id,
+        pathSegments(req),
+      );
+      if (!target) {
+        return null;
+      }
+      // The tenant root has no parent (resolveParentCollection returns
+      // null); the handler already forbids deleting it (403) regardless
+      // of privilege, so no check is needed here in that case either.
+      const parent = await resolveParentCollection(dataSource, target);
+      return parent ? { resource: parent, privilege: 'unbind' } : null;
+    }),
     async (req: Request, res): Promise<void> => {
       const tenant = requireTenant(req);
       const segments = pathSegments(req);

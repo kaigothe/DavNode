@@ -2,6 +2,7 @@ import {
   Collection,
   CollectionChangeService,
   FileResource,
+  hasPrivilege,
   ResourcePathResolver,
   ResourceTreeService,
   type DataSource,
@@ -11,6 +12,7 @@ import {
   pathSegments,
   requirePrincipal,
   requireTenant,
+  resolveParentCollection,
 } from './dav-request.util.js';
 import {
   isDestinationWithinSource,
@@ -22,11 +24,14 @@ import {
  * Registers the MOVE route for `/dav/{tenantSlug}/files{/*path}` (RFC
  * 4918 §9.9): relocates a `FileResource` or `Collection` (with its
  * entire subtree) to a new location, read from the `Destination`
- * header. Shares `Destination`/`Overwrite` parsing, the tenant-boundary
- * rule, and the two-resource ownership check with `copy.route.ts` (see
- * there for why that check is inline rather than through
- * `createOwnerOnlyAuthorizationMiddleware`) — the differences from COPY
- * are the ones that matter:
+ * header. Shares `Destination`/`Overwrite` parsing and the
+ * tenant-boundary rule with `copy.route.ts`, and does its own two-
+ * resource authorization inline the same way (see there for why) —
+ * but with different privileges (RFC 3744 §7): `unbind` on the
+ * source's *parent* collection (not the source itself — removing it
+ * from that collection is what needs authorizing) and `bind` on the
+ * destination's parent, same as COPY. The differences from COPY beyond
+ * that are the ones that matter:
  *
  * - **Depth**: RFC 4918 §9.9.3 requires a MOVE on a collection to act
  *   as `Depth: infinity`; the only header value a client may send is
@@ -100,18 +105,17 @@ export function registerMoveRoute(app: Express, dataSource: DataSource): void {
         res.sendStatus(404);
         return;
       }
-      if (source.ownerPrincipalId !== principal.id) {
+
+      const sourceParent = await resolveParentCollection(dataSource, source);
+      if (!sourceParent) {
+        // The tenant root has no parent to move it out of — same
+        // rationale as DELETE's root protection.
         res.sendStatus(403);
         return;
       }
-
-      const sourceParentId =
-        source instanceof Collection
-          ? source.parentCollectionId
-          : source.collectionId;
-      if (sourceParentId === null) {
-        // The tenant root has no parent to move it out of — same
-        // rationale as DELETE's root protection.
+      if (
+        !(await hasPrivilege(dataSource.manager, principal, sourceParent, 'unbind'))
+      ) {
         res.sendStatus(403);
         return;
       }
@@ -126,7 +130,9 @@ export function registerMoveRoute(app: Express, dataSource: DataSource): void {
         res.sendStatus(409);
         return;
       }
-      if (destParent.ownerPrincipalId !== principal.id) {
+      if (
+        !(await hasPrivilege(dataSource.manager, principal, destParent, 'bind'))
+      ) {
         res.sendStatus(403);
         return;
       }
@@ -165,7 +171,7 @@ export function registerMoveRoute(app: Express, dataSource: DataSource): void {
 
         await collectionChanges.recordChange(
           manager,
-          sourceParentId,
+          sourceParent.id,
           sourceName,
           'deleted',
         );

@@ -6,6 +6,7 @@ import {
   CollectionAce,
   CollectionChange,
   createDataSource,
+  createOwnerAllAce,
   FileResource,
   TenantService,
   UserService,
@@ -57,6 +58,12 @@ describe('MKCOL route', () => {
         ownerPrincipalId: alice.principalId,
         displayName: 'root',
       }),
+    );
+    await createOwnerAllAce(
+      dataSource.manager,
+      'collection',
+      root.id,
+      alice.principalId,
     );
 
     const app = createApp(dataSource);
@@ -195,6 +202,10 @@ describe('MKCOL route', () => {
   });
 
   it('returns 403 when the parent collection is owned by a different principal', async () => {
+    // bobCollection is nested under alice's own root, so — via correct
+    // RFC 3744 inheritance — she'd otherwise inherit her own root ACE's
+    // grant there too; an explicit deny ACE is what actually isolates
+    // it.
     const bob = await new UserService(dataSource).createUser({
       tenantId: tenant.id,
       username: 'bob',
@@ -207,6 +218,21 @@ describe('MKCOL route', () => {
         parentCollectionId: root.id,
         ownerPrincipalId: bob.principalId,
         displayName: 'bobs-folder',
+      }),
+    );
+    await createOwnerAllAce(
+      dataSource.manager,
+      'collection',
+      bobCollection.id,
+      bob.principalId,
+    );
+    await dataSource.getRepository(CollectionAce).save(
+      dataSource.getRepository(CollectionAce).create({
+        collectionId: bobCollection.id,
+        principalId: alice.principalId,
+        privilege: 'all',
+        grantDeny: 'deny',
+        position: 1,
       }),
     );
 

@@ -39,17 +39,15 @@ export function createApp(dataSource: DataSource): express.Express {
   app.use('/dav/:tenantSlug', createTenantResolutionMiddleware(dataSource));
   app.use('/dav/:tenantSlug', createBasicAuthMiddleware(dataSource));
 
-  // Owner-only authorization (the M2 placeholder for M3's ACL engine) is
-  // applied per-route rather than globally here: each DAV route supplies
-  // its own resolver for "what resource does this request target" — see
-  // createOwnerOnlyAuthorizationMiddleware. COPY (and MOVE) are the
-  // exception: they check two resources (source and destination parent),
-  // which that single-resolver middleware isn't shaped for, so they do
-  // the same ownership check inline instead — see copy.route.ts. ACL is
-  // the first route to use the real ACL-evaluation engine (`hasPrivilege`,
-  // checking `write-acl`) instead of this placeholder — the other M2
-  // routes are switched over in M3's last big task
-  // (milestones/M3-webdav-acl/07-replace-placeholder-authorization).
+  // ACL authorization (the real RFC 3744 evaluation engine, replacing
+  // M2's owner-only placeholder — milestones/M3-webdav-acl/
+  // 07-replace-placeholder-authorization) is applied per-route rather
+  // than globally here: each DAV route supplies its own resolver for
+  // "what resource, and which privilege, does this request need" — see
+  // createAclAuthorizationMiddleware. COPY and MOVE are the exception:
+  // they check two resources (source and destination parent), which
+  // that single-resolver middleware isn't shaped for, so they run
+  // hasPrivilege inline instead — see copy.route.ts/move.route.ts.
   registerPropfindRoute(app, dataSource);
   registerProppatchRoute(app, dataSource);
   registerMkcolRoute(app, dataSource);

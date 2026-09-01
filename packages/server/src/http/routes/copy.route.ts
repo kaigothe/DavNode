@@ -1,6 +1,7 @@
 import {
   Collection,
   CollectionChangeService,
+  hasPrivilege,
   ResourcePathResolver,
   ResourceTreeService,
   type DataSource,
@@ -23,13 +24,10 @@ import {
  * recursively) to a new location, read from the `Destination` header.
  *
  * **Authorization** is a two-resource check this route does inline
- * rather than through `createOwnerOnlyAuthorizationMiddleware` (whose
+ * rather than through `createAclAuthorizationMiddleware` (whose
  * single-resolver design fits routes checking exactly one resource):
- * per this milestone's owner-only placeholder model, COPY needs the
- * source owned by the requesting principal (read access, simplified to
- * ownership — same simplification every other M2 route makes) *and*
- * the destination's parent collection owned by it too (write access to
- * create the copy there).
+ * RFC 3744 §7 requires `read` on the source itself and `bind` on the
+ * destination's parent collection (to create the copy there).
  *
  * **Tenant boundary**: `Destination` must resolve to the *same* tenant
  * as the request's own — a project-specific rule beyond RFC 4918 itself
@@ -46,8 +44,9 @@ import {
  * collection) and replaced, responding `204` instead of `201`.
  *
  * Every copied row is owned by the requesting principal, not the
- * source's owner — copying something makes the copier its owner, per
- * this milestone's placeholder model (RFC 3744 ACL inheritance is M3).
+ * source's owner — copying something makes the copier its owner (RFC
+ * 3744 doesn't mandate otherwise; each copy also gets its own
+ * default-owner ACE, `createOwnerAllAce` via `ResourceTreeService`).
  * Dead properties are copied verbatim; a `FileResource` copy's ETag is
  * recomputed rather than reused (see `ResourceTreeService`). On
  * success, records one `collection_changes` entry on the destination's
@@ -96,7 +95,7 @@ export function registerCopyRoute(app: Express, dataSource: DataSource): void {
         res.sendStatus(404);
         return;
       }
-      if (source.ownerPrincipalId !== principal.id) {
+      if (!(await hasPrivilege(dataSource.manager, principal, source, 'read'))) {
         res.sendStatus(403);
         return;
       }
@@ -120,7 +119,9 @@ export function registerCopyRoute(app: Express, dataSource: DataSource): void {
         res.sendStatus(409);
         return;
       }
-      if (destParent.ownerPrincipalId !== principal.id) {
+      if (
+        !(await hasPrivilege(dataSource.manager, principal, destParent, 'bind'))
+      ) {
         res.sendStatus(403);
         return;
       }

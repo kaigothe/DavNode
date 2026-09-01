@@ -7,9 +7,10 @@ import {
   WebDavLiveProperties,
   type DataSource,
   type MultistatusPropertyResult,
+  type WebDavResource,
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
-import { createOwnerOnlyAuthorizationMiddleware } from '../owner-only-authorization.middleware.js';
+import { createAclAuthorizationMiddleware } from '../acl-authorization.middleware.js';
 import { pathSegments, requireTenant } from './dav-request.util.js';
 
 /**
@@ -42,15 +43,19 @@ export function registerProppatchRoute(
 ): void {
   const resourcePathResolver = new ResourcePathResolver(dataSource);
   const deadProperties = new DeadPropertyService(dataSource);
-  const registry = new PropertyProviderRegistry();
+  const registry = new PropertyProviderRegistry<WebDavResource>();
   registry.register(new WebDavLiveProperties());
 
   app.proppatch(
     '/dav/:tenantSlug/files{/*splat}',
     express.text({ type: () => true }),
-    createOwnerOnlyAuthorizationMiddleware((req) =>
-      resourcePathResolver.resolve(requireTenant(req).id, pathSegments(req)),
-    ),
+    createAclAuthorizationMiddleware(dataSource, async (req) => {
+      const target = await resourcePathResolver.resolve(
+        requireTenant(req).id,
+        pathSegments(req),
+      );
+      return target ? { resource: target, privilege: 'write-properties' } : null;
+    }),
     async (req: Request, res): Promise<void> => {
       const tenant = requireTenant(req);
       const segments = pathSegments(req);

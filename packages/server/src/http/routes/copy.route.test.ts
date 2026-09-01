@@ -6,6 +6,7 @@ import {
   CollectionAce,
   CollectionChange,
   createDataSource,
+  createOwnerAllAce,
   FileAce,
   FileResource,
   TenantService,
@@ -58,6 +59,12 @@ describe('COPY route', () => {
         ownerPrincipalId: alice.principalId,
         displayName: 'root',
       }),
+    );
+    await createOwnerAllAce(
+      dataSource.manager,
+      'collection',
+      root.id,
+      alice.principalId,
     );
 
     const app = createApp(dataSource);
@@ -293,6 +300,10 @@ describe('COPY route', () => {
   });
 
   it('returns 403 when the source is owned by a different principal', async () => {
+    // Alice owns the tenant root, so her ACE there is inherited by
+    // everything beneath it (correct RFC 3744 inheritance) — isolating
+    // bob's resource from her needs an explicit deny ACE on it, not
+    // just the absence of a grant.
     const bob = await new UserService(dataSource).createUser({
       tenantId: tenant.id,
       username: 'bob',
@@ -308,6 +319,16 @@ describe('COPY route', () => {
         etag: '"1"',
         sizeBytes: 6,
         ownerPrincipalId: bob.principalId,
+      }),
+    );
+    await createOwnerAllAce(dataSource.manager, 'file', bobFile.id, bob.principalId);
+    await dataSource.getRepository(FileAce).save(
+      dataSource.getRepository(FileAce).create({
+        fileResourceId: bobFile.id,
+        principalId: alice.principalId,
+        privilege: 'all',
+        grantDeny: 'deny',
+        position: 1,
       }),
     );
 
@@ -327,12 +348,27 @@ describe('COPY route', () => {
       email: 'bob@example.com',
       password: PASSWORD,
     });
-    await dataSource.getRepository(Collection).save(
+    const bobsFolder = await dataSource.getRepository(Collection).save(
       dataSource.getRepository(Collection).create({
         tenantId: tenant.id,
         parentCollectionId: root.id,
         ownerPrincipalId: bob.principalId,
         displayName: 'bobs-folder',
+      }),
+    );
+    await createOwnerAllAce(
+      dataSource.manager,
+      'collection',
+      bobsFolder.id,
+      bob.principalId,
+    );
+    await dataSource.getRepository(CollectionAce).save(
+      dataSource.getRepository(CollectionAce).create({
+        collectionId: bobsFolder.id,
+        principalId: alice.principalId,
+        privilege: 'all',
+        grantDeny: 'deny',
+        position: 1,
       }),
     );
     await put('/dav/acme/files/report.txt', 'hello');
