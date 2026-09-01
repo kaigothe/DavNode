@@ -104,3 +104,4 @@ export {
   type WebDavTreeResource,
 } from './webdav/resource-path-resolver.js';
 export { CollectionChangeService } from './webdav/collection-change.service.js';
+export { ResourceTreeService } from './webdav/resource-tree.service.js';

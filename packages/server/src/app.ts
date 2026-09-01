@@ -2,6 +2,7 @@ import type { DataSource } from '@davnode/core';
 import express from 'express';
 import { createBasicAuthMiddleware } from './http/basic-auth.middleware.js';
 import { errorHandlerMiddleware } from './http/error-handler.middleware.js';
+import { registerCopyRoute } from './http/routes/copy.route.js';
 import { registerDeleteRoute } from './http/routes/delete.route.js';
 import { registerGetRoute } from './http/routes/get.route.js';
 import { registerMkcolRoute } from './http/routes/mkcol.route.js';
@@ -32,13 +33,17 @@ export function createApp(dataSource: DataSource): express.Express {
   // Owner-only authorization (the M2 placeholder for M3's ACL engine) is
   // applied per-route rather than globally here: each DAV route supplies
   // its own resolver for "what resource does this request target" — see
-  // createOwnerOnlyAuthorizationMiddleware.
+  // createOwnerOnlyAuthorizationMiddleware. COPY (and MOVE) are the
+  // exception: they check two resources (source and destination parent),
+  // which that single-resolver middleware isn't shaped for, so they do
+  // the same ownership check inline instead — see copy.route.ts.
   registerPropfindRoute(app, dataSource);
   registerProppatchRoute(app, dataSource);
   registerMkcolRoute(app, dataSource);
   registerGetRoute(app, dataSource);
   registerPutRoute(app, dataSource);
   registerDeleteRoute(app, dataSource);
+  registerCopyRoute(app, dataSource);
 
   // Must stay last: Express only treats a 4-argument middleware as an
   // error handler, and only for errors from middleware/routes mounted
