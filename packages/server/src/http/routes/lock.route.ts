@@ -22,11 +22,16 @@ import {
   requirePrincipal,
   requireTenant,
 } from './dav-request.util.js';
+import {
+  computeLockExpiresAt,
+  extractIfHeaderLockToken,
+  grantLockTimeout,
+} from './lock.util.js';
 
-/** Sends a `423 Locked` with an RFC 4918 §16 `<D:error>` body naming `condition`. */
-function sendLockError(res: Response, condition: string): void {
+/** Sends a `423 Locked`/`412 Precondition Failed` with an RFC 4918 §16 `<D:error>` body naming `condition`. */
+function sendLockError(res: Response, status: 423 | 412, condition: string): void {
   res
-    .status(423)
+    .status(status)
     .set('Content-Type', 'application/xml; charset=utf-8')
     .send(buildErrorResponse([condition]));
 }
@@ -69,13 +74,13 @@ async function subtreeHasConflict(
 
 /**
  * Builds a LOCK success response body: `<D:prop><D:lockdiscovery>` with
- * a single `<D:activelock>` for the lock just created (RFC 4918 §9.10.1
- * only requires the new lock's full information — details about any
- * other, still-compatible locks on the resource are explicitly
- * OPTIONAL, unlike PROPFIND's `lockdiscovery`, which reports every
- * effective lock — see `milestones/M4-locking-sync/06-lock-properties`).
+ * a single `<D:activelock>` for the lock just created or refreshed (RFC
+ * 4918 §9.10.1 only requires the new/refreshed lock's full information —
+ * details about any other, still-compatible locks on the resource are
+ * explicitly OPTIONAL, unlike PROPFIND's `lockdiscovery`, which reports
+ * every effective lock — see `milestones/M4-locking-sync/06-lock-properties`).
  */
-function buildLockCreationResponseBody(
+function buildLockDiscoveryResponseBody(
   lock: EffectiveLock,
   lockRootHref: string,
 ): string {
@@ -88,47 +93,91 @@ function buildLockCreationResponseBody(
 }
 
 /**
+ * Persists a (possibly inherited) lock's newly granted `timeoutSeconds`/
+ * `expiresAt` — used by the refresh path, where the lock being refreshed
+ * may sit on an ancestor collection rather than the requested resource
+ * itself (RFC 4918 §9.10.2 allows refreshing via any resource within the
+ * lock's scope). `EffectiveLock` doesn't say which table a given lock
+ * came from, so this discriminates the same way `buildActiveLockXml`'s
+ * depth handling does: a `CollectionLock` row has `collectionId`, a
+ * `FileLock` row doesn't.
+ */
+async function persistRefreshedTimeout(
+  dataSource: DataSource,
+  lock: EffectiveLock,
+  timeoutSeconds: number,
+  expiresAt: Date,
+): Promise<void> {
+  if ('collectionId' in lock) {
+    await dataSource
+      .getRepository(CollectionLock)
+      .update({ id: lock.id }, { timeoutSeconds, expiresAt });
+    return;
+  }
+  await dataSource
+    .getRepository(FileLock)
+    .update({ id: lock.id }, { timeoutSeconds, expiresAt });
+}
+
+/**
  * Registers the LOCK route for `/dav/{tenantSlug}/files{/*path}` (RFC
- * 4918 §9.10): creates a new write lock on an existing resource.
- *
- * Lock refresh (a LOCK request with no body, `If` header only) is not
- * yet handled here — see
- * `milestones/M4-locking-sync/03-lock-method/02-lock-refresh-and-timeout.md`,
- * the very next sub-task. A body that fails to parse as `<D:lockinfo>`,
- * including an empty one, is `400 Bad Request` for now.
+ * 4918 §9.10): creates a new write lock on an existing resource, or
+ * refreshes one the requesting principal already holds.
  *
  * **Locked-Null-Resources** (RFC 4918 §9.10.4 — LOCK on an unmapped URL
  * to reserve the name) are out of scope (see
  * `milestones/M4-locking-sync/00-setting-goal.md`): the target must
  * already exist, or the request is `404`.
  *
- * **Authorization** (project-specific, beyond what RFC 4918 itself
- * specifies): an `exclusive` lock requires `write-content` on a file or
- * `bind` on a collection; a `shared` lock only requires `read`. Checked
- * inline rather than through `createAclAuthorizationMiddleware`, since
- * which privilege applies depends on the parsed request body
+ * **Creation vs. refresh**: an empty request body means refresh (RFC
+ * 4918 §9.10.2) — the `Depth` header is ignored entirely for it (per
+ * that same section), and the lock to refresh is read from the `If`
+ * header (see {@link extractIfHeaderLockToken}; only the simple,
+ * single-token form is supported, matching what §9.10.2 itself
+ * requires clients to send). A non-empty body is always lock creation.
+ * An empty body with no usable `If`-header token is `400`.
+ *
+ * **Refresh**: the token must name one of `target`'s currently
+ * *effective* locks (`getEffectiveLocks` already excludes expired ones,
+ * so "not found" covers both "unknown token" and "expired") — otherwise
+ * `412 Precondition Failed` with `lock-token-matches-request-uri` (RFC
+ * 4918 §9.10.6). The requesting principal must also be that lock's
+ * holder, or `403`. On success, only `timeoutSeconds`/`expiresAt` change
+ * — the token itself never does — and no `Lock-Token` response header is
+ * sent (RFC 4918 §9.10.2 explicitly excludes it from a refresh
+ * response).
+ *
+ * **Creation authorization** (project-specific, beyond what RFC 4918
+ * itself specifies): an `exclusive` lock requires `write-content` on a
+ * file or `bind` on a collection; a `shared` lock only requires `read`.
+ * Checked inline rather than through `createAclAuthorizationMiddleware`,
+ * since which privilege applies depends on the parsed request body
  * (`lockinfo`'s `lockscope`), not just the resource and HTTP method.
  *
- * **`Depth` header**: only `0` or `infinity` are valid (`400` for
- * anything else, e.g. `1` — undefined for LOCK per RFC 4918 §9.10.3); a
- * missing header defaults to `infinity`, the same default RFC 4918
- * §9.10.3 mandates.
+ * **Creation `Depth` header**: only `0` or `infinity` are valid (`400`
+ * for anything else, e.g. `1` — undefined for LOCK per RFC 4918
+ * §9.10.3); a missing header defaults to `infinity`, the same default
+ * RFC 4918 §9.10.3 mandates.
  *
- * **Conflict checking**: `getEffectiveLocks` + `wouldConflict` (see
- * `milestones/M4-locking-sync/02-lock-evaluation`) against the target
- * itself, and — for `Depth: infinity` on a `Collection` — against every
- * descendant too (see {@link subtreeHasConflict}); either rejects the
- * whole request with `423 Locked` and a `no-conflicting-lock`
+ * **Creation conflict checking**: `getEffectiveLocks` + `wouldConflict`
+ * (see `milestones/M4-locking-sync/02-lock-evaluation`) against the
+ * target itself, and — for `Depth: infinity` on a `Collection` —
+ * against every descendant too (see {@link subtreeHasConflict}); either
+ * rejects the whole request with `423 Locked` and a `no-conflicting-lock`
  * precondition, before anything is written.
  *
- * Every newly created lock is `Infinite` (`timeoutSeconds`/`expiresAt`
- * both `null`) for now — the `Timeout` request header isn't parsed yet;
- * that's the very next sub-task too.
+ * **`Timeout` handling** (creation and refresh alike, `grantLockTimeout`
+ * in `lock.util.ts`): project policy, since RFC 4918 leaves the grant
+ * entirely up to the server — `Second-3600` if the client sends no
+ * `Timeout` header (or nothing in it parses), and any requested
+ * `Infinite`/longer value capped at `Second-86400` rather than
+ * rejected. The actually granted value is echoed back in a `Timeout`
+ * response header, in addition to the response body's `lockdiscovery`.
  *
- * Success is always `200 OK` with a `Lock-Token` response header
- * (RFC 4918 §10.5's `Coded-URL` syntax, angle-bracket-wrapped) and a
- * `lockdiscovery` body — never `201 Created`, since Locked-Null-Resource
- * creation is out of scope.
+ * Success is always `200 OK` — never `201 Created`, since
+ * Locked-Null-Resource creation is out of scope. Creation additionally
+ * sets the `Lock-Token` response header (RFC 4918 §10.5's `Coded-URL`
+ * syntax, angle-bracket-wrapped).
  */
 export function registerLockRoute(app: Express, dataSource: DataSource): void {
   const resourcePathResolver = new ResourcePathResolver(dataSource);
@@ -137,13 +186,6 @@ export function registerLockRoute(app: Express, dataSource: DataSource): void {
     '/dav/:tenantSlug/files{/*splat}',
     express.text({ type: () => true }),
     async (req: Request, res: Response): Promise<void> => {
-      const depthHeader = req.header('Depth') ?? 'infinity';
-      if (depthHeader !== '0' && depthHeader !== 'infinity') {
-        res.sendStatus(400);
-        return;
-      }
-      const lockDepth: LockDepth = depthHeader === '0' ? 'zero' : 'infinity';
-
       const tenant = requireTenant(req);
       const principal = requirePrincipal(req);
       const segments = pathSegments(req);
@@ -154,11 +196,64 @@ export function registerLockRoute(app: Express, dataSource: DataSource): void {
         return;
       }
 
+      const rawBody = typeof req.body === 'string' ? req.body.trim() : '';
+      const isRefresh = rawBody === '';
+
+      if (isRefresh) {
+        const token = extractIfHeaderLockToken(req.header('If'));
+        if (token === null) {
+          res.sendStatus(400);
+          return;
+        }
+
+        const effectiveLocks = await getEffectiveLocks(
+          dataSource.manager,
+          target,
+        );
+        const matchingLock = effectiveLocks.find(
+          (lock) => lock.token === token,
+        );
+        if (!matchingLock) {
+          sendLockError(res, 412, 'lock-token-matches-request-uri');
+          return;
+        }
+        if (matchingLock.principalId !== principal.id) {
+          res.sendStatus(403);
+          return;
+        }
+
+        const timeoutSeconds = grantLockTimeout(req.header('Timeout'));
+        const expiresAt = computeLockExpiresAt(timeoutSeconds);
+        await persistRefreshedTimeout(
+          dataSource,
+          matchingLock,
+          timeoutSeconds,
+          expiresAt,
+        );
+
+        const refreshedLock: EffectiveLock = {
+          ...matchingLock,
+          timeoutSeconds,
+          expiresAt,
+        };
+        res
+          .status(200)
+          .set('Timeout', `Second-${timeoutSeconds}`)
+          .set('Content-Type', 'application/xml; charset=utf-8')
+          .send(buildLockDiscoveryResponseBody(refreshedLock, req.path));
+        return;
+      }
+
+      const depthHeader = req.header('Depth') ?? 'infinity';
+      if (depthHeader !== '0' && depthHeader !== 'infinity') {
+        res.sendStatus(400);
+        return;
+      }
+      const lockDepth: LockDepth = depthHeader === '0' ? 'zero' : 'infinity';
+
       let lockInfo;
       try {
-        lockInfo = parseLockInfoRequestBody(
-          typeof req.body === 'string' ? req.body : '',
-        );
+        lockInfo = parseLockInfoRequestBody(rawBody);
       } catch {
         res.sendStatus(400);
         return;
@@ -183,7 +278,7 @@ export function registerLockRoute(app: Express, dataSource: DataSource): void {
 
       const ownLocks = await getEffectiveLocks(dataSource.manager, target);
       if (wouldConflict(ownLocks, lockInfo.scope)) {
-        sendLockError(res, 'no-conflicting-lock');
+        sendLockError(res, 423, 'no-conflicting-lock');
         return;
       }
       if (
@@ -196,11 +291,13 @@ export function registerLockRoute(app: Express, dataSource: DataSource): void {
           lockInfo.scope,
         ))
       ) {
-        sendLockError(res, 'no-conflicting-lock');
+        sendLockError(res, 423, 'no-conflicting-lock');
         return;
       }
 
       const token = `urn:uuid:${randomUUID()}`;
+      const timeoutSeconds = grantLockTimeout(req.header('Timeout'));
+      const expiresAt = computeLockExpiresAt(timeoutSeconds);
       const created = await dataSource.transaction(async (manager) => {
         if (target instanceof Collection) {
           const repository = manager.getRepository(CollectionLock);
@@ -211,8 +308,8 @@ export function registerLockRoute(app: Express, dataSource: DataSource): void {
               token,
               scope: lockInfo.scope,
               depth: lockDepth,
-              timeoutSeconds: null,
-              expiresAt: null,
+              timeoutSeconds,
+              expiresAt,
               ownerInfo: lockInfo.ownerInfo,
             }),
           );
@@ -224,8 +321,8 @@ export function registerLockRoute(app: Express, dataSource: DataSource): void {
             principalId: principal.id,
             token,
             scope: lockInfo.scope,
-            timeoutSeconds: null,
-            expiresAt: null,
+            timeoutSeconds,
+            expiresAt,
             ownerInfo: lockInfo.ownerInfo,
           }),
         );
@@ -240,8 +337,9 @@ export function registerLockRoute(app: Express, dataSource: DataSource): void {
       res
         .status(200)
         .set('Lock-Token', `<${token}>`)
+        .set('Timeout', `Second-${timeoutSeconds}`)
         .set('Content-Type', 'application/xml; charset=utf-8')
-        .send(buildLockCreationResponseBody(effectiveLock, req.path));
+        .send(buildLockDiscoveryResponseBody(effectiveLock, req.path));
     },
   );
 }

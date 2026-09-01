@@ -278,7 +278,7 @@ describe('LOCK route', () => {
     expect(response.status).toBe(400);
   });
 
-  it('an empty body (not yet supported as refresh) returns 400', async () => {
+  it('an empty body with no If header (not a valid refresh) returns 400', async () => {
     const response = await fetch(`${baseUrl}/dav/acme/files/doc.txt`, {
       method: 'LOCK',
       headers: { Authorization: basicAuthHeader('alice', PASSWORD) },
@@ -295,5 +295,128 @@ describe('LOCK route', () => {
       .findBy({ collectionId: root.id });
     expect(stored).toHaveLength(1);
     expect(stored[0]?.depth).toBe('zero');
+  });
+
+  it('LOCK without a Timeout header grants Second-3600', async () => {
+    const response = await lock('/dav/acme/files/doc.txt');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Timeout')).toBe('Second-3600');
+
+    const stored = await dataSource
+      .getRepository(FileLock)
+      .findOneByOrFail({ fileResourceId: doc.id });
+    expect(stored.timeoutSeconds).toBe(3600);
+    expect(stored.expiresAt).not.toBeNull();
+  });
+
+  it('LOCK with Timeout: Infinite is capped to Second-86400', async () => {
+    const response = await fetch(`${baseUrl}/dav/acme/files/doc.txt`, {
+      method: 'LOCK',
+      headers: {
+        Authorization: basicAuthHeader('alice', PASSWORD),
+        'Content-Type': 'application/xml',
+        Timeout: 'Infinite',
+      },
+      body: lockInfoBody('exclusive'),
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Timeout')).toBe('Second-86400');
+
+    const stored = await dataSource
+      .getRepository(FileLock)
+      .findOneByOrFail({ fileResourceId: doc.id });
+    expect(stored.timeoutSeconds).toBe(86400);
+  });
+
+  async function refresh(
+    path: string,
+    token: string,
+    options: { username?: string; timeout?: string } = {},
+  ): Promise<Response> {
+    const headers: Record<string, string> = {
+      Authorization: basicAuthHeader(options.username ?? 'alice', PASSWORD),
+      If: `(<${token}>)`,
+    };
+    if (options.timeout !== undefined) {
+      headers.Timeout = options.timeout;
+    }
+    return fetch(`${baseUrl}${path}`, { method: 'LOCK', headers });
+  }
+
+  it('refreshing an existing lock extends expiresAt and returns the same token, without a Lock-Token header', async () => {
+    const created = await lock('/dav/acme/files/doc.txt');
+    const lockToken = created.headers.get('Lock-Token')?.slice(1, -1);
+    expect(lockToken).toBeDefined();
+    const before = await dataSource
+      .getRepository(FileLock)
+      .findOneByOrFail({ fileResourceId: doc.id });
+
+    const response = await refresh('/dav/acme/files/doc.txt', lockToken!, {
+      timeout: 'Second-7200',
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Lock-Token')).toBeNull();
+    expect(response.headers.get('Timeout')).toBe('Second-7200');
+    const body = await response.text();
+    expect(body).toContain(lockToken);
+
+    const after = await dataSource
+      .getRepository(FileLock)
+      .findOneByOrFail({ fileResourceId: doc.id });
+    expect(after.token).toBe(before.token);
+    expect(after.expiresAt!.getTime()).toBeGreaterThan(
+      before.expiresAt!.getTime(),
+    );
+  });
+
+  it('a refresh attempt by a principal other than the lock holder returns 403', async () => {
+    const aces = dataSource.getRepository(CollectionAce);
+    await aces.save(
+      aces.create({
+        collectionId: root.id,
+        principalId: bob.principalId,
+        privilege: 'read',
+        grantDeny: 'grant',
+        position: 1,
+      }),
+    );
+    const created = await lock('/dav/acme/files/doc.txt');
+    const lockToken = created.headers.get('Lock-Token')!.slice(1, -1);
+
+    const response = await refresh('/dav/acme/files/doc.txt', lockToken, {
+      username: 'bob',
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it('refreshing an unknown lock token returns 412', async () => {
+    const response = await refresh(
+      '/dav/acme/files/doc.txt',
+      'urn:uuid:00000000-0000-0000-0000-000000000000',
+    );
+    expect(response.status).toBe(412);
+    const body = await response.text();
+    expect(body).toContain('lock-token-matches-request-uri');
+  });
+
+  it('refreshing an already-expired lock returns 412', async () => {
+    const expiredToken = 'urn:uuid:99999999-9999-9999-9999-999999999999';
+    await dataSource.getRepository(FileLock).save(
+      dataSource.getRepository(FileLock).create({
+        fileResourceId: doc.id,
+        principalId: alice.principalId,
+        token: expiredToken,
+        scope: 'exclusive',
+        timeoutSeconds: 60,
+        expiresAt: new Date(Date.now() - 1000),
+        ownerInfo: null,
+      }),
+    );
+
+    const response = await refresh('/dav/acme/files/doc.txt', expiredToken);
+
+    expect(response.status).toBe(412);
   });
 });
