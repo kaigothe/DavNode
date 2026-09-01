@@ -1,5 +1,6 @@
 import { pathToFileURL } from 'node:url';
 import type { DataSource } from 'typeorm';
+import { createOwnerAllAce } from '../acl/create-owner-ace.js';
 import { createDataSource } from '../db/data-source.js';
 import { Collection } from '../entities/collection.entity.js';
 import type { Tenant } from '../entities/tenant.entity.js';
@@ -106,15 +107,19 @@ export async function runBootstrap(
     role: 'server_admin',
   });
 
-  const collectionRepository = dataSource.getRepository(Collection);
-  const rootCollection = await collectionRepository.save(
-    collectionRepository.create({
-      tenantId: tenant.id,
-      parentCollectionId: null,
-      ownerPrincipalId: user.principalId,
-      displayName: tenant.name,
-    }),
-  );
+  const rootCollection = await dataSource.transaction(async (manager) => {
+    const collectionRepository = manager.getRepository(Collection);
+    const collection = await collectionRepository.save(
+      collectionRepository.create({
+        tenantId: tenant.id,
+        parentCollectionId: null,
+        ownerPrincipalId: user.principalId,
+        displayName: tenant.name,
+      }),
+    );
+    await createOwnerAllAce(manager, 'collection', collection.id, user.principalId);
+    return collection;
+  });
 
   return { tenant, user, rootCollection };
 }

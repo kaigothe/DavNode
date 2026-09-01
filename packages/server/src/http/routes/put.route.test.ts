@@ -6,6 +6,7 @@ import {
   Collection,
   CollectionChange,
   createDataSource,
+  FileAce,
   FileContent,
   FileResource,
   TenantService,
@@ -222,6 +223,32 @@ describe('PUT route', () => {
       { seq: 1, name: 'report.txt', action: 'added' },
       { seq: 2, name: 'report.txt', action: 'modified' },
     ]);
+  });
+
+  it('creates exactly one protected default-owner ACE on new-file creation, and no second one on overwrite', async () => {
+    await put('/dav/acme/files/report.txt', { body: 'hello' });
+
+    const file = await dataSource
+      .getRepository(FileResource)
+      .findOneByOrFail({ collectionId: root.id, name: 'report.txt' });
+    const acesAfterCreate = await dataSource
+      .getRepository(FileAce)
+      .findBy({ fileResourceId: file.id });
+    expect(acesAfterCreate).toEqual([
+      expect.objectContaining({
+        principalId: alice.principalId,
+        privilege: 'all',
+        grantDeny: 'grant',
+        protected: true,
+      }),
+    ]);
+
+    await put('/dav/acme/files/report.txt', { body: 'goodbye' });
+
+    const acesAfterOverwrite = await dataSource
+      .getRepository(FileAce)
+      .findBy({ fileResourceId: file.id });
+    expect(acesAfterOverwrite).toHaveLength(1);
   });
 
   it('returns 403 for a file owned by a different principal', async () => {

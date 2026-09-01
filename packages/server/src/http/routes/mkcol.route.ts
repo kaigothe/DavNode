@@ -1,6 +1,7 @@
 import {
   Collection,
   CollectionChangeService,
+  createOwnerAllAce,
   ResourcePathResolver,
   type DataSource,
 } from '@davnode/core';
@@ -83,7 +84,7 @@ export function registerMkcolRoute(app: Express, dataSource: DataSource): void {
 
       await dataSource.transaction(async (manager) => {
         const collections = manager.getRepository(Collection);
-        await collections.save(
+        const created = await collections.save(
           collections.create({
             tenantId: tenant.id,
             parentCollectionId: parent.id,
@@ -91,6 +92,7 @@ export function registerMkcolRoute(app: Express, dataSource: DataSource): void {
             displayName: newName,
           }),
         );
+        await createOwnerAllAce(manager, 'collection', created.id, principal.id);
         await collectionChanges.recordChange(
           manager,
           parent.id,

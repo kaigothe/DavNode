@@ -1,8 +1,11 @@
 import { createHash } from 'node:crypto';
 import type { EntityManager } from 'typeorm';
+import { createOwnerAllAce } from '../acl/create-owner-ace.js';
+import { CollectionAce } from '../entities/collection-ace.entity.js';
 import { Collection } from '../entities/collection.entity.js';
 import { CollectionChange } from '../entities/collection-change.entity.js';
 import { CollectionProperty } from '../entities/collection-property.entity.js';
+import { FileAce } from '../entities/file-ace.entity.js';
 import { FileContent } from '../entities/file-content.entity.js';
 import { FileProperty } from '../entities/file-property.entity.js';
 import { FileResource } from '../entities/file-resource.entity.js';
@@ -26,7 +29,7 @@ export class ResourceTreeService {
   /**
    * Deletes `resource` and, for a `Collection`, every descendant beneath
    * it (sub-collections, `FileResource`s, their `FileContent` — which
-   * cascades at the DB level — and every `*_properties`/
+   * cascades at the DB level — and every `*_properties`/`*_aces`/
    * `collection_changes` row that references them). Children are
    * removed depth-first so no foreign key from a still-present row ever
    * points at an already-deleted one; none of these tables cascade at
@@ -58,10 +61,16 @@ export class ResourceTreeService {
       await manager
         .getRepository(CollectionChange)
         .delete({ collectionId: resource.id });
+      await manager
+        .getRepository(CollectionAce)
+        .delete({ collectionId: resource.id });
       await manager.getRepository(Collection).delete({ id: resource.id });
     } else {
       await manager
         .getRepository(FileProperty)
+        .delete({ fileResourceId: resource.id });
+      await manager
+        .getRepository(FileAce)
         .delete({ fileResourceId: resource.id });
       // FileContent cascades at the DB level (file-content.entity.ts).
       await manager.getRepository(FileResource).delete({ id: resource.id });
@@ -79,7 +88,10 @@ export class ResourceTreeService {
    * though identical content naturally still hashes to the same value.
    * Every copied row is owned by `ownerPrincipalId` (the requesting
    * principal, not the source's owner — COPY's owner-only placeholder
-   * model treats "whoever copies it" as the new owner).
+   * model treats "whoever copies it" as the new owner), and gets its own
+   * default-owner ACE (`createOwnerAllAce`) granting that owner
+   * `DAV:all` — RFC 3744 is default-deny, so every copied resource,
+   * including each descendant in a recursive copy, needs one.
    *
    * `recursive: false` on a `Collection` copies only the empty
    * collection itself (RFC 4918 §9.8's `Depth: 0`), ignored for a
@@ -103,6 +115,7 @@ export class ResourceTreeService {
           displayName: destName,
         }),
       );
+      await createOwnerAllAce(manager, 'collection', copy.id, ownerPrincipalId);
 
       const properties = await manager
         .getRepository(CollectionProperty)
@@ -176,6 +189,7 @@ export class ResourceTreeService {
         data: sourceContent.data,
       }),
     );
+    await createOwnerAllAce(manager, 'file', copy.id, ownerPrincipalId);
 
     const properties = await manager
       .getRepository(FileProperty)

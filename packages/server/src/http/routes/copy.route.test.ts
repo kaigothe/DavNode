@@ -3,8 +3,10 @@ import {
   ALL_ENTITIES,
   ALL_SQLITE_MIGRATIONS,
   Collection,
+  CollectionAce,
   CollectionChange,
   createDataSource,
+  FileAce,
   FileResource,
   TenantService,
   UserService,
@@ -155,6 +157,45 @@ describe('COPY route', () => {
     );
     expect(zeroResponse.status).toBe(201);
     expect((await get('/dav/acme/files/sub-empty/top.txt')).status).toBe(404);
+  });
+
+  it('gives every copied resource its own protected default-owner ACE, including nested descendants', async () => {
+    await mkcol('/dav/acme/files/sub');
+    await put('/dav/acme/files/sub/top.txt', 'a');
+
+    await copy('/dav/acme/files/sub', '/dav/acme/files/sub-full', {
+      depth: 'infinity',
+    });
+
+    const copiedCollection = await dataSource
+      .getRepository(Collection)
+      .findOneByOrFail({ parentCollectionId: root.id, displayName: 'sub-full' });
+    const collectionAces = await dataSource
+      .getRepository(CollectionAce)
+      .findBy({ collectionId: copiedCollection.id });
+    expect(collectionAces).toEqual([
+      expect.objectContaining({
+        principalId: alice.principalId,
+        privilege: 'all',
+        grantDeny: 'grant',
+        protected: true,
+      }),
+    ]);
+
+    const copiedFile = await dataSource
+      .getRepository(FileResource)
+      .findOneByOrFail({ collectionId: copiedCollection.id, name: 'top.txt' });
+    const fileAces = await dataSource
+      .getRepository(FileAce)
+      .findBy({ fileResourceId: copiedFile.id });
+    expect(fileAces).toEqual([
+      expect.objectContaining({
+        principalId: alice.principalId,
+        privilege: 'all',
+        grantDeny: 'grant',
+        protected: true,
+      }),
+    ]);
   });
 
   it('returns 412 and changes nothing when the target exists and Overwrite is F', async () => {

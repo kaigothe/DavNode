@@ -4,6 +4,7 @@ import { createDataSource } from '../db/data-source.js';
 import {
   ALL_ENTITIES,
   Collection,
+  CollectionAce,
   Credential,
   Principal,
   Tenant,
@@ -96,6 +97,18 @@ describe('runBootstrap', () => {
       .getRepository(Collection)
       .findBy({ tenantId: tenant.id, parentCollectionId: IsNull() });
     expect(rootCollections).toHaveLength(1);
+
+    const rootAces = await dataSource
+      .getRepository(CollectionAce)
+      .findBy({ collectionId: rootCollection.id });
+    expect(rootAces).toEqual([
+      expect.objectContaining({
+        principalId: user.principalId,
+        privilege: 'all',
+        grantDeny: 'grant',
+        protected: true,
+      }),
+    ]);
   });
 
   it('aborts with a DuplicateEntryError on a second run with the same tenant slug, without duplicating the root collection', async () => {

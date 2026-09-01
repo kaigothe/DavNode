@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import {
   Collection,
   CollectionChangeService,
+  createOwnerAllAce,
   FileContent,
   FileResource,
   ResourcePathResolver,
@@ -162,6 +163,8 @@ export function registerPutRoute(app: Express, dataSource: DataSource): void {
         await fileContents.save(
           fileContents.create({ fileResourceId: created.id, data: body }),
         );
+
+        await createOwnerAllAce(manager, 'file', created.id, principal.id);
 
         await collectionChanges.recordChange(
           manager,

@@ -3,6 +3,7 @@ import {
   ALL_ENTITIES,
   ALL_SQLITE_MIGRATIONS,
   Collection,
+  CollectionAce,
   CollectionChange,
   createDataSource,
   FileResource,
@@ -169,6 +170,26 @@ describe('MKCOL route', () => {
         seq: 1,
         name: 'sub',
         action: 'added',
+      }),
+    ]);
+  });
+
+  it('creates a protected default-owner ACE granting the requester DAV:all', async () => {
+    const response = await mkcol('/dav/acme/files/sub');
+    expect(response.status).toBe(201);
+
+    const created = await dataSource
+      .getRepository(Collection)
+      .findOneByOrFail({ parentCollectionId: root.id, displayName: 'sub' });
+    const aces = await dataSource
+      .getRepository(CollectionAce)
+      .findBy({ collectionId: created.id });
+    expect(aces).toEqual([
+      expect.objectContaining({
+        principalId: alice.principalId,
+        privilege: 'all',
+        grantDeny: 'grant',
+        protected: true,
       }),
     ]);
   });

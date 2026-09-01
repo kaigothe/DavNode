@@ -11,6 +11,10 @@ export {
   expandPrivilege,
   privilegeSatisfies,
 } from './acl/privilege-aggregation.js';
+export {
+  createOwnerAllAce,
+  type OwnerAceResourceType,
+} from './acl/create-owner-ace.js';
 
 export {
   createDataSource,
