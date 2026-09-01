@@ -1,0 +1,184 @@
+import {
+  buildMultistatusResponse,
+  Collection,
+  DeadPropertyService,
+  parsePropfindRequestBody,
+  PropertyProviderRegistry,
+  ResourcePathResolver,
+  WebDavLiveProperties,
+  type DataSource,
+  type MultistatusPropertyResult,
+  type MultistatusResourceResult,
+  type PropertyValue,
+  type PropfindRequestBody,
+  type Tenant,
+  type WebDavTreeResource,
+} from '@davnode/core';
+import express, { type Express, type Request } from 'express';
+import { createOwnerOnlyAuthorizationMiddleware } from '../owner-only-authorization.middleware.js';
+
+/**
+ * Path segments after `/files`, from the route's `{/*splat}` wildcard.
+ * Express 5's types still describe every route param as `string` (a
+ * known gap for wildcard captures — path-to-regexp v8 actually returns
+ * an array), so this reads `req.params.splat` untyped rather than via
+ * a `Request<...>` generic that would just assert the wrong shape.
+ */
+function pathSegments(req: Request): string[] {
+  const splat: unknown = (req.params as Record<string, unknown>).splat;
+  return Array.isArray(splat) ? (splat as string[]) : [];
+}
+
+/**
+ * `req.tenant`, guaranteed set by this point (tenant-resolution and
+ * basic-auth both run before this route and both require it — see
+ * `tenant-resolution.middleware.ts`/`basic-auth.middleware.ts`).
+ *
+ * @throws An `Error` if `req.tenant` isn't set — a misconfiguration
+ * (wrong mounting order), not a client-facing condition.
+ */
+function requireTenant(req: Request): Tenant {
+  if (!req.tenant) {
+    throw new Error(
+      'PROPFIND route requires the tenant-resolution middleware to run first (req.tenant is not set)',
+    );
+  }
+  return req.tenant;
+}
+
+/** The resource's own path segment: a `Collection`'s `displayName`, or a `FileResource`'s `name`. */
+function resourceName(resource: WebDavTreeResource): string {
+  return resource instanceof Collection ? resource.displayName : resource.name;
+}
+
+/** The `<D:href>` for `child`, given its already-resolved parent's own href. */
+function childHref(parentHref: string, child: WebDavTreeResource): string {
+  return `${parentHref.replace(/\/$/, '')}/${encodeURIComponent(resourceName(child))}`;
+}
+
+/**
+ * Resolves the properties `requestBody` asks for against a resource's
+ * combined live + dead properties, producing the per-property
+ * `200`/`404` results {@link buildMultistatusResponse} groups into
+ * `<D:propstat>` blocks (RFC 4918 §9.1):
+ *
+ * - `allprop`/`propname`: every live and dead property, all `200`.
+ *   `propname` omits each property's value (RFC 4918 §14.19 — the
+ *   client asked for names only).
+ * - `prop`: exactly the requested properties, `200` if found among
+ *   live/dead properties, `404` otherwise.
+ */
+async function resolveProperties(
+  resource: WebDavTreeResource,
+  requestBody: PropfindRequestBody,
+  registry: PropertyProviderRegistry,
+  deadProperties: DeadPropertyService,
+): Promise<MultistatusPropertyResult[]> {
+  const live = registry.listLiveProperties(resource);
+  const dead =
+    resource instanceof Collection
+      ? await deadProperties.listForCollection(resource.id)
+      : await deadProperties.listForFileResource(resource.id);
+  const all: PropertyValue[] = [...live, ...dead];
+
+  if (requestBody.kind === 'prop') {
+    return requestBody.properties.map((requested) => {
+      const found = all.find(
+        (p) => p.namespace === requested.namespace && p.name === requested.name,
+      );
+      return found ? { ...found, status: 200 } : { ...requested, status: 404 };
+    });
+  }
+
+  if (requestBody.kind === 'propname') {
+    return all.map((p) => ({
+      namespace: p.namespace,
+      name: p.name,
+      status: 200,
+    }));
+  }
+
+  return all.map((p) => ({ ...p, status: 200 }));
+}
+
+/**
+ * Registers the PROPFIND route for `/dav/{tenantSlug}/files{/*path}`
+ * (RFC 4918 §9.1): looks up the target `Collection`/`FileResource`,
+ * evaluates `Depth`, and returns a `207 Multi-Status` response built
+ * from the WebDAV property-provider/dead-property infrastructure
+ * (`milestones/M2-webdav-core/03-webdav-xml-property-infrastructure`).
+ *
+ * Depth `infinity` is rejected with `403 Forbidden` — RFC 4918 §9.1
+ * explicitly permits a server to refuse it to bound the size of a
+ * single response, and a missing `Depth` header defaults to
+ * `infinity` per the same section, so it's rejected the same way
+ * rather than silently treated as `0`.
+ */
+export function registerPropfindRoute(
+  app: Express,
+  dataSource: DataSource,
+): void {
+  const resourcePathResolver = new ResourcePathResolver(dataSource);
+  const deadProperties = new DeadPropertyService(dataSource);
+  const registry = new PropertyProviderRegistry();
+  registry.register(new WebDavLiveProperties());
+
+  app.propfind(
+    '/dav/:tenantSlug/files{/*splat}',
+    express.text({ type: () => true }),
+    createOwnerOnlyAuthorizationMiddleware((req) =>
+      resourcePathResolver.resolve(requireTenant(req).id, pathSegments(req)),
+    ),
+    async (req: Request, res): Promise<void> => {
+      const depth = req.header('Depth');
+      if (depth !== '0' && depth !== '1') {
+        res.sendStatus(403);
+        return;
+      }
+
+      const tenant = requireTenant(req);
+      const segments = pathSegments(req);
+      const target = await resourcePathResolver.resolve(tenant.id, segments);
+      if (!target) {
+        res.sendStatus(404);
+        return;
+      }
+
+      const requestBody = parsePropfindRequestBody(
+        typeof req.body === 'string' ? req.body : null,
+      );
+
+      const resources: MultistatusResourceResult[] = [
+        {
+          href: req.path,
+          properties: await resolveProperties(
+            target,
+            requestBody,
+            registry,
+            deadProperties,
+          ),
+        },
+      ];
+
+      if (depth === '1' && target instanceof Collection) {
+        const children = await resourcePathResolver.listChildren(target);
+        for (const child of children) {
+          resources.push({
+            href: childHref(req.path, child),
+            properties: await resolveProperties(
+              child,
+              requestBody,
+              registry,
+              deadProperties,
+            ),
+          });
+        }
+      }
+
+      res
+        .status(207)
+        .set('Content-Type', 'application/xml; charset=utf-8')
+        .send(buildMultistatusResponse(resources));
+    },
+  );
+}

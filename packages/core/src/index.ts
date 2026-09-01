@@ -94,3 +94,9 @@ export type {
   WebDavResource,
 } from './webdav/properties/property-provider.interface.js';
 export { WebDavLiveProperties } from './webdav/properties/webdav-live-properties.js';
+export { DeadPropertyService } from './webdav/properties/dead-property.service.js';
+
+export {
+  ResourcePathResolver,
+  type WebDavTreeResource,
+} from './webdav/resource-path-resolver.js';
