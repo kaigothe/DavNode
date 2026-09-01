@@ -1,3 +1,35 @@
+# [1.2.0](https://github.com/kaigothe/DavNode/compare/v1.1.0...v1.2.0) (2026-09-01)
+
+
+### Bug Fixes
+
+* **ci:** stop leaking DAVNODE_DB_TYPE into the vitest suite's env ([d7a22cb](https://github.com/kaigothe/DavNode/commit/d7a22cbe612d821d04e9c76f01253e7779894fd0))
+* **core:** split migration history per database engine ([9ae1ab1](https://github.com/kaigothe/DavNode/commit/9ae1ab14377120808631db4c3ae7aab1f02668e6))
+
+
+### Features
+
+* **core:** add CLI bootstrap script for first tenant + admin user ([8e3fbbb](https://github.com/kaigothe/DavNode/commit/8e3fbbbf005f4b5d73e82baa595d1e8d68cd06fa))
+* **core:** add Collection entity for the WebDAV domain ([bb95b84](https://github.com/kaigothe/DavNode/commit/bb95b8478e6c5783686b35579830234bbcdef19b))
+* **core:** add CollectionProperty and FileProperty dead-properties tables ([edf3734](https://github.com/kaigothe/DavNode/commit/edf3734f6cd56cadc373a006d17dd0274350a7b8))
+* **core:** add FileResource and FileContent entities ([5a0aaef](https://github.com/kaigothe/DavNode/commit/5a0aaeff73c17642446ab542f078a665dd201f2e))
+* **core:** add GroupMembershipService with cycle detection ([9b25527](https://github.com/kaigothe/DavNode/commit/9b25527ea782bb549e88ff629fa41471faeb5093))
+* **core:** add GroupService with cascading membership cleanup ([939dc4c](https://github.com/kaigothe/DavNode/commit/939dc4c90bd1a1f5a437ff58487d88a57a8c17cb))
+* **core:** add property-provider abstraction for WebDAV live properties ([89c76c2](https://github.com/kaigothe/DavNode/commit/89c76c2c3266d8edeadf56327e9ac54dd4e1a37d))
+* **core:** add UserService with transactional account creation ([573268d](https://github.com/kaigothe/DavNode/commit/573268d889cb917b57d3fa8ce105f04707457597))
+* **core:** add WebDAV XML request-parsing and multistatus infrastructure ([1fa0530](https://github.com/kaigothe/DavNode/commit/1fa0530cd28cc360dfa9bf037b261988a0169461))
+* **core:** create the tenant's root collection during bootstrap ([e0b98ed](https://github.com/kaigothe/DavNode/commit/e0b98eda218e8f0edea21dc8bfd71806861ef2cb))
+* **server:** add DELETE route ([b85204c](https://github.com/kaigothe/DavNode/commit/b85204c1433441542fe84e4d8b2090df6ae92b1e))
+* **server:** add Express app and real server entrypoint ([dc1544f](https://github.com/kaigothe/DavNode/commit/dc1544f4c2aa9dbda25edf54b6d45e0b9c40a6b7))
+* **server:** add GET route ([7002995](https://github.com/kaigothe/DavNode/commit/70029958a77de9f230f4c178748a75514964c236))
+* **server:** add HTTP Basic Auth middleware ([fd0c98c](https://github.com/kaigothe/DavNode/commit/fd0c98c34cf47fc6be5a44810c9c5d2f0b1308c4))
+* **server:** add MKCOL route ([8eab8bf](https://github.com/kaigothe/DavNode/commit/8eab8bf2da20de11ecefaaf0399ef02b004c2049))
+* **server:** add owner-only authorization and central error handling ([cc56356](https://github.com/kaigothe/DavNode/commit/cc56356b4334e959b9747870f9c71fe474384987))
+* **server:** add PROPFIND route ([20e91e1](https://github.com/kaigothe/DavNode/commit/20e91e180053c7d94abd5efee937e7c70cba91ec))
+* **server:** add PROPPATCH route ([a89039a](https://github.com/kaigothe/DavNode/commit/a89039af558d48544f29f01dc9b464d11d965acb))
+* **server:** add PUT route ([795d6c0](https://github.com/kaigothe/DavNode/commit/795d6c0ee61c5c81056c518419b445744976cf4f))
+* **server:** add tenant-resolution middleware ([5e1b6d7](https://github.com/kaigothe/DavNode/commit/5e1b6d772971d433bec0f09cad3e29b1b8c30082))
+
 # [1.1.0](https://github.com/kaigothe/DavNode/compare/v1.0.0...v1.1.0) (2026-08-31)
 
 
