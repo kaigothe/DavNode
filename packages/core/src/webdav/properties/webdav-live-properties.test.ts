@@ -151,18 +151,14 @@ describe('WebDavLiveProperties', () => {
       );
     });
 
-    it('reports empty supportedlock/lockdiscovery (no real locking until M4)', async () => {
+    it('does not report supportedlock/lockdiscovery — owned by LockPropertiesProvider (M4)', async () => {
       const properties = await new WebDavLiveProperties().listLiveProperties(
         makeCollection(),
         FAKE_CONTEXT,
       );
 
-      expect(properties.find((p) => p.name === 'supportedlock')?.value).toBe(
-        '',
-      );
-      expect(properties.find((p) => p.name === 'lockdiscovery')?.value).toBe(
-        '',
-      );
+      expect(properties.find((p) => p.name === 'supportedlock')).toBeUndefined();
+      expect(properties.find((p) => p.name === 'lockdiscovery')).toBeUndefined();
     });
   });
 
@@ -189,6 +185,12 @@ describe('WebDavLiveProperties', () => {
           'not-a-real-property',
         ),
       ).toBe(false);
+    });
+
+    it('returns false for supportedlock/lockdiscovery — owned by LockPropertiesProvider (M4)', () => {
+      const provider = new WebDavLiveProperties();
+      expect(provider.isLiveProperty('DAV:', 'supportedlock')).toBe(false);
+      expect(provider.isLiveProperty('DAV:', 'lockdiscovery')).toBe(false);
     });
   });
 });

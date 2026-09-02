@@ -371,4 +371,128 @@ describe('PROPFIND route', () => {
 
     expect(response.status).toBe(403);
   });
+
+  describe('lock properties (M4)', () => {
+    const lockPropfindBody = `<D:propfind xmlns:D="DAV:"><D:prop><D:lockdiscovery/><D:supportedlock/></D:prop></D:propfind>`;
+
+    it('an unlocked resource gets an empty lockdiscovery, no error', async () => {
+      const response = await propfind('/dav/acme/files', {
+        depth: '0',
+        body: lockPropfindBody,
+      });
+
+      expect(response.status).toBe(207);
+      const body = await response.text();
+      expect(body).toContain('<D:lockdiscovery/>');
+    });
+
+    it('a directly locked resource returns an activelock with the correct locktoken', async () => {
+      const lockResponse = await fetch(`${baseUrl}/dav/acme/files`, {
+        method: 'LOCK',
+        headers: {
+          Authorization: basicAuthHeader('alice', PASSWORD),
+          'Content-Type': 'application/xml',
+        },
+        body: '<D:lockinfo xmlns:D="DAV:"><D:lockscope><D:exclusive/></D:lockscope><D:locktype><D:write/></D:locktype></D:lockinfo>',
+      });
+      const token = lockResponse.headers.get('Lock-Token')!.slice(1, -1);
+
+      const response = await propfind('/dav/acme/files', {
+        depth: '0',
+        body: lockPropfindBody,
+      });
+
+      expect(response.status).toBe(207);
+      const body = await response.text();
+      expect(body).toContain(
+        `<D:locktoken><D:href>${token}</D:href></D:locktoken>`,
+      );
+    });
+
+    it('a resource with a lock inherited from a Depth: infinity ancestor reports lockroot pointing at that ancestor, not itself', async () => {
+      const sub = await dataSource.getRepository(Collection).save(
+        dataSource.getRepository(Collection).create({
+          tenantId: tenant.id,
+          parentCollectionId: root.id,
+          ownerPrincipalId: alice.principalId,
+          displayName: 'sub',
+        }),
+      );
+      const doc = await dataSource.getRepository(FileResource).save(
+        dataSource.getRepository(FileResource).create({
+          tenantId: tenant.id,
+          collectionId: sub.id,
+          name: 'doc.txt',
+          contentType: 'text/plain',
+          etag: 'etag-1',
+          sizeBytes: 1,
+          ownerPrincipalId: alice.principalId,
+        }),
+      );
+      await createOwnerAllAce(
+        dataSource.manager,
+        'collection',
+        sub.id,
+        alice.principalId,
+      );
+      await createOwnerAllAce(
+        dataSource.manager,
+        'file',
+        doc.id,
+        alice.principalId,
+      );
+      const lockResponse = await fetch(`${baseUrl}/dav/acme/files/sub`, {
+        method: 'LOCK',
+        headers: {
+          Authorization: basicAuthHeader('alice', PASSWORD),
+          'Content-Type': 'application/xml',
+          Depth: 'infinity',
+        },
+        body: '<D:lockinfo xmlns:D="DAV:"><D:lockscope><D:exclusive/></D:lockscope><D:locktype><D:write/></D:locktype></D:lockinfo>',
+      });
+      expect(lockResponse.status).toBe(200);
+
+      const response = await propfind('/dav/acme/files/sub/doc.txt', {
+        depth: '0',
+        body: lockPropfindBody,
+      });
+
+      expect(response.status).toBe(207);
+      const body = await response.text();
+      expect(body).toContain(
+        '<D:lockroot><D:href>/dav/acme/files/sub</D:href></D:lockroot>',
+      );
+      expect(body).not.toContain(
+        '<D:lockroot><D:href>/dav/acme/files/sub/doc.txt</D:href></D:lockroot>',
+      );
+    });
+
+    it('supportedlock lists both exclusive/write and shared/write', async () => {
+      const response = await propfind('/dav/acme/files', {
+        depth: '0',
+        body: lockPropfindBody,
+      });
+
+      expect(response.status).toBe(207);
+      const body = await response.text();
+      expect(body).toContain('<D:exclusive/>');
+      expect(body).toContain('<D:shared/>');
+      expect(body.match(/<D:lockentry>/g)).toHaveLength(2);
+    });
+
+    it('PROPPATCH still rejects an attempt to set lockdiscovery as a dead property', async () => {
+      const response = await fetch(`${baseUrl}/dav/acme/files`, {
+        method: 'PROPPATCH',
+        headers: {
+          Authorization: basicAuthHeader('alice', PASSWORD),
+          'Content-Type': 'application/xml',
+        },
+        body: '<D:propertyupdate xmlns:D="DAV:"><D:set><D:prop><D:lockdiscovery>bogus</D:lockdiscovery></D:prop></D:set></D:propertyupdate>',
+      });
+
+      expect(response.status).toBe(207);
+      const body = await response.text();
+      expect(body).toContain('HTTP/1.1 403 Forbidden');
+    });
+  });
 });

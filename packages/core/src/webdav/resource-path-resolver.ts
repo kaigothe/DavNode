@@ -1,9 +1,65 @@
-import { IsNull, type DataSource } from 'typeorm';
+import { IsNull, type DataSource, type EntityManager } from 'typeorm';
 import { Collection } from '../entities/collection.entity.js';
 import { FileResource } from '../entities/file-resource.entity.js';
+import type { Tenant } from '../entities/tenant.entity.js';
 
 /** Either a `Collection` or a `FileResource` — whatever a path segment sequence resolves to. */
 export type WebDavTreeResource = Collection | FileResource;
+
+/**
+ * Resolves `collectionId`'s own DAV href by walking its
+ * `parentCollectionId` chain up to the tenant root and joining the
+ * collected `displayName`s — the reverse of {@link ResourcePathResolver.resolve}
+ * (which goes href → resource, not resource → href). A plain function
+ * rather than a `ResourcePathResolver` method since its callers (live
+ * property providers) are handed a per-request `EntityManager`, not a
+ * `DataSource` to construct a resolver instance from.
+ *
+ * Originally written for `DAV:acl`'s `<D:inherited><D:href>...</D:href></D:inherited>`
+ * (RFC 3744 §5.5, naming the ancestor collection an inherited ACE came
+ * from) and shared as-is for `DAV:lockdiscovery`'s `<D:lockroot>` (RFC
+ * 4918 §14.12, naming the ancestor collection an inherited lock sits
+ * on) — both need exactly the same resource-id-to-href resolution.
+ */
+export async function resolveCollectionHref(
+  manager: EntityManager,
+  tenant: Tenant,
+  collectionId: string,
+): Promise<string> {
+  const collections = manager.getRepository(Collection);
+  const segments: string[] = [];
+  let current = await collections.findOneByOrFail({ id: collectionId });
+  while (current.parentCollectionId !== null) {
+    segments.unshift(current.displayName);
+    current = await collections.findOneByOrFail({
+      id: current.parentCollectionId,
+    });
+  }
+  const suffix = segments.map(encodeURIComponent).join('/');
+  return `/dav/${tenant.slug}/files${suffix ? `/${suffix}` : ''}`;
+}
+
+/**
+ * Resolves any {@link WebDavTreeResource}'s own DAV href — a
+ * `FileResource` extends {@link resolveCollectionHref}'s result for its
+ * own parent collection with its own `name` segment; a `Collection`
+ * delegates to it directly.
+ */
+export async function resolveResourceHref(
+  manager: EntityManager,
+  tenant: Tenant,
+  resource: WebDavTreeResource,
+): Promise<string> {
+  if (resource instanceof Collection) {
+    return resolveCollectionHref(manager, tenant, resource.id);
+  }
+  const parentHref = await resolveCollectionHref(
+    manager,
+    tenant,
+    resource.collectionId,
+  );
+  return `${parentHref.replace(/\/$/, '')}/${encodeURIComponent(resource.name)}`;
+}
 
 /**
  * Resolves `/dav/{tenant}/files/...` paths (RFC 4918's URL-addressed

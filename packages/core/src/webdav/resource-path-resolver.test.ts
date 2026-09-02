@@ -9,11 +9,16 @@ import {
   Tenant,
 } from '../entities/index.js';
 import { ALL_MIGRATIONS } from '../migrations/sqlite/index.js';
-import { ResourcePathResolver } from './resource-path-resolver.js';
+import {
+  ResourcePathResolver,
+  resolveCollectionHref,
+  resolveResourceHref,
+} from './resource-path-resolver.js';
 
 describe('ResourcePathResolver', () => {
   let dataSource: DataSource;
   let resolver: ResourcePathResolver;
+  let tenant: Tenant;
   let tenantId: string;
   let ownerPrincipalId: string;
   let root: Collection;
@@ -27,7 +32,7 @@ describe('ResourcePathResolver', () => {
     await dataSource.runMigrations();
     resolver = new ResourcePathResolver(dataSource);
 
-    const tenant = await dataSource
+    tenant = await dataSource
       .getRepository(Tenant)
       .save(
         dataSource
@@ -199,6 +204,144 @@ describe('ResourcePathResolver', () => {
       const children = await resolver.listChildren(root);
 
       expect(children).toEqual([]);
+    });
+  });
+
+  describe('resolveCollectionHref', () => {
+    it('resolves the tenant root collection to the bare files href, no segment', async () => {
+      const href = await resolveCollectionHref(
+        dataSource.manager,
+        tenant,
+        root.id,
+      );
+
+      expect(href).toBe('/dav/acme/files');
+    });
+
+    it('resolves a direct child collection to a one-segment href', async () => {
+      const sub = await dataSource.getRepository(Collection).save(
+        dataSource.getRepository(Collection).create({
+          tenantId,
+          parentCollectionId: root.id,
+          ownerPrincipalId,
+          displayName: 'sub',
+        }),
+      );
+
+      const href = await resolveCollectionHref(
+        dataSource.manager,
+        tenant,
+        sub.id,
+      );
+
+      expect(href).toBe('/dav/acme/files/sub');
+    });
+
+    it('resolves a nested collection by joining every ancestor displayName in order', async () => {
+      const a = await dataSource.getRepository(Collection).save(
+        dataSource.getRepository(Collection).create({
+          tenantId,
+          parentCollectionId: root.id,
+          ownerPrincipalId,
+          displayName: 'a',
+        }),
+      );
+      const b = await dataSource.getRepository(Collection).save(
+        dataSource.getRepository(Collection).create({
+          tenantId,
+          parentCollectionId: a.id,
+          ownerPrincipalId,
+          displayName: 'b',
+        }),
+      );
+
+      const href = await resolveCollectionHref(
+        dataSource.manager,
+        tenant,
+        b.id,
+      );
+
+      expect(href).toBe('/dav/acme/files/a/b');
+    });
+
+    it('percent-encodes a displayName containing special characters', async () => {
+      const sub = await dataSource.getRepository(Collection).save(
+        dataSource.getRepository(Collection).create({
+          tenantId,
+          parentCollectionId: root.id,
+          ownerPrincipalId,
+          displayName: 'my folder',
+        }),
+      );
+
+      const href = await resolveCollectionHref(
+        dataSource.manager,
+        tenant,
+        sub.id,
+      );
+
+      expect(href).toBe('/dav/acme/files/my%20folder');
+    });
+  });
+
+  describe('resolveResourceHref', () => {
+    it('delegates to resolveCollectionHref for a Collection resource', async () => {
+      const sub = await dataSource.getRepository(Collection).save(
+        dataSource.getRepository(Collection).create({
+          tenantId,
+          parentCollectionId: root.id,
+          ownerPrincipalId,
+          displayName: 'sub',
+        }),
+      );
+
+      const href = await resolveResourceHref(dataSource.manager, tenant, sub);
+
+      expect(href).toBe('/dav/acme/files/sub');
+    });
+
+    it('appends its own name to the parent collection href for a FileResource', async () => {
+      const file = await dataSource.getRepository(FileResource).save(
+        dataSource.getRepository(FileResource).create({
+          tenantId,
+          collectionId: root.id,
+          name: 'report.txt',
+          contentType: 'text/plain',
+          etag: '"1"',
+          sizeBytes: 3,
+          ownerPrincipalId,
+        }),
+      );
+
+      const href = await resolveResourceHref(dataSource.manager, tenant, file);
+
+      expect(href).toBe('/dav/acme/files/report.txt');
+    });
+
+    it('resolves a FileResource nested inside a sub-collection', async () => {
+      const sub = await dataSource.getRepository(Collection).save(
+        dataSource.getRepository(Collection).create({
+          tenantId,
+          parentCollectionId: root.id,
+          ownerPrincipalId,
+          displayName: 'sub',
+        }),
+      );
+      const file = await dataSource.getRepository(FileResource).save(
+        dataSource.getRepository(FileResource).create({
+          tenantId,
+          collectionId: sub.id,
+          name: 'nested.txt',
+          contentType: 'text/plain',
+          etag: '"1"',
+          sizeBytes: 3,
+          ownerPrincipalId,
+        }),
+      );
+
+      const href = await resolveResourceHref(dataSource.manager, tenant, file);
+
+      expect(href).toBe('/dav/acme/files/sub/nested.txt');
     });
   });
 });

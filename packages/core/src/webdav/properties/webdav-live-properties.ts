@@ -17,8 +17,6 @@ const LIVE_PROPERTY_NAMES = new Set([
   'getetag',
   'getlastmodified',
   'resourcetype',
-  'supportedlock',
-  'lockdiscovery',
 ]);
 
 function property(name: string, value: string): PropertyValue {
@@ -30,11 +28,15 @@ function property(name: string, value: string): PropertyValue {
  * `Collection`/`FileResource`'s own fixed columns rather than the
  * `*_properties` dead-property tables.
  *
- * `supportedlock` and `lockdiscovery` are always returned empty: M2 has
- * no real locking (RFC 4918 Class 2 locking is M4), but both properties
- * are still served — with "no lock types supported"/"no active
- * locks" — for Class 1 spec conformance, per
- * `milestones/M2-webdav-core/00-setting-goal.md`.
+ * `supportedlock`/`lockdiscovery` used to be served here too, always
+ * empty (M2 had no real locking yet) — now owned entirely by
+ * `LockPropertiesProvider` (M4,
+ * `milestones/M4-locking-sync/06-lock-properties`), registered
+ * alongside this provider in the same `PropertyProviderRegistry`.
+ * `PropertyProviderRegistry.listLiveProperties` concatenates every
+ * registered provider's results with no per-name override, so this
+ * provider must not claim either name any more — a second `<D:lockdiscovery>`
+ * element in the same `<D:prop>` would be invalid.
  *
  * `getcontentlength`, `getcontenttype`, and `getetag` are only defined
  * for `FileResource`: `Collection` has no matching columns (a
@@ -55,8 +57,6 @@ export class WebDavLiveProperties implements PropertyProvider<WebDavResource> {
     const properties: PropertyValue[] = [
       property('creationdate', resource.createdAt.toISOString()),
       property('getlastmodified', resource.updatedAt.toUTCString()),
-      property('supportedlock', ''),
-      property('lockdiscovery', ''),
     ];
 
     if (resource instanceof Collection) {

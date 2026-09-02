@@ -1,6 +1,7 @@
 import {
   buildMultistatusResponse,
   DeadPropertyService,
+  LockPropertiesProvider,
   parseProppatchRequestBody,
   PropertyProviderRegistry,
   ResourcePathResolver,
@@ -50,6 +51,12 @@ export function registerProppatchRoute(
   const deadProperties = new DeadPropertyService(dataSource);
   const registry = new PropertyProviderRegistry<WebDavResource>();
   registry.register(new WebDavLiveProperties());
+  // Registered here too (not just PROPFIND's registry) so
+  // `isLiveProperty` still protects `supportedlock`/`lockdiscovery`
+  // from being set as ordinary dead properties, now that
+  // `WebDavLiveProperties` no longer claims them (M4) — see
+  // `lock-properties-provider.ts`.
+  registry.register(new LockPropertiesProvider());
 
   app.proppatch(
     '/dav/:tenantSlug/files{/*splat}',

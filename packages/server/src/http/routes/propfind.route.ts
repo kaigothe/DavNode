@@ -3,6 +3,7 @@ import {
   buildMultistatusResponse,
   Collection,
   DeadPropertyService,
+  LockPropertiesProvider,
   parsePropfindRequestBody,
   PropertyProviderRegistry,
   ResourcePathResolver,
@@ -102,6 +103,7 @@ export function registerPropfindRoute(
   const registry = new PropertyProviderRegistry<WebDavResource>();
   registry.register(new WebDavLiveProperties());
   registry.register(new AclPropertiesProvider());
+  registry.register(new LockPropertiesProvider());
 
   app.propfind(
     '/dav/:tenantSlug/files{/*splat}',

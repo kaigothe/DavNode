@@ -152,6 +152,8 @@ export { DeadPropertyService } from './webdav/properties/dead-property.service.j
 
 export {
   ResourcePathResolver,
+  resolveCollectionHref,
+  resolveResourceHref,
   type WebDavTreeResource,
 } from './webdav/resource-path-resolver.js';
 export { CollectionChangeService } from './webdav/collection-change.service.js';
@@ -172,6 +174,7 @@ export {
   parseLockInfoRequestBody,
   type LockInfoRequestBody,
 } from './webdav/locking/lock-request-parser.js';
+export { LockPropertiesProvider } from './webdav/locking/lock-properties-provider.js';
 
 export {
   ReportRegistry,

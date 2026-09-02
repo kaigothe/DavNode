@@ -1,10 +1,10 @@
 import type { EntityManager } from 'typeorm';
 import { fragment } from 'xmlbuilder2';
-import { Collection } from '../entities/collection.entity.js';
 import { Principal } from '../entities/principal.entity.js';
 import type { Tenant } from '../entities/tenant.entity.js';
 import { toPrincipalUrl } from '../principals/principal-url.js';
 import { toSpecialPrincipalXmlElement } from '../principals/special-principals.js';
+import { resolveCollectionHref } from '../webdav/resource-path-resolver.js';
 import type { XmlNode } from '../webdav/xml/xml-value.js';
 import { DAV_NAMESPACE } from '../webdav/xml/request-parser.js';
 import type {
@@ -69,32 +69,6 @@ function appendPrincipalRef(parent: XmlNode, ref: ResolvedPrincipalRef): void {
   } else {
     principalElement.ele(DAV_NAMESPACE, 'D:href').txt(ref.url);
   }
-}
-
-/**
- * Resolves `collectionId`'s DAV href by walking its `parentCollectionId`
- * chain up to the tenant root and joining the collected `displayName`s —
- * the reverse of `ResourcePathResolver.resolve` (which goes href →
- * resource, not resource → href). Needed only for `DAV:acl`'s
- * `<D:inherited><D:href>...</D:href></D:inherited>` (RFC 3744 §5.5),
- * which must name the ancestor collection an inherited ACE came from.
- */
-async function resolveCollectionHref(
-  manager: EntityManager,
-  tenant: Tenant,
-  collectionId: string,
-): Promise<string> {
-  const collections = manager.getRepository(Collection);
-  const segments: string[] = [];
-  let current = await collections.findOneByOrFail({ id: collectionId });
-  while (current.parentCollectionId !== null) {
-    segments.unshift(current.displayName);
-    current = await collections.findOneByOrFail({
-      id: current.parentCollectionId,
-    });
-  }
-  const suffix = segments.map(encodeURIComponent).join('/');
-  return `/dav/${tenant.slug}/files${suffix ? `/${suffix}` : ''}`;
 }
 
 /** Builds the `<D:acl>` property's value: one `<D:ace>` per collected ACE (RFC 3744 §5.5). */
