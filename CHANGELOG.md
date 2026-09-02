@@ -1,3 +1,15 @@
+# [1.7.0](https://github.com/kaigothe/DavNode/compare/v1.6.0...v1.7.0) (2026-09-02)
+
+
+### Features
+
+* **core:** add CollectionLock and FileLock entities ([96feb92](https://github.com/kaigothe/DavNode/commit/96feb92bf75a2c79ae1edd8e11bada10412007a1))
+* **core:** add lock evaluation (getEffectiveLocks, conflict/token checks) ([8f2729f](https://github.com/kaigothe/DavNode/commit/8f2729fc2a600bbe3023d3cba15243068c3dbc32))
+* **server:** add LOCK refresh and Timeout header handling ([31370a1](https://github.com/kaigothe/DavNode/commit/31370a1b94c9c173fa8060394269cd45e33edf28))
+* **server:** add LOCK route for lock creation ([e930772](https://github.com/kaigothe/DavNode/commit/e930772371b62eb777d5d96251ad3c06ecdb4764))
+* **server:** add lock-enforcement middleware for mutating methods ([5330ad3](https://github.com/kaigothe/DavNode/commit/5330ad3e2bba77f24946e2163a89223599c0f7f4))
+* **server:** add UNLOCK route ([0e54006](https://github.com/kaigothe/DavNode/commit/0e540067c8fe402c08747a38abcf7bf9e61fb700))
+
 # [1.6.0](https://github.com/kaigothe/DavNode/compare/v1.5.0...v1.6.0) (2026-09-01)
 
 
