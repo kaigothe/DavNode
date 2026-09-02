@@ -177,6 +177,16 @@ export {
 export { LockPropertiesProvider } from './webdav/locking/lock-properties-provider.js';
 
 export {
+  encodeSyncToken,
+  decodeSyncToken,
+  type DecodedSyncToken,
+} from './webdav/sync/sync-token.js';
+export {
+  validateSyncToken,
+  type SyncTokenValidationResult,
+} from './webdav/sync/validate-sync-token.js';
+
+export {
   ReportRegistry,
   parseReportRootElement,
   type ReportContext,
