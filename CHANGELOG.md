@@ -1,3 +1,12 @@
+# [1.8.0](https://github.com/kaigothe/DavNode/compare/v1.7.0...v1.8.0) (2026-09-02)
+
+
+### Features
+
+* **core:** add lock live properties (supportedlock, lockdiscovery) ([8dc9503](https://github.com/kaigothe/DavNode/commit/8dc9503bae74084836cc2476ed337a45e172642f))
+* **core:** add sync-collection REPORT handler ([def0419](https://github.com/kaigothe/DavNode/commit/def041990b016de5305bf5c7620479d1676e18b3))
+* **core:** add sync-token encode/decode and validation ([dd1daba](https://github.com/kaigothe/DavNode/commit/dd1daba66e6d79c1c87c42978ea25b5429453b5d))
+
 # [1.7.0](https://github.com/kaigothe/DavNode/compare/v1.6.0...v1.7.0) (2026-09-02)
 
 
