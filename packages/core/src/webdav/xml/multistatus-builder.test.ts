@@ -148,4 +148,55 @@ describe('buildMultistatusResponse', () => {
       'HTTP/1.1 423',
     ]);
   });
+
+  it('emits a bare response-level status with no propstat when resource.status is set', () => {
+    const xml = buildMultistatusResponse([
+      {
+        href: '/dav/acme/files/removed.txt',
+        properties: [],
+        status: 404,
+      },
+    ]);
+
+    const root = create(xml).root();
+    expect(findAll(root, 'propstat')).toHaveLength(0);
+    expect(findAll(root, 'status').map((s) => s.node.textContent)).toEqual([
+      'HTTP/1.1 404 Not Found',
+    ]);
+  });
+
+  it('ignores properties when resource.status is set, even if non-empty', () => {
+    const xml = buildMultistatusResponse([
+      {
+        href: '/dav/acme/files/removed.txt',
+        properties: [{ namespace: 'DAV:', name: 'getetag', status: 200 }],
+        status: 404,
+      },
+    ]);
+
+    const root = create(xml).root();
+    expect(findAll(root, 'propstat')).toHaveLength(0);
+    expect(findAll(root, 'getetag')).toHaveLength(0);
+  });
+
+  it('appends a trailing <D:sync-token> when options.syncToken is set', () => {
+    const xml = buildMultistatusResponse(
+      [{ href: '/dav/acme/files/a.txt', properties: [] }],
+      { syncToken: 'davnode-sync:collection-1:5' },
+    );
+
+    const root = create(xml).root();
+    const tokens = findAll(root, 'sync-token');
+    expect(tokens).toHaveLength(1);
+    expect(tokens[0]?.node.textContent).toBe('davnode-sync:collection-1:5');
+  });
+
+  it('omits <D:sync-token> when options.syncToken is not given', () => {
+    const xml = buildMultistatusResponse([
+      { href: '/dav/acme/files/a.txt', properties: [] },
+    ]);
+
+    const root = create(xml).root();
+    expect(findAll(root, 'sync-token')).toHaveLength(0);
+  });
 });

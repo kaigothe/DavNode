@@ -75,7 +75,7 @@ describe('PrincipalPropertySearchReportHandler', () => {
   });
 
   function context(principal: Principal): ReportContext {
-    return { tenant, principal, manager: dataSource.manager };
+    return { tenant, principal, manager: dataSource.manager, segments: [] };
   }
 
   it('finds the matching user principal by a substring of displayname', async () => {

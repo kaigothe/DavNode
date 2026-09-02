@@ -2,6 +2,7 @@ import {
   DAV_NAMESPACE,
   PrincipalPropertySearchReportHandler,
   ReportRegistry,
+  SyncCollectionReportHandler,
   type DataSource,
 } from '@davnode/core';
 import express from 'express';
@@ -70,6 +71,11 @@ export function createApp(dataSource: DataSource): express.Express {
     DAV_NAMESPACE,
     'principal-property-search',
     new PrincipalPropertySearchReportHandler(),
+  );
+  reportRegistry.register(
+    DAV_NAMESPACE,
+    'sync-collection',
+    new SyncCollectionReportHandler(),
   );
   registerReportRoute(app, dataSource, reportRegistry);
 

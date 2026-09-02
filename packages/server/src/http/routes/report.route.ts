@@ -6,7 +6,11 @@ import {
   type ReportRegistry,
 } from '@davnode/core';
 import express, { type Express, type Request, type Response } from 'express';
-import { requirePrincipal, requireTenant } from './dav-request.util.js';
+import {
+  pathSegments,
+  requirePrincipal,
+  requireTenant,
+} from './dav-request.util.js';
 
 /**
  * Registers the REPORT route (RFC 3253 §3.6) — a single Express route
@@ -19,10 +23,10 @@ import { requirePrincipal, requireTenant } from './dav-request.util.js';
  *
  * This route makes no assumption about what a specific report's request
  * or response looks like — only that every report needs the same
- * `tenant`/`principal`/DB-manager context (`ReportContext`) and produces
- * a status + XML body (`ReportResult`). Adding a new report type only
- * ever means registering another handler (`ReportRegistry.register`),
- * never touching this file.
+ * `tenant`/`principal`/DB-manager/URL-path-segments context
+ * (`ReportContext`) and produces a status + XML body (`ReportResult`).
+ * Adding a new report type only ever means registering another handler
+ * (`ReportRegistry.register`), never touching this file.
  *
  * - No body, or a body that isn't well-formed XML → `400 Bad Request`.
  * - A well-formed body whose root element has no registered handler →
@@ -61,6 +65,7 @@ export function registerReportRoute(
         tenant,
         principal,
         manager: dataSource.manager,
+        segments: pathSegments(req),
       };
       const result = await handler.handle(body, context);
       res

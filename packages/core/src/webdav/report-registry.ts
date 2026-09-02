@@ -7,13 +7,29 @@ import { asElement } from './xml/xml-value.js';
 /**
  * Per-request context a {@link ReportHandler} needs — the same shape as
  * `PropertyProviderContext` (`webdav/properties/property-provider.interface.ts`):
- * the tenant and requesting principal, plus an `EntityManager` for the
- * handler's own DB access.
+ * the tenant and requesting principal, an `EntityManager` for the
+ * handler's own DB access, and the request URL's full path segments
+ * after `/dav/{tenantSlug}` — e.g. `['files', 'reports', 'q3.pdf']` for
+ * `REPORT /dav/acme/files/reports/q3.pdf`. Deliberately **not** stripped
+ * of a tree-prefix segment like `files`/`principals` the way
+ * `pathSegments` in `@davnode/server`'s route files is (those routes'
+ * own patterns already consume that literal segment; this dispatcher's
+ * route pattern doesn't, since REPORT can target any tree) — a handler
+ * that cares which resource the request targets (M4's
+ * `sync-collection`, unlike M3's tree-wide
+ * `principal-property-search`, which ignores this field) must interpret
+ * that structure itself, e.g. confirming `segments[0] === 'files'` before
+ * resolving the rest via `ResourcePathResolver`. Added when
+ * `sync-collection` revealed `principal-property-search` alone hadn't
+ * needed it yet, the same way `PropertyProviderContext` grew its own
+ * fields once a second property provider needed more than the first
+ * (M3's ACL properties).
  */
 export interface ReportContext {
   tenant: Tenant;
   principal: Principal;
   manager: EntityManager;
+  segments: readonly string[];
 }
 
 /**

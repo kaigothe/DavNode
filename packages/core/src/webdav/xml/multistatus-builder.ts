@@ -21,6 +21,17 @@ export interface MultistatusResourceResult {
   /** The resource's URL, used as the `<D:href>` value verbatim. */
   href: string;
   properties: MultistatusPropertyResult[];
+  /**
+   * A response-level status, replacing the usual per-property
+   * `<D:propstat>` breakdown with a single bare `<D:status>` directly
+   * under `<D:response>` — `properties` is ignored when this is set.
+   * RFC 6578 §3.2 requires exactly this shape for a `sync-collection`
+   * REPORT's removed members (`404`, "MUST NOT contain any
+   * DAV:propstat element"), which doesn't fit the property-level model
+   * PROPFIND/PROPPATCH/ACL all share (there's no property list to
+   * report a status *for* — the whole member is simply gone).
+   */
+  status?: number;
 }
 
 const DAV_PREFIX = 'D';
@@ -81,9 +92,17 @@ function groupByStatus(
  * to a scoped default-namespace declaration for any other namespace —
  * both are well-formed, unambiguous XML regardless of which prefix (if
  * any) the requesting client originally used.
+ *
+ * @param resources - One entry per resource in the response.
+ * @param options - `syncToken`, when set, is appended as a trailing
+ * `<D:sync-token>` sibling of the `<D:response>` elements (RFC 6578
+ * §3.2's `sync-collection` REPORT response shape) — omitted entirely
+ * for every other multistatus response (PROPFIND, PROPPATCH, M3 ACL),
+ * which don't have one.
  */
 export function buildMultistatusResponse(
   resources: MultistatusResourceResult[],
+  options: { syncToken?: string } = {},
 ): string {
   const doc = create({ version: '1.0', encoding: 'utf-8' }).ele(
     DAV_NAMESPACE,
@@ -93,6 +112,13 @@ export function buildMultistatusResponse(
   for (const resource of resources) {
     const response = doc.ele(DAV_NAMESPACE, `${DAV_PREFIX}:response`);
     response.ele(DAV_NAMESPACE, `${DAV_PREFIX}:href`).txt(resource.href);
+
+    if (resource.status !== undefined) {
+      response
+        .ele(DAV_NAMESPACE, `${DAV_PREFIX}:status`)
+        .txt(statusLine(resource.status));
+      continue;
+    }
 
     for (const [status, properties] of groupByStatus(resource.properties)) {
       const propstat = response.ele(DAV_NAMESPACE, `${DAV_PREFIX}:propstat`);
@@ -107,6 +133,12 @@ export function buildMultistatusResponse(
         .ele(DAV_NAMESPACE, `${DAV_PREFIX}:status`)
         .txt(statusLine(status));
     }
+  }
+
+  if (options.syncToken !== undefined) {
+    doc
+      .ele(DAV_NAMESPACE, `${DAV_PREFIX}:sync-token`)
+      .txt(options.syncToken);
   }
 
   return doc.end();

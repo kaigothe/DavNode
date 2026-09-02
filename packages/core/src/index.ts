@@ -185,6 +185,11 @@ export {
   validateSyncToken,
   type SyncTokenValidationResult,
 } from './webdav/sync/validate-sync-token.js';
+export {
+  parseSyncCollectionRequestBody,
+  type SyncCollectionRequestBody,
+} from './webdav/sync/sync-collection-request-parser.js';
+export { SyncCollectionReportHandler } from './webdav/sync/sync-collection-report.js';
 
 export {
   ReportRegistry,
