@@ -22,14 +22,25 @@ import {
 /**
  * Resolves `segments` (path components after
  * `/addressbooks/:userId/`) within `ownerPrincipalId`'s addressbook
- * home: `[]` is the home collection itself, `[addressbookId]` an
- * actual addressbook owned by that user. Anything deeper (individual
- * address objects) isn't resolved here — that's the AddressObject-CRUD
- * routes' job (Große Aufgabe 4), not yet built.
+ * home: `[]` is the home collection itself, `[name]` an actual
+ * addressbook owned by that user. Anything deeper (individual address
+ * objects) isn't resolved here — that's the AddressObject-CRUD routes'
+ * job (Große Aufgabe 4), not yet built.
+ *
+ * Addressbooks are looked up by `displayName`, not by their own row id:
+ * an addressbook's URL is whatever path segment its Extended MKCOL
+ * request targeted (`addressbook-mkcol.route.ts`), the same way a
+ * WebDAV `Collection`'s URL segment *is* its `displayName` (M2) —
+ * matching ordinary MKCOL semantics, where a resource is created at the
+ * URL the client asked for. `AddressbookCollection.displayName` has no
+ * uniqueness constraint at the database level, but MKCOL's own
+ * "does something already resolve at this path" check keeps two
+ * same-named addressbooks from coexisting under one owner in practice
+ * (identical to how `Collection` siblings never collide either).
  *
  * @returns The resolved node, or `null` if `segments` doesn't name a
- * valid path (deeper than one segment, or an addressbook id that
- * doesn't exist or isn't owned by `ownerPrincipalId` in this tenant).
+ * valid path (deeper than one segment, or a name that doesn't match any
+ * addressbook owned by `ownerPrincipalId` in this tenant).
  */
 async function resolveAddressbookHomeTreeResource(
   dataSource: DataSource,
@@ -43,10 +54,10 @@ async function resolveAddressbookHomeTreeResource(
   if (segments.length > 1) {
     return null;
   }
-  const [addressbookId] = segments;
+  const [displayName] = segments;
   return dataSource
     .getRepository(AddressbookCollection)
-    .findOneBy({ id: addressbookId, tenantId, ownerPrincipalId });
+    .findOneBy({ displayName, tenantId, ownerPrincipalId });
 }
 
 /**
@@ -69,7 +80,7 @@ async function listAddressbookHomeChildren(
 
 /** The `<D:href>` for `child`, given its already-resolved parent's own href. */
 function childHref(parentHref: string, child: AddressbookCollection): string {
-  return `${parentHref.replace(/\/$/, '')}/${encodeURIComponent(child.id)}`;
+  return `${parentHref.replace(/\/$/, '')}/${encodeURIComponent(child.displayName)}`;
 }
 
 /**
@@ -92,8 +103,7 @@ async function resolveProperties(
   if (requestBody.kind === 'prop') {
     return requestBody.properties.map((requested) => {
       const found = live.find(
-        (p) =>
-          p.namespace === requested.namespace && p.name === requested.name,
+        (p) => p.namespace === requested.namespace && p.name === requested.name,
       );
       return found ? { ...found, status: 200 } : { ...requested, status: 404 };
     });
@@ -136,8 +146,7 @@ export function registerAddressbookHomeRoute(
   app: Express,
   dataSource: DataSource,
 ): void {
-  const registry =
-    new PropertyProviderRegistry<AddressbookHomeTreeResource>();
+  const registry = new PropertyProviderRegistry<AddressbookHomeTreeResource>();
   registry.register(new AddressbookLiveProperties());
 
   app.propfind(

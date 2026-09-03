@@ -1,14 +1,23 @@
 import type { EntityManager } from 'typeorm';
+import { AddressbookAce } from '../entities/addressbook-ace.entity.js';
 import { CollectionAce } from '../entities/collection-ace.entity.js';
 import { FileAce } from '../entities/file-ace.entity.js';
 
-/** Which ACE table {@link createOwnerAllAce} inserts its row into. */
-export type OwnerAceResourceType = 'collection' | 'file';
+/**
+ * Which ACE table {@link createOwnerAllAce} inserts its row into.
+ * `'addressbook'` (M5) is handled by its own branch below rather than a
+ * fully generic "any ACE entity" parameterization — Große Aufgabe 5
+ * ("ACL-/Lock-/Sync-Wiederverwendung") is where that generalization
+ * (and `AddressObjectAce` alongside it) happens; this is the minimal
+ * extension M5's MKCOL sub-task needs in the meantime.
+ */
+export type OwnerAceResourceType = 'collection' | 'file' | 'addressbook';
 
 /**
  * Creates the default-owner ACE every newly created `Collection`/
- * `FileResource` needs: a `protected = true` row granting `DAV:all` to
- * `ownerPrincipalId`, at `position = 0` (always evaluated first).
+ * `FileResource`/`AddressbookCollection` needs: a `protected = true` row
+ * granting `DAV:all` to `ownerPrincipalId`, at `position = 0` (always
+ * evaluated first).
  *
  * RFC 3744 is default-deny (see milestones/M3-webdav-acl/00-setting-goal.md,
  * Runde 19) — without this, a freshly created resource would be
@@ -22,8 +31,9 @@ export type OwnerAceResourceType = 'collection' | 'file';
  *
  * @param manager - The same `EntityManager` the resource's own creation
  * is using.
- * @param resourceType - Whether `resourceId` names a `Collection` or a
- * `FileResource` — selects `collection_aces` vs. `file_aces`.
+ * @param resourceType - Whether `resourceId` names a `Collection`, a
+ * `FileResource`, or an `AddressbookCollection` — selects
+ * `collection_aces`/`file_aces`/`addressbook_aces`.
  * @param resourceId - Id of the newly created resource.
  * @param ownerPrincipalId - Id of the principal granted `DAV:all`.
  */
@@ -38,6 +48,21 @@ export async function createOwnerAllAce(
     await aces.save(
       aces.create({
         collectionId: resourceId,
+        principalId: ownerPrincipalId,
+        privilege: 'all',
+        grantDeny: 'grant',
+        protected: true,
+        position: 0,
+      }),
+    );
+    return;
+  }
+
+  if (resourceType === 'addressbook') {
+    const aces = manager.getRepository(AddressbookAce);
+    await aces.save(
+      aces.create({
+        addressbookId: resourceId,
         principalId: ownerPrincipalId,
         privilege: 'all',
         grantDeny: 'grant',

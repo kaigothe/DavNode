@@ -91,7 +91,7 @@ describe('addressbook-home route', () => {
     return hrefs;
   }
 
-  it('lists all of the requesting user\'s addressbooks under their own home collection', async () => {
+  it("lists all of the requesting user's addressbooks under their own home collection", async () => {
     const addressbooks = dataSource.getRepository(AddressbookCollection);
     const personal = await addressbooks.save(
       addressbooks.create({
@@ -118,14 +118,14 @@ describe('addressbook-home route', () => {
     expect(hrefs).toEqual(
       expect.arrayContaining([
         `/dav/acme/addressbooks/${alice.principalId}`,
-        `/dav/acme/addressbooks/${alice.principalId}/${personal.id}`,
-        `/dav/acme/addressbooks/${alice.principalId}/${work.id}`,
+        `/dav/acme/addressbooks/${alice.principalId}/${personal.displayName}`,
+        `/dav/acme/addressbooks/${alice.principalId}/${work.displayName}`,
       ]),
     );
     expect(hrefs).toHaveLength(3);
   });
 
-  it('does not list another user\'s addressbooks', async () => {
+  it("does not list another user's addressbooks", async () => {
     const bob = await new UserService(dataSource).createUser({
       tenantId: tenant.id,
       username: 'bob',
@@ -152,7 +152,7 @@ describe('addressbook-home route', () => {
     expect(hrefs).toEqual([`/dav/acme/addressbooks/${alice.principalId}`]);
   });
 
-  it('returns 403 for another user\'s home collection', async () => {
+  it("returns 403 for another user's home collection", async () => {
     const bob = await new UserService(dataSource).createUser({
       tenantId: tenant.id,
       username: 'bob',
@@ -189,7 +189,7 @@ describe('addressbook-home route', () => {
 
     const requestBody = `<D:propfind xmlns:D="DAV:"><D:prop><D:resourcetype/></D:prop></D:propfind>`;
     const response = await propfind(
-      `/dav/acme/addressbooks/${alice.principalId}/${personal.id}`,
+      `/dav/acme/addressbooks/${alice.principalId}/${personal.displayName}`,
       { depth: '0', body: requestBody },
     );
 
@@ -197,6 +197,32 @@ describe('addressbook-home route', () => {
     const body = await response.text();
     expect(body).toContain('<D:collection');
     expect(body).toContain('addressbook');
+  });
+
+  it('resolves an addressbook whose display name needs URL-encoding, round-tripped through its Depth:1 href', async () => {
+    const addressbooks = dataSource.getRepository(AddressbookCollection);
+    await addressbooks.save(
+      addressbooks.create({
+        tenantId: tenant.id,
+        ownerPrincipalId: alice.principalId,
+        displayName: 'Soccer Team & Friends',
+      }),
+    );
+
+    const listing = await propfind(
+      `/dav/acme/addressbooks/${alice.principalId}`,
+      { depth: '1' },
+    );
+    const hrefs = responseHrefs(await listing.text());
+    const childHref = hrefs.find(
+      (href) => href !== `/dav/acme/addressbooks/${alice.principalId}`,
+    );
+    expect(childHref).toBe(
+      `/dav/acme/addressbooks/${alice.principalId}/${encodeURIComponent('Soccer Team & Friends')}`,
+    );
+
+    const single = await propfind(childHref!, { depth: '0' });
+    expect(single.status).toBe(207);
   });
 
   it('CARD:addressbook-home-set on the user principal points at the correct URL', async () => {

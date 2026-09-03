@@ -161,3 +161,78 @@ export function parseProppatchRequestBody(xml: string): ProppatchRequestBody {
 
   return { operations };
 }
+
+/** One `<D:set><D:prop>` property/value pair from an Extended MKCOL request body. */
+export interface MkcolSetProperty {
+  property: PropertyName;
+  value: string;
+}
+
+/**
+ * A parsed Extended MKCOL request body (RFC 5689 §5.1): the properties
+ * to set on the collection as it's created, in document order. Unlike
+ * {@link ProppatchRequestBody}, there's no `remove` — `<D:mkcol>` only
+ * ever contains `<D:set>` blocks (`<!ELEMENT mkcol (set+)>`).
+ */
+export interface MkcolRequestBody {
+  properties: MkcolSetProperty[];
+}
+
+/**
+ * Parses an Extended MKCOL request body into a {@link MkcolRequestBody}.
+ * Structurally identical to {@link parseProppatchRequestBody}'s `set`
+ * handling (a `DAV:mkcol` root instead of `DAV:propertyupdate`, and no
+ * `remove` blocks to skip) — RFC 5689 reuses PROPPATCH's `<D:set><D:prop>`
+ * shape verbatim (§3: "inherits ... DTD productions from
+ * [RFC4918]").
+ *
+ * @throws An `Error` (including the underlying XML parser's own
+ * `SyntaxError` for malformed input) if `xml` isn't a well-formed
+ * `DAV:mkcol` document.
+ */
+export function parseMkcolRequestBody(xml: string): MkcolRequestBody {
+  const root = create(xml).root();
+  const rootElement = asElement(root.node);
+  if (
+    !rootElement ||
+    rootElement.localName !== 'mkcol' ||
+    rootElement.namespaceURI !== DAV_NAMESPACE
+  ) {
+    throw new Error(
+      `Expected a DAV:mkcol root element, got "${rootElement?.localName ?? root.node.nodeName}" in namespace "${rootElement?.namespaceURI ?? ''}".`,
+    );
+  }
+
+  const properties: MkcolSetProperty[] = [];
+  root.each((block) => {
+    const blockElement = asElement(block.node);
+    if (
+      !blockElement ||
+      blockElement.namespaceURI !== DAV_NAMESPACE ||
+      blockElement.localName !== 'set'
+    ) {
+      return;
+    }
+    block.each((propGroup) => {
+      const propGroupElement = asElement(propGroup.node);
+      if (!propGroupElement || propGroupElement.localName !== 'prop') {
+        return;
+      }
+      propGroup.each((propertyNode) => {
+        const propertyElement = asElement(propertyNode.node);
+        if (!propertyElement) {
+          return;
+        }
+        properties.push({
+          property: {
+            namespace: propertyElement.namespaceURI ?? '',
+            name: propertyElement.localName,
+          },
+          value: serializeElementChildren(propertyNode),
+        });
+      });
+    });
+  });
+
+  return { properties };
+}

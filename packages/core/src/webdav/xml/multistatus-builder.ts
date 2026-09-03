@@ -34,7 +34,12 @@ export interface MultistatusResourceResult {
   status?: number;
 }
 
-const DAV_PREFIX = 'D';
+/**
+ * The namespace prefix every `DAV:`-namespaced element in this file's
+ * output uses. Exported so `mkcol-response-builder.ts` emits the same
+ * `D:` prefix rather than picking its own.
+ */
+export const DAV_PREFIX = 'D';
 
 const STATUS_REASON_PHRASES: Record<number, string> = {
   200: 'OK',
@@ -47,7 +52,15 @@ const STATUS_REASON_PHRASES: Record<number, string> = {
   507: 'Insufficient Storage',
 };
 
-function statusLine(status: number): string {
+/**
+ * Formats a status code as the `HTTP/1.1 {code} {reason}` line RFC
+ * 4918's `<D:status>` element expects (a known reason phrase, or the
+ * bare code for anything not in the table above). Exported for reuse by
+ * other XML builders emitting the same `<D:status>` shape outside a
+ * `<D:multistatus>` — currently `mkcol-response-builder.ts` (RFC 5689
+ * §5.2).
+ */
+export function statusLine(status: number): string {
   const reasonPhrase = STATUS_REASON_PHRASES[status];
   return reasonPhrase
     ? `HTTP/1.1 ${status} ${reasonPhrase}`
@@ -60,8 +73,12 @@ function statusLine(status: number): string {
  * some-404 properties gets its `<D:propstat>` blocks in that same
  * order, matching the order PROPFIND/PROPPATCH handlers naturally
  * produce results in (found properties first, then not-found ones).
+ * Exported for reuse by `mkcol-response-builder.ts`, which groups an
+ * Extended MKCOL response's properties into `<D:propstat>` blocks the
+ * same way, just under a `<D:mkcol-response>` root instead of
+ * `<D:multistatus>`/`<D:response>`.
  */
-function groupByStatus(
+export function groupByStatus(
   properties: MultistatusPropertyResult[],
 ): Array<[number, MultistatusPropertyResult[]]> {
   const groups = new Map<number, MultistatusPropertyResult[]>();

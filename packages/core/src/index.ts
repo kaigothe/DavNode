@@ -140,13 +140,17 @@ export {
   type MultistatusResourceResult,
   buildMultistatusResponse,
 } from './webdav/xml/multistatus-builder.js';
+export { buildMkcolResponse } from './webdav/xml/mkcol-response-builder.js';
 export { buildErrorResponse } from './webdav/xml/error-response-builder.js';
 export {
   DAV_NAMESPACE,
+  type MkcolRequestBody,
+  type MkcolSetProperty,
   type ProppatchOperation,
   type ProppatchRequestBody,
   type PropertyName,
   type PropfindRequestBody,
+  parseMkcolRequestBody,
   parsePropfindRequestBody,
   parseProppatchRequestBody,
 } from './webdav/xml/request-parser.js';
@@ -224,3 +228,4 @@ export {
 } from './carddav/addressbook-home-tree-resource.js';
 export { AddressbookLiveProperties } from './carddav/addressbook-live-properties.js';
 export { AddressbookHomeSetProperty } from './carddav/addressbook-home-set-property.js';
+export { requestsAddressbookResourcetype } from './carddav/mkcol-addressbook-request.js';

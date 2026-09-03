@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  parseMkcolRequestBody,
   parsePropfindRequestBody,
   parseProppatchRequestBody,
 } from './request-parser.js';
@@ -160,5 +161,64 @@ describe('parseProppatchRequestBody', () => {
     const xml = `<D:propfind xmlns:D="DAV:"><D:allprop/></D:propfind>`;
 
     expect(() => parseProppatchRequestBody(xml)).toThrow(/DAV:propertyupdate/);
+  });
+});
+
+describe('parseMkcolRequestBody', () => {
+  it('parses a resourcetype and displayname set, per RFC 5689 §3.4', () => {
+    const xml = `<?xml version="1.0" encoding="utf-8" ?>
+      <D:mkcol xmlns:D="DAV:" xmlns:E="http://example.com/ns/">
+        <D:set>
+          <D:prop>
+            <D:resourcetype>
+              <D:collection/>
+              <E:special-resource/>
+            </D:resourcetype>
+            <D:displayname>Special Resource</D:displayname>
+          </D:prop>
+        </D:set>
+      </D:mkcol>`;
+
+    const result = parseMkcolRequestBody(xml);
+
+    expect(result.properties).toEqual([
+      {
+        property: { namespace: 'DAV:', name: 'resourcetype' },
+        value:
+          '<D:collection xmlns:D="DAV:"/><E:special-resource xmlns:E="http://example.com/ns/"/>',
+      },
+      {
+        property: { namespace: 'DAV:', name: 'displayname' },
+        value: 'Special Resource',
+      },
+    ]);
+  });
+
+  it('supports multiple set blocks, in document order', () => {
+    const xml = `<D:mkcol xmlns:D="DAV:" xmlns:C="urn:example:ns">
+      <D:set>
+        <D:prop><D:displayname>Personal</D:displayname></D:prop>
+      </D:set>
+      <D:set>
+        <D:prop><C:color>blue</C:color></D:prop>
+      </D:set>
+    </D:mkcol>`;
+
+    expect(parseMkcolRequestBody(xml).properties).toEqual([
+      {
+        property: { namespace: 'DAV:', name: 'displayname' },
+        value: 'Personal',
+      },
+      {
+        property: { namespace: 'urn:example:ns', name: 'color' },
+        value: 'blue',
+      },
+    ]);
+  });
+
+  it('throws for a root element that is not DAV:mkcol', () => {
+    const xml = `<D:propertyupdate xmlns:D="DAV:"><D:set><D:prop/></D:set></D:propertyupdate>`;
+
+    expect(() => parseMkcolRequestBody(xml)).toThrow(/DAV:mkcol/);
   });
 });
