@@ -208,3 +208,9 @@ export {
   type ReportHandler,
   type ReportResult,
 } from './webdav/report-registry.js';
+
+export {
+  parseVCard,
+  VCardParseError,
+  type ParsedVCard,
+} from './carddav/vcard-parser.js';

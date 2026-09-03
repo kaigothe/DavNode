@@ -21,6 +21,10 @@
     "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
     "typeorm": "^1.1.0",
+    "vcf": "^2.1.2",
     "xmlbuilder2": "^4.0.3"
+  },
+  "devDependencies": {
+    "@types/vcf": "^2.0.7"
   }
 }
