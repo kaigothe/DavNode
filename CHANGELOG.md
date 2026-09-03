@@ -1,3 +1,18 @@
+# [1.9.0](https://github.com/kaigothe/DavNode/compare/v1.8.0...v1.9.0) (2026-09-03)
+
+
+### Features
+
+* **core:** add AddressbookAce, AddressbookLock and AddressbookChange entities ([6e50bd9](https://github.com/kaigothe/DavNode/commit/6e50bd9b4d18ece64a7bcdc9702c90a5c80c5d11))
+* **core:** add AddressbookCollection entity and migrations ([79e9205](https://github.com/kaigothe/DavNode/commit/79e9205c13564c43267e28d3c8e5585a41f9ef43))
+* **core:** add AddressbookProperty and AddressObjectProperty entities ([217e8b1](https://github.com/kaigothe/DavNode/commit/217e8b1d045c6341bd4f2d15de481df02887d3d1))
+* **core:** add AddressObject and AddressObjectContent entities ([24b1a46](https://github.com/kaigothe/DavNode/commit/24b1a46873e35e526f4f5ebf8930675f2fb757b1))
+* **core:** add AddressObjectIndex entity and indexVCard population ([87df89f](https://github.com/kaigothe/DavNode/commit/87df89febde336f7f071cd295b2ce293ee9f6392))
+* **core:** add vCard parser wrapper ([87aecd7](https://github.com/kaigothe/DavNode/commit/87aecd787f8991f316cfdb07773aa89255f834c2))
+* **server:** add addressbook-home PROPFIND route ([48c4db8](https://github.com/kaigothe/DavNode/commit/48c4db8e127c886696e8fb290d4f2ccce33d0d38))
+* **server:** add AddressObject GET/PUT/DELETE routes ([308032e](https://github.com/kaigothe/DavNode/commit/308032e5d592790a52c16b3db6dae5fd65f0f0ed))
+* **server:** add Extended MKCOL for CardDAV addressbook creation ([2f0995d](https://github.com/kaigothe/DavNode/commit/2f0995d930f36c4c92e6f4c280a30b7ccaf29f89))
+
 # [1.8.0](https://github.com/kaigothe/DavNode/compare/v1.7.0...v1.8.0) (2026-09-02)
 
 
