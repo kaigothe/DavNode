@@ -51,6 +51,7 @@ describe('AddressObjectLock entity', () => {
       dataSource.getRepository(AddressObject).create({
         tenantId: tenant.id,
         addressbookId: addressbook.id,
+        name: 'contact.vcf',
         uid: 'uid-1',
         etag: 'etag-1',
         ownerPrincipalId: principal.id,

@@ -229,3 +229,4 @@ export {
 export { AddressbookLiveProperties } from './carddav/addressbook-live-properties.js';
 export { AddressbookHomeSetProperty } from './carddav/addressbook-home-set-property.js';
 export { requestsAddressbookResourcetype } from './carddav/mkcol-addressbook-request.js';
+export { AddressbookChangeService } from './carddav/addressbook-change.service.js';

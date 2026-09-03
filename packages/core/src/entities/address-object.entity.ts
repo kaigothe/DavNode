@@ -19,9 +19,21 @@ import { Tenant } from './tenant.entity.js';
  * metadata/blob split from M2), so PROPFIND/property queries and
  * `addressbook-query` index lookups never have to load and re-parse
  * every contact's full vCard body.
+ *
+ * `name` and `uid` are deliberately separate, unique-checked
+ * independently: `name` is this resource's own URL path segment,
+ * client-chosen via PUT's target URL — the same role `FileResource.name`
+ * plays (M2) — while `uid` is the vCard `UID` property's value.
+ * RFC 6352 §6.3.2 requires a `409 Conflict` when a PUT's `UID` already
+ * exists in the addressbook under a *different* URL, which is only
+ * expressible if the two identities don't collapse into one column
+ * (Große Aufgabe 4's AddressObject-CRUD sub-task, added retroactively —
+ * the original Große Aufgabe 1 entity had only `uid`, which can't
+ * represent "same UID, different URL" at all).
  */
 @Entity('address_objects')
-@Index(['addressbookId', 'uid'], { unique: true })
+@Index(['addressbookId', 'name'], { unique: true })
+@Index(['addressbookId', 'uid'])
 export class AddressObject {
   /** Primary key. */
   @PrimaryGeneratedColumn('uuid')
@@ -46,9 +58,20 @@ export class AddressObject {
   addressbook!: AddressbookCollection;
 
   /**
-   * The vCard `UID` property, unique within {@link AddressObject.addressbook}
-   * (not tenant-wide) — the same `UID` may appear in a different
-   * addressbook without conflict.
+   * This resource's own path segment (e.g. `contact.vcf`), unique within
+   * {@link AddressObject.addressbook} — the URL identity PUT/GET/DELETE
+   * resolve by, client-chosen exactly like `FileResource.name`.
+   */
+  @Column({ type: 'varchar' })
+  name!: string;
+
+  /**
+   * The vCard `UID` property, unique *in practice* within
+   * {@link AddressObject.addressbook} — enforced at the application level
+   * (a 409 on PUT, RFC 6352 §6.3.2), not by a database constraint here,
+   * since the same UID legitimately keeps its row across an update at
+   * its own unchanged `name`. Not unique tenant-wide either — the same
+   * `UID` may appear in a different addressbook without conflict.
    */
   @Column({ type: 'varchar' })
   uid!: string;

@@ -11,6 +11,9 @@ import { errorHandlerMiddleware } from './http/error-handler.middleware.js';
 import { registerAclRoute } from './http/routes/acl.route.js';
 import { registerAddressbookHomeRoute } from './http/routes/addressbook-home.route.js';
 import { registerAddressbookMkcolRoute } from './http/routes/addressbook-mkcol.route.js';
+import { registerCarddavDeleteRoute } from './http/routes/carddav/delete.route.js';
+import { registerCarddavGetRoute } from './http/routes/carddav/get.route.js';
+import { registerCarddavPutRoute } from './http/routes/carddav/put.route.js';
 import { registerCopyRoute } from './http/routes/copy.route.js';
 import { registerDeleteRoute } from './http/routes/delete.route.js';
 import { registerGetRoute } from './http/routes/get.route.js';
@@ -67,6 +70,9 @@ export function createApp(dataSource: DataSource): express.Express {
   registerPrincipalsRoute(app, dataSource);
   registerAddressbookHomeRoute(app, dataSource);
   registerAddressbookMkcolRoute(app, dataSource);
+  registerCarddavGetRoute(app, dataSource);
+  registerCarddavPutRoute(app, dataSource);
+  registerCarddavDeleteRoute(app, dataSource);
 
   // REPORT handlers register themselves into this registry — see
   // report.route.ts.

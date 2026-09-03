@@ -56,16 +56,14 @@ describe('AddressbookChange entity', () => {
       repository.create({
         addressbookId: addressbook.id,
         seq: 1,
-        addressObjectId: '11111111-1111-1111-1111-111111111111',
+        name: 'contact.vcf',
         action: 'added',
       }),
     );
 
     const found = await repository.findOneByOrFail({ id: saved.id });
     expect(found.action).toBe('added');
-    expect(found.addressObjectId).toBe(
-      '11111111-1111-1111-1111-111111111111',
-    );
+    expect(found.name).toBe('contact.vcf');
     expect(found.seq).toBe(1);
   });
 
@@ -75,7 +73,7 @@ describe('AddressbookChange entity', () => {
       repository.create({
         addressbookId: addressbook.id,
         seq: 1,
-        addressObjectId: '11111111-1111-1111-1111-111111111111',
+        name: 'contact.vcf',
         action: 'added',
       }),
     );
@@ -85,7 +83,7 @@ describe('AddressbookChange entity', () => {
         repository.create({
           addressbookId: addressbook.id,
           seq: 1,
-          addressObjectId: '22222222-2222-2222-2222-222222222222',
+          name: 'other.vcf',
           action: 'added',
         }),
       ),
@@ -107,7 +105,7 @@ describe('AddressbookChange entity', () => {
       repository.create({
         addressbookId: addressbook.id,
         seq: 1,
-        addressObjectId: '11111111-1111-1111-1111-111111111111',
+        name: 'contact.vcf',
         action: 'added',
       }),
     );
@@ -117,7 +115,7 @@ describe('AddressbookChange entity', () => {
         repository.create({
           addressbookId: otherAddressbook.id,
           seq: 1,
-          addressObjectId: '22222222-2222-2222-2222-222222222222',
+          name: 'other.vcf',
           action: 'added',
         }),
       ),
@@ -129,6 +127,7 @@ describe('AddressbookChange entity', () => {
       dataSource.getRepository(AddressObject).create({
         tenantId: addressbook.tenantId,
         addressbookId: addressbook.id,
+        name: 'contact.vcf',
         uid: 'uid-1',
         etag: 'etag-1',
         ownerPrincipalId: addressbook.ownerPrincipalId,
@@ -139,7 +138,7 @@ describe('AddressbookChange entity', () => {
       repository.create({
         addressbookId: addressbook.id,
         seq: 1,
-        addressObjectId: addressObject.id,
+        name: addressObject.name,
         action: 'deleted',
       }),
     );
@@ -153,6 +152,6 @@ describe('AddressbookChange entity', () => {
       seq: 1,
     });
     expect(found.action).toBe('deleted');
-    expect(found.addressObjectId).toBe(addressObject.id);
+    expect(found.name).toBe('contact.vcf');
   });
 });

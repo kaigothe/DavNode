@@ -52,6 +52,7 @@ describe('AddressObject / AddressObjectContent entities', () => {
   });
 
   async function createAddressObject(
+    name: string,
     uid: string,
     addressbookId: string = addressbook.id,
   ): Promise<AddressObject> {
@@ -60,6 +61,7 @@ describe('AddressObject / AddressObjectContent entities', () => {
       repository.create({
         tenantId: addressbook.tenantId,
         addressbookId,
+        name,
         uid,
         etag: 'etag-1',
         ownerPrincipalId: ownerPrincipal.id,
@@ -68,7 +70,7 @@ describe('AddressObject / AddressObjectContent entities', () => {
   }
 
   it('persists an address object and its content together', async () => {
-    const addressObject = await createAddressObject('uid-1');
+    const addressObject = await createAddressObject('alice.vcf', 'uid-1');
     await dataSource.getRepository(AddressObjectContent).save(
       dataSource.getRepository(AddressObjectContent).create({
         addressObjectId: addressObject.id,
@@ -82,14 +84,24 @@ describe('AddressObject / AddressObjectContent entities', () => {
     expect(foundContent.vcardData).toBe('BEGIN:VCARD\r\nEND:VCARD\r\n');
   });
 
-  it('rejects a duplicate UID within the same addressbook', async () => {
-    await createAddressObject('uid-1');
+  it('rejects a duplicate name (URL identity) within the same addressbook', async () => {
+    await createAddressObject('alice.vcf', 'uid-1');
 
-    await expect(createAddressObject('uid-1')).rejects.toThrow();
+    await expect(
+      createAddressObject('alice.vcf', 'uid-2'),
+    ).rejects.toThrow();
   });
 
-  it('allows the same UID in a different addressbook', async () => {
-    await createAddressObject('uid-1');
+  it('allows the same UID under different names within the same addressbook (name, not uid, is the database-enforced identity)', async () => {
+    await createAddressObject('alice.vcf', 'uid-1');
+
+    await expect(
+      createAddressObject('alice-duplicate.vcf', 'uid-1'),
+    ).resolves.toBeDefined();
+  });
+
+  it('allows the same name in a different addressbook', async () => {
+    await createAddressObject('alice.vcf', 'uid-1');
 
     const otherAddressbook = await dataSource
       .getRepository(AddressbookCollection)
@@ -102,12 +114,12 @@ describe('AddressObject / AddressObjectContent entities', () => {
       );
 
     await expect(
-      createAddressObject('uid-1', otherAddressbook.id),
+      createAddressObject('alice.vcf', 'uid-2', otherAddressbook.id),
     ).resolves.toBeDefined();
   });
 
   it('deletes the address object content when the address object is deleted', async () => {
-    const addressObject = await createAddressObject('uid-1');
+    const addressObject = await createAddressObject('alice.vcf', 'uid-1');
     await dataSource.getRepository(AddressObjectContent).save(
       dataSource.getRepository(AddressObjectContent).create({
         addressObjectId: addressObject.id,

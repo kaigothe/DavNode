@@ -20,19 +20,18 @@ import {
  * its {@link CollectionChangeAction} vocabulary (plain value vocabulary,
  * not domain-specific data).
  *
- * `addressObjectId` is a **denormalized** reference, not a live foreign
- * key: unlike `CollectionChange.name` (a plain string that survives its
- * child's deletion because it was never tied to the child row),
- * `AddressObject` has no separate client-chosen "name" distinct from its
- * own `id` — the id itself is what a deletion needs to still be
+ * `name` denormalizes the changed `AddressObject`'s own path segment
+ * (`AddressObject.name`, added by Große Aufgabe 4's AddressObject-CRUD
+ * sub-task — this class predates it and originally denormalized
+ * `addressObjectId` instead, back when `AddressObject` had no separate
+ * name of its own to denormalize), exactly like `CollectionChange.name`
+ * does for the WebDAV domain: a deletion needs the child's *href*
  * reportable via `sync-collection` after the actual `AddressObject` row
- * is gone. A real FK constraint here would defeat that: cascading
- * deletes would erase the very change row meant to report the deletion,
- * and this codebase's default (`NO ACTION`) would instead block the
- * `AddressObject` delete outright. So this column is plain `uuid` data,
- * deliberately outside the `address_objects` foreign-key graph — the
- * same trade-off `CollectionChange.name` makes, just backed
- * by an id instead of a string.
+ * is gone, and an id alone can't build one — a subsequent lookup by id
+ * is impossible once the row is deleted, whereas the name was captured
+ * here at write time. No live foreign key to `address_objects`, same
+ * reasoning as `CollectionChange.name`: it must survive the child's own
+ * deletion.
  *
  * Never updated or read individually — only ever inserted, and later
  * queried as "every change on this addressbook with `seq` greater than
@@ -62,15 +61,9 @@ export class AddressbookChange {
   @Column({ type: 'int' })
   seq!: number;
 
-  /**
-   * Id of the changed `AddressObject`, denormalized (no live foreign
-   * key — see the class-level note). Nullable for parity with other
-   * domains' change-log shape, though every row written by this
-   * domain's CRUD/DELETE handlers always sets it: an addressbook change
-   * is always about exactly one child.
-   */
-  @Column({ type: 'uuid', nullable: true })
-  addressObjectId!: string | null;
+  /** The changed child's own path segment (`AddressObject.name`), denormalized. */
+  @Column({ type: 'varchar' })
+  name!: string;
 
   /** What happened to the child. */
   @Column({ type: 'simple-enum', enum: COLLECTION_CHANGE_ACTIONS })

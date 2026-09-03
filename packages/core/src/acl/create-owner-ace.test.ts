@@ -5,6 +5,8 @@ import {
   ALL_ENTITIES,
   AddressbookAce,
   AddressbookCollection,
+  AddressObject,
+  AddressObjectAce,
   Collection,
   CollectionAce,
   FileAce,
@@ -20,6 +22,7 @@ describe('createOwnerAllAce', () => {
   let collection: Collection;
   let file: FileResource;
   let addressbook: AddressbookCollection;
+  let addressObject: AddressObject;
   let ownerPrincipal: Principal;
 
   beforeEach(async () => {
@@ -68,6 +71,16 @@ describe('createOwnerAllAce', () => {
         tenantId: tenant.id,
         ownerPrincipalId: ownerPrincipal.id,
         displayName: 'Contacts',
+      }),
+    );
+    addressObject = await dataSource.getRepository(AddressObject).save(
+      dataSource.getRepository(AddressObject).create({
+        tenantId: tenant.id,
+        addressbookId: addressbook.id,
+        name: 'contact.vcf',
+        uid: 'uid-1',
+        etag: 'etag-1',
+        ownerPrincipalId: ownerPrincipal.id,
       }),
     );
   });
@@ -132,6 +145,30 @@ describe('createOwnerAllAce', () => {
     const aces = await dataSource
       .getRepository(AddressbookAce)
       .findBy({ addressbookId: addressbook.id });
+    expect(aces).toEqual([
+      expect.objectContaining({
+        principalId: ownerPrincipal.id,
+        privilege: 'all',
+        grantDeny: 'grant',
+        protected: true,
+        position: 0,
+      }),
+    ]);
+  });
+
+  it('creates exactly one protected all/grant ACE for an address object', async () => {
+    await dataSource.transaction(async (manager) => {
+      await createOwnerAllAce(
+        manager,
+        'address-object',
+        addressObject.id,
+        ownerPrincipal.id,
+      );
+    });
+
+    const aces = await dataSource
+      .getRepository(AddressObjectAce)
+      .findBy({ addressObjectId: addressObject.id });
     expect(aces).toEqual([
       expect.objectContaining({
         principalId: ownerPrincipal.id,
