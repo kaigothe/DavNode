@@ -15,6 +15,7 @@ import { CreateAddressbooks1788454861226 } from './1788454861226-CreateAddressbo
 import { CreateAddressObjects1788460094389 } from './1788460094389-CreateAddressObjects.js';
 import { CreateAddressbookDeadProperties1788461159226 } from './1788461159226-CreateAddressbookDeadProperties.js';
 import { CreateAddressbookAcesLocksChanges1788463385166 } from './1788463385166-CreateAddressbookAcesLocksChanges.js';
+import { CreateAddressObjectIndex1788464771752 } from './1788464771752-CreateAddressObjectIndex.js';
 
 /**
  * Every SQLite migration in `@davnode/core`, in chronological order. Used
@@ -44,4 +45,5 @@ export const ALL_MIGRATIONS: Array<new () => MigrationInterface> = [
   CreateAddressObjects1788460094389,
   CreateAddressbookDeadProperties1788461159226,
   CreateAddressbookAcesLocksChanges1788463385166,
+  CreateAddressObjectIndex1788464771752,
 ];

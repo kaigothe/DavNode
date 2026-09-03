@@ -1,0 +1,38 @@
+import type { MigrationInterface, QueryRunner } from 'typeorm';
+
+/**
+ * Creates the `address_object_indexes` table (the vCard search index,
+ * planning/05-data-model.md's `AddressObjectIndex`) with its
+ * cascading-on-delete foreign key to `address_objects` and its
+ * `address_object_id` index (the shape `indexVCard`'s
+ * delete-then-repopulate operation queries by).
+ */
+export class CreateAddressObjectIndex1788464855674
+  implements MigrationInterface
+{
+  name = 'CreateAddressObjectIndex1788464855674';
+
+  /** Applies the migration: creates the `address_object_indexes` table. */
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `CREATE TABLE "address_object_indexes" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "address_object_id" uuid NOT NULL, "property_name" character varying NOT NULL, "property_value" text NOT NULL, CONSTRAINT "PK_7ab632cf3eae28234271a0e0a08" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_ffe9219aa5f273f7d85a0eeba9" ON "address_object_indexes"  ("address_object_id") `,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "address_object_indexes" ADD CONSTRAINT "FK_ffe9219aa5f273f7d85a0eeba9c" FOREIGN KEY ("address_object_id") REFERENCES "address_objects"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+  }
+
+  /** Reverts the migration: drops the `address_object_indexes` table. */
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `ALTER TABLE "address_object_indexes" DROP CONSTRAINT "FK_ffe9219aa5f273f7d85a0eeba9c"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_ffe9219aa5f273f7d85a0eeba9"`,
+    );
+    await queryRunner.query(`DROP TABLE "address_object_indexes"`);
+  }
+}

@@ -5,6 +5,7 @@ import { AddressbookLock } from './addressbook-lock.entity.js';
 import { AddressbookProperty } from './addressbook-property.entity.js';
 import { AddressObjectAce } from './address-object-ace.entity.js';
 import { AddressObjectContent } from './address-object-content.entity.js';
+import { AddressObjectIndex } from './address-object-index.entity.js';
 import { AddressObjectLock } from './address-object-lock.entity.js';
 import { AddressObjectProperty } from './address-object-property.entity.js';
 import { AddressObject } from './address-object.entity.js';
@@ -58,6 +59,7 @@ export {
   AddressObject,
   AddressObjectAce,
   AddressObjectContent,
+  AddressObjectIndex,
   AddressObjectLock,
   AddressObjectProperty,
   Collection,
@@ -129,4 +131,5 @@ export const ALL_ENTITIES = [
   AddressbookLock,
   AddressObjectLock,
   AddressbookChange,
+  AddressObjectIndex,
 ];

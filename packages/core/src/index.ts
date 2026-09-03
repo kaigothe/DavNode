@@ -59,6 +59,7 @@ export {
   AddressObject,
   AddressObjectAce,
   AddressObjectContent,
+  AddressObjectIndex,
   AddressObjectLock,
   AddressObjectProperty,
   Collection,
@@ -214,3 +215,4 @@ export {
   VCardParseError,
   type ParsedVCard,
 } from './carddav/vcard-parser.js';
+export { indexVCard } from './carddav/index-vcard.js';
