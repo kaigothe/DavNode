@@ -1,5 +1,7 @@
 import { AddressbookCollection } from './addressbook-collection.entity.js';
+import { AddressbookProperty } from './addressbook-property.entity.js';
 import { AddressObjectContent } from './address-object-content.entity.js';
+import { AddressObjectProperty } from './address-object-property.entity.js';
 import { AddressObject } from './address-object.entity.js';
 import { Collection } from './collection.entity.js';
 import {
@@ -44,8 +46,10 @@ import { User, USER_ROLES, type UserRole } from './user.entity.js';
 
 export {
   AddressbookCollection,
+  AddressbookProperty,
   AddressObject,
   AddressObjectContent,
+  AddressObjectProperty,
   Collection,
   CollectionAce,
   GRANT_DENY_VALUES,
@@ -108,4 +112,6 @@ export const ALL_ENTITIES = [
   AddressbookCollection,
   AddressObject,
   AddressObjectContent,
+  AddressbookProperty,
+  AddressObjectProperty,
 ];
