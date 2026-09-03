@@ -1,6 +1,11 @@
+import { AddressbookAce } from './addressbook-ace.entity.js';
+import { AddressbookChange } from './addressbook-change.entity.js';
 import { AddressbookCollection } from './addressbook-collection.entity.js';
+import { AddressbookLock } from './addressbook-lock.entity.js';
 import { AddressbookProperty } from './addressbook-property.entity.js';
+import { AddressObjectAce } from './address-object-ace.entity.js';
 import { AddressObjectContent } from './address-object-content.entity.js';
+import { AddressObjectLock } from './address-object-lock.entity.js';
 import { AddressObjectProperty } from './address-object-property.entity.js';
 import { AddressObject } from './address-object.entity.js';
 import { Collection } from './collection.entity.js';
@@ -45,10 +50,15 @@ import { Tenant } from './tenant.entity.js';
 import { User, USER_ROLES, type UserRole } from './user.entity.js';
 
 export {
+  AddressbookAce,
+  AddressbookChange,
   AddressbookCollection,
+  AddressbookLock,
   AddressbookProperty,
   AddressObject,
+  AddressObjectAce,
   AddressObjectContent,
+  AddressObjectLock,
   AddressObjectProperty,
   Collection,
   CollectionAce,
@@ -114,4 +124,9 @@ export const ALL_ENTITIES = [
   AddressObjectContent,
   AddressbookProperty,
   AddressObjectProperty,
+  AddressbookAce,
+  AddressObjectAce,
+  AddressbookLock,
+  AddressObjectLock,
+  AddressbookChange,
 ];

@@ -51,10 +51,15 @@ export { ALL_MIGRATIONS as ALL_SQLITE_MIGRATIONS } from './migrations/sqlite/ind
 
 export {
   ALL_ENTITIES,
+  AddressbookAce,
+  AddressbookChange,
   AddressbookCollection,
+  AddressbookLock,
   AddressbookProperty,
   AddressObject,
+  AddressObjectAce,
   AddressObjectContent,
+  AddressObjectLock,
   AddressObjectProperty,
   Collection,
   CollectionAce,
