@@ -1,4 +1,6 @@
 import { AddressbookCollection } from './addressbook-collection.entity.js';
+import { AddressObjectContent } from './address-object-content.entity.js';
+import { AddressObject } from './address-object.entity.js';
 import { Collection } from './collection.entity.js';
 import {
   CollectionAce,
@@ -42,6 +44,8 @@ import { User, USER_ROLES, type UserRole } from './user.entity.js';
 
 export {
   AddressbookCollection,
+  AddressObject,
+  AddressObjectContent,
   Collection,
   CollectionAce,
   GRANT_DENY_VALUES,
@@ -102,4 +106,6 @@ export const ALL_ENTITIES = [
   CollectionLock,
   FileLock,
   AddressbookCollection,
+  AddressObject,
+  AddressObjectContent,
 ];

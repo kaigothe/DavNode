@@ -52,6 +52,8 @@ export { ALL_MIGRATIONS as ALL_SQLITE_MIGRATIONS } from './migrations/sqlite/ind
 export {
   ALL_ENTITIES,
   AddressbookCollection,
+  AddressObject,
+  AddressObjectContent,
   Collection,
   CollectionAce,
   GRANT_DENY_VALUES,
