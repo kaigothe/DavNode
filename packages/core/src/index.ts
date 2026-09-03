@@ -216,3 +216,11 @@ export {
   type ParsedVCard,
 } from './carddav/vcard-parser.js';
 export { indexVCard } from './carddav/index-vcard.js';
+export { CARDDAV_NAMESPACE } from './carddav/carddav-namespace.js';
+export { toAddressbookHomeUrl } from './carddav/addressbook-home-url.js';
+export {
+  AddressbookHomeCollection,
+  type AddressbookHomeTreeResource,
+} from './carddav/addressbook-home-tree-resource.js';
+export { AddressbookLiveProperties } from './carddav/addressbook-live-properties.js';
+export { AddressbookHomeSetProperty } from './carddav/addressbook-home-set-property.js';

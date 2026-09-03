@@ -9,6 +9,7 @@ import express from 'express';
 import { createBasicAuthMiddleware } from './http/basic-auth.middleware.js';
 import { errorHandlerMiddleware } from './http/error-handler.middleware.js';
 import { registerAclRoute } from './http/routes/acl.route.js';
+import { registerAddressbookHomeRoute } from './http/routes/addressbook-home.route.js';
 import { registerCopyRoute } from './http/routes/copy.route.js';
 import { registerDeleteRoute } from './http/routes/delete.route.js';
 import { registerGetRoute } from './http/routes/get.route.js';
@@ -63,6 +64,7 @@ export function createApp(dataSource: DataSource): express.Express {
   registerLockRoute(app, dataSource);
   registerUnlockRoute(app, dataSource);
   registerPrincipalsRoute(app, dataSource);
+  registerAddressbookHomeRoute(app, dataSource);
 
   // REPORT handlers register themselves into this registry — see
   // report.route.ts.
