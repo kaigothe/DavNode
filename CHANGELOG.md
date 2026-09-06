@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/kaigothe/DavNode/compare/v1.9.0...v1.10.0) (2026-09-06)
+
+
+### Features
+
+* **server:** instantiate ACL engine for the addressbook domain ([fbf8bc6](https://github.com/kaigothe/DavNode/commit/fbf8bc6f5ead1b43c3dd959b044c222a77df0f06))
+
 # [1.9.0](https://github.com/kaigothe/DavNode/compare/v1.8.0...v1.9.0) (2026-09-03)
 
 
