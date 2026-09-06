@@ -3,12 +3,15 @@ import {
   AddressObject,
   AddressObjectAce,
   AddressObjectProperty,
+  hasAddressbookPrivilege,
+  type AddressbookAclResource,
   type DataSource,
 } from '@davnode/core';
 import type { Express, Request } from 'express';
+import { createAclAuthorizationMiddleware } from '../../acl-authorization.middleware.js';
 import {
+  addressbookOwnerIdParam,
   pathSegments,
-  requirePrincipal,
   requireTenant,
 } from '../dav-request.util.js';
 import {
@@ -29,9 +32,12 @@ import {
  * `AddressbookChange` (`deleted`) and bumps the addressbook's `syncSeq`
  * in the same transaction.
  *
- * **Access is the same simple, non-ACL-based rule as the other
- * addressbook routes**: `{userId}` must be the requesting principal's
- * own id, or this returns `403`.
+ * **Real RFC 3744 ACL, not an owner-only placeholder** (M5 Große
+ * Aufgabe 5): deletion needs `unbind` on the addressbook — the parent
+ * of the contact being removed, mirroring the WebDAV DELETE route's own
+ * "unbind on the parent, not the target" rule. `{userId}` in the URL
+ * only identifies whose addressbook this is, not who's allowed to
+ * delete from it.
  */
 export function registerCarddavDeleteRoute(
   app: Express,
@@ -41,14 +47,37 @@ export function registerCarddavDeleteRoute(
 
   app.delete(
     '/dav/:tenantSlug/addressbooks/:userId{/*splat}',
+    createAclAuthorizationMiddleware<AddressbookAclResource>(
+      dataSource,
+      async (req) => {
+        const tenant = requireTenant(req);
+        const userId = addressbookOwnerIdParam(req);
+        const segments = pathSegments(req);
+        if (segments.length !== 2) {
+          return null;
+        }
+        const [addressbookName, objectName] = segments;
+        const addressbook = await resolveAddressbook(
+          dataSource,
+          tenant.id,
+          userId,
+          addressbookName,
+        );
+        if (!addressbook) {
+          return null;
+        }
+        const target = await resolveAddressObject(
+          dataSource,
+          addressbook.id,
+          objectName,
+        );
+        return target ? { resource: addressbook, privilege: 'unbind' } : null;
+      },
+      hasAddressbookPrivilege,
+    ),
     async (req: Request, res): Promise<void> => {
       const tenant = requireTenant(req);
-      const principal = requirePrincipal(req);
-      const userId = req.params.userId;
-      if (userId !== principal.id) {
-        res.sendStatus(403);
-        return;
-      }
+      const userId = addressbookOwnerIdParam(req);
 
       const segments = pathSegments(req);
       if (segments.length !== 2) {

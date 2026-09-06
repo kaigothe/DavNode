@@ -1,6 +1,7 @@
 import {
   buildMultistatusResponse,
   DeadPropertyService,
+  hasPrivilege,
   LockPropertiesProvider,
   parseProppatchRequestBody,
   PropertyProviderRegistry,
@@ -61,13 +62,19 @@ export function registerProppatchRoute(
   app.proppatch(
     '/dav/:tenantSlug/files{/*splat}',
     express.text({ type: () => true }),
-    createAclAuthorizationMiddleware(dataSource, async (req) => {
-      const target = await resourcePathResolver.resolve(
-        requireTenant(req).id,
-        pathSegments(req),
-      );
-      return target ? { resource: target, privilege: 'write-properties' } : null;
-    }),
+    createAclAuthorizationMiddleware(
+      dataSource,
+      async (req) => {
+        const target = await resourcePathResolver.resolve(
+          requireTenant(req).id,
+          pathSegments(req),
+        );
+        return target
+          ? { resource: target, privilege: 'write-properties' }
+          : null;
+      },
+      hasPrivilege,
+    ),
     createLockEnforcementMiddleware(dataSource, async (req) => {
       const target = await resourcePathResolver.resolve(
         requireTenant(req).id,

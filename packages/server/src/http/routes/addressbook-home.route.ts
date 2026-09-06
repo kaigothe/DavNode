@@ -135,8 +135,8 @@ async function resolveProperties(
  * deliberate simplification, same rationale as
  * `registerPrincipalsRoute`'s "no resource-specific ACL check" — this
  * is a discovery/listing endpoint, not the addressbook resources
- * themselves, which get their own ACL-gated CRUD routes in a later
- * milestone task).
+ * themselves, which get their own real ACL-gated CRUD routes (M5 Große
+ * Aufgabe 5, `carddav/get.route.ts` et al.).
  *
  * `Depth` handling matches regular PROPFIND (M2): only `0`/`1` are
  * accepted, everything else (including a missing header, which

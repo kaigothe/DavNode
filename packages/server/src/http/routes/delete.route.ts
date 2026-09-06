@@ -1,6 +1,7 @@
 import {
   Collection,
   CollectionChangeService,
+  hasPrivilege,
   ResourcePathResolver,
   ResourceTreeService,
   type DataSource,
@@ -46,20 +47,24 @@ export function registerDeleteRoute(
 
   app.delete(
     '/dav/:tenantSlug/files{/*splat}',
-    createAclAuthorizationMiddleware(dataSource, async (req) => {
-      const target = await resourcePathResolver.resolve(
-        requireTenant(req).id,
-        pathSegments(req),
-      );
-      if (!target) {
-        return null;
-      }
-      // The tenant root has no parent (resolveParentCollection returns
-      // null); the handler already forbids deleting it (403) regardless
-      // of privilege, so no check is needed here in that case either.
-      const parent = await resolveParentCollection(dataSource, target);
-      return parent ? { resource: parent, privilege: 'unbind' } : null;
-    }),
+    createAclAuthorizationMiddleware(
+      dataSource,
+      async (req) => {
+        const target = await resourcePathResolver.resolve(
+          requireTenant(req).id,
+          pathSegments(req),
+        );
+        if (!target) {
+          return null;
+        }
+        // The tenant root has no parent (resolveParentCollection returns
+        // null); the handler already forbids deleting it (403) regardless
+        // of privilege, so no check is needed here in that case either.
+        const parent = await resolveParentCollection(dataSource, target);
+        return parent ? { resource: parent, privilege: 'unbind' } : null;
+      },
+      hasPrivilege,
+    ),
     createLockEnforcementMiddleware(dataSource, async (req) => {
       const target = await resourcePathResolver.resolve(
         requireTenant(req).id,

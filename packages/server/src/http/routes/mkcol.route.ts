@@ -2,6 +2,7 @@ import {
   Collection,
   CollectionChangeService,
   createOwnerAllAce,
+  hasPrivilege,
   ResourcePathResolver,
   type DataSource,
 } from '@davnode/core';
@@ -46,18 +47,22 @@ export function registerMkcolRoute(app: Express, dataSource: DataSource): void {
   app.mkcol(
     '/dav/:tenantSlug/files{/*splat}',
     express.text({ type: () => true }),
-    createAclAuthorizationMiddleware(dataSource, async (req) => {
-      const tenant = requireTenant(req);
-      const segments = pathSegments(req);
-      if (segments.length === 0) {
-        return null;
-      }
-      const parent = await resourcePathResolver.resolve(
-        tenant.id,
-        segments.slice(0, -1),
-      );
-      return parent ? { resource: parent, privilege: 'bind' } : null;
-    }),
+    createAclAuthorizationMiddleware(
+      dataSource,
+      async (req) => {
+        const tenant = requireTenant(req);
+        const segments = pathSegments(req);
+        if (segments.length === 0) {
+          return null;
+        }
+        const parent = await resourcePathResolver.resolve(
+          tenant.id,
+          segments.slice(0, -1),
+        );
+        return parent ? { resource: parent, privilege: 'bind' } : null;
+      },
+      hasPrivilege,
+    ),
     createLockEnforcementMiddleware(dataSource, async (req) => {
       const tenant = requireTenant(req);
       const segments = pathSegments(req);
@@ -114,7 +119,12 @@ export function registerMkcolRoute(app: Express, dataSource: DataSource): void {
             displayName: newName,
           }),
         );
-        await createOwnerAllAce(manager, 'collection', created.id, principal.id);
+        await createOwnerAllAce(
+          manager,
+          'collection',
+          created.id,
+          principal.id,
+        );
         await collectionChanges.recordChange(
           manager,
           parent.id,

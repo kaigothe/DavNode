@@ -1,6 +1,7 @@
 import {
   Collection,
   FileContent,
+  hasPrivilege,
   ResourcePathResolver,
   type DataSource,
 } from '@davnode/core';
@@ -45,13 +46,17 @@ export function registerGetRoute(app: Express, dataSource: DataSource): void {
 
   app.get(
     '/dav/:tenantSlug/files{/*splat}',
-    createAclAuthorizationMiddleware(dataSource, async (req) => {
-      const target = await resourcePathResolver.resolve(
-        requireTenant(req).id,
-        pathSegments(req),
-      );
-      return target ? { resource: target, privilege: 'read' } : null;
-    }),
+    createAclAuthorizationMiddleware(
+      dataSource,
+      async (req) => {
+        const target = await resourcePathResolver.resolve(
+          requireTenant(req).id,
+          pathSegments(req),
+        );
+        return target ? { resource: target, privilege: 'read' } : null;
+      },
+      hasPrivilege,
+    ),
     async (req: Request, res): Promise<void> => {
       const tenant = requireTenant(req);
       const segments = pathSegments(req);

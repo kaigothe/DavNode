@@ -1,8 +1,14 @@
 import type { EntityManager } from 'typeorm';
 import { Principal } from '../entities/principal.entity.js';
 import { GroupMembershipService } from '../services/group-membership.service.js';
+import type { AddressbookAclResource } from '../carddav/addressbook-acl-resource.js';
 import type { WebDavTreeResource } from '../webdav/resource-path-resolver.js';
-import { type AceLike, type CollectedAce, collectWebDavAces } from './collect-aces.js';
+import {
+  type AceLike,
+  type CollectedAce,
+  collectAddressbookAces,
+  collectWebDavAces,
+} from './collect-aces.js';
 import { ALL_PRIVILEGES, type Privilege } from './privilege.js';
 import { privilegeSatisfies } from './privilege-aggregation.js';
 
@@ -140,4 +146,29 @@ export async function getCurrentUserPrivilegeSet(
   return ALL_PRIVILEGES.filter((privilege) =>
     evaluateAces(aces, matchingPrincipalIds, privilege),
   );
+}
+
+/**
+ * The addressbook-domain instantiation of {@link hasPrivilege}: decides
+ * whether `principal` has `requestedPrivilege` on `resource` (RFC 3744
+ * §5.4), collecting ACEs via {@link collectAddressbookAces} instead of
+ * {@link collectWebDavAces}. Same default-deny semantics — no matching
+ * ACE at all means `false`.
+ *
+ * @param manager - The `EntityManager` to query with.
+ * @param principal - The requesting principal (already authenticated).
+ * @param resource - The resource access is being checked against.
+ * @param requestedPrivilege - The privilege being checked for.
+ */
+export async function hasAddressbookPrivilege(
+  manager: EntityManager,
+  principal: Principal,
+  resource: AddressbookAclResource,
+  requestedPrivilege: Privilege,
+): Promise<boolean> {
+  const [aces, matchingPrincipalIds] = await Promise.all([
+    collectAddressbookAces(manager, resource),
+    buildMatchingPrincipalIds(manager, principal, resource.ownerPrincipalId),
+  ]);
+  return evaluateAces(aces, matchingPrincipalIds, requestedPrivilege);
 }

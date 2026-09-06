@@ -4,13 +4,17 @@ import {
   AddressObject,
   AddressObjectContent,
   createOwnerAllAce,
+  hasAddressbookPrivilege,
   indexVCard,
   parseVCard,
   VCardParseError,
+  type AddressbookAclResource,
   type DataSource,
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
+import { createAclAuthorizationMiddleware } from '../../acl-authorization.middleware.js';
 import {
+  addressbookOwnerIdParam,
   pathSegments,
   requirePrincipal,
   requireTenant,
@@ -47,9 +51,12 @@ function computeEtag(content: string): string {
  * identified (rather than collapsed into one column) exists to make
  * expressible at all; see the entity's own doc comment.
  *
- * **Access is the same simple, non-ACL-based rule as the other
- * addressbook routes**: `{userId}` must be the requesting principal's
- * own id, or this returns `403`.
+ * **Real RFC 3744 ACL, not an owner-only placeholder** (M5 Große
+ * Aufgabe 5): overwriting an existing contact needs `write-content` on
+ * it; creating a new one needs `bind` on the addressbook itself — the
+ * same overwrite-vs-create split the WebDAV PUT route's own resolver
+ * uses. `{userId}` in the URL only identifies whose addressbook this
+ * is, not who's allowed to write to it.
  *
  * On success, records an `AddressbookChange` entry (`added` for a new
  * contact, `modified` for an overwrite), bumps the addressbook's
@@ -68,14 +75,41 @@ export function registerCarddavPutRoute(
   app.put(
     '/dav/:tenantSlug/addressbooks/:userId{/*splat}',
     express.text({ type: () => true, limit: '5mb' }),
+    createAclAuthorizationMiddleware<AddressbookAclResource>(
+      dataSource,
+      async (req) => {
+        const tenant = requireTenant(req);
+        const userId = addressbookOwnerIdParam(req);
+        const segments = pathSegments(req);
+        if (segments.length !== 2) {
+          return null;
+        }
+        const [addressbookName, objectName] = segments;
+        const addressbook = await resolveAddressbook(
+          dataSource,
+          tenant.id,
+          userId,
+          addressbookName,
+        );
+        if (!addressbook) {
+          return null;
+        }
+        const target = await resolveAddressObject(
+          dataSource,
+          addressbook.id,
+          objectName,
+        );
+        if (target) {
+          return { resource: target, privilege: 'write-content' };
+        }
+        return { resource: addressbook, privilege: 'bind' };
+      },
+      hasAddressbookPrivilege,
+    ),
     async (req: Request, res): Promise<void> => {
       const tenant = requireTenant(req);
       const principal = requirePrincipal(req);
-      const userId = req.params.userId;
-      if (userId !== principal.id) {
-        res.sendStatus(403);
-        return;
-      }
+      const userId = addressbookOwnerIdParam(req);
 
       const segments = pathSegments(req);
       if (segments.length !== 2) {

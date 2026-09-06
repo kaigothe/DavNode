@@ -5,6 +5,7 @@ import {
   createOwnerAllAce,
   FileContent,
   FileResource,
+  hasPrivilege,
   ResourcePathResolver,
   type DataSource,
 } from '@davnode/core';
@@ -64,22 +65,26 @@ export function registerPutRoute(app: Express, dataSource: DataSource): void {
   app.put(
     '/dav/:tenantSlug/files{/*splat}',
     express.raw({ type: () => true, limit: '100mb' }),
-    createAclAuthorizationMiddleware(dataSource, async (req) => {
-      const tenant = requireTenant(req);
-      const segments = pathSegments(req);
-      if (segments.length === 0) {
-        return null;
-      }
-      const target = await resourcePathResolver.resolve(tenant.id, segments);
-      if (target) {
-        return { resource: target, privilege: 'write-content' };
-      }
-      const parent = await resourcePathResolver.resolve(
-        tenant.id,
-        segments.slice(0, -1),
-      );
-      return parent ? { resource: parent, privilege: 'bind' } : null;
-    }),
+    createAclAuthorizationMiddleware(
+      dataSource,
+      async (req) => {
+        const tenant = requireTenant(req);
+        const segments = pathSegments(req);
+        if (segments.length === 0) {
+          return null;
+        }
+        const target = await resourcePathResolver.resolve(tenant.id, segments);
+        if (target) {
+          return { resource: target, privilege: 'write-content' };
+        }
+        const parent = await resourcePathResolver.resolve(
+          tenant.id,
+          segments.slice(0, -1),
+        );
+        return parent ? { resource: parent, privilege: 'bind' } : null;
+      },
+      hasPrivilege,
+    ),
     createLockEnforcementMiddleware(dataSource, async (req) => {
       const tenant = requireTenant(req);
       const segments = pathSegments(req);

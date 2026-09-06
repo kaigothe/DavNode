@@ -1,7 +1,14 @@
 import type { EntityManager } from 'typeorm';
-import { CollectionAce, type GrantDeny } from '../entities/collection-ace.entity.js';
+import { AddressbookAce } from '../entities/addressbook-ace.entity.js';
+import { AddressbookCollection } from '../entities/addressbook-collection.entity.js';
+import { AddressObjectAce } from '../entities/address-object-ace.entity.js';
+import {
+  CollectionAce,
+  type GrantDeny,
+} from '../entities/collection-ace.entity.js';
 import { Collection } from '../entities/collection.entity.js';
 import { FileAce } from '../entities/file-ace.entity.js';
+import type { AddressbookAclResource } from '../carddav/addressbook-acl-resource.js';
 import type { WebDavTreeResource } from '../webdav/resource-path-resolver.js';
 import type { Privilege } from './privilege.js';
 
@@ -147,6 +154,58 @@ export async function collectWebDavAces(
   return collectAces(
     ownAces,
     resource.collectionId,
+    findCollectionAces,
+    findParentCollectionId,
+  );
+}
+
+/**
+ * The addressbook-domain instantiation of {@link collectAces}: resolves
+ * `resource`'s own ACEs (`AddressbookAce` if it's an
+ * `AddressbookCollection`, `AddressObjectAce` if it's an `AddressObject`)
+ * and, for an `AddressObject`, adds its parent addressbook's ACEs.
+ *
+ * Unlike {@link collectWebDavAces}'s `Collection` chain, there is only
+ * ever at most one level of inheritance here: addressbooks don't nest
+ * (Runde 20 — see `AddressbookCollection`'s doc comment), so
+ * `findParentCollectionId` always returns `null`, terminating the walk
+ * after an `AddressObject`'s single parent addressbook (or immediately,
+ * for an `AddressbookCollection` itself, which has no ancestor to
+ * inherit from at all).
+ *
+ * @param manager - The `EntityManager` to query with.
+ * @param resource - The resource to collect ACEs for.
+ * @returns The combined, ordered ACE list.
+ */
+export async function collectAddressbookAces(
+  manager: EntityManager,
+  resource: AddressbookAclResource,
+): Promise<CollectedAce<AddressbookAce | AddressObjectAce>[]> {
+  const findCollectionAces = (
+    addressbookId: string,
+  ): Promise<AddressbookAce[]> =>
+    manager.getRepository(AddressbookAce).findBy({ addressbookId });
+  const findParentCollectionId = (): Promise<string | null> =>
+    Promise.resolve(null);
+
+  if (resource instanceof AddressbookCollection) {
+    const ownAces = await manager
+      .getRepository(AddressbookAce)
+      .findBy({ addressbookId: resource.id });
+    return collectAces(
+      ownAces,
+      null,
+      findCollectionAces,
+      findParentCollectionId,
+    );
+  }
+
+  const ownAces = await manager
+    .getRepository(AddressObjectAce)
+    .findBy({ addressObjectId: resource.id });
+  return collectAces(
+    ownAces,
+    resource.addressbookId,
     findCollectionAces,
     findParentCollectionId,
   );

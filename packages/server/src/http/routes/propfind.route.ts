@@ -3,6 +3,7 @@ import {
   buildMultistatusResponse,
   Collection,
   DeadPropertyService,
+  hasPrivilege,
   LockPropertiesProvider,
   parsePropfindRequestBody,
   PropertyProviderRegistry,
@@ -108,13 +109,17 @@ export function registerPropfindRoute(
   app.propfind(
     '/dav/:tenantSlug/files{/*splat}',
     express.text({ type: () => true }),
-    createAclAuthorizationMiddleware(dataSource, async (req) => {
-      const target = await resourcePathResolver.resolve(
-        requireTenant(req).id,
-        pathSegments(req),
-      );
-      return target ? { resource: target, privilege: 'read' } : null;
-    }),
+    createAclAuthorizationMiddleware(
+      dataSource,
+      async (req) => {
+        const target = await resourcePathResolver.resolve(
+          requireTenant(req).id,
+          pathSegments(req),
+        );
+        return target ? { resource: target, privilege: 'read' } : null;
+      },
+      hasPrivilege,
+    ),
     async (req: Request, res): Promise<void> => {
       const depth = req.header('Depth');
       if (depth !== '0' && depth !== '1') {

@@ -20,6 +20,21 @@ export function pathSegments(req: Request): string[] {
 }
 
 /**
+ * `req.params.userId`, from the CardDAV
+ * `/dav/:tenantSlug/addressbooks/:userId{/*splat}` routes. Read via the
+ * same untyped cast {@link pathSegments} uses for `splat`, for the same
+ * underlying reason: once a route combines a generic `RequestHandler`
+ * (e.g. `createAclAuthorizationMiddleware`'s return type, which isn't
+ * parametrized on this route's specific params) with a handler typed
+ * from the route's own literal path string, Express 5's type-level
+ * route-parameter inference widens every named param on that
+ * registration — not just the wildcard capture — to `string | string[]`.
+ */
+export function addressbookOwnerIdParam(req: Request): string {
+  return (req.params as Record<string, unknown>).userId as string;
+}
+
+/**
  * `req.tenant`, guaranteed set by this point on every `/dav/:tenantSlug`
  * route (tenant-resolution and basic-auth both run first and both
  * require it — see `tenant-resolution.middleware.ts`/

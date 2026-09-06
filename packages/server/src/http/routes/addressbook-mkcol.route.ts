@@ -42,11 +42,20 @@ import {
  * `CARDDAV:addressbook-description`, which has no URL role, *is*
  * honored from the body.
  *
- * **Access is the same simple, non-ACL-based rule as the PROPFIND home
- * route**: `{userId}` must be the requesting principal's own id, or
- * this returns `403`. ACL/lock middleware for the addressbook domain is
- * Große Aufgabe 5's job, not this route's — mirrors
- * `registerAddressbookHomeRoute`'s own rationale.
+ * **Deliberately still the simple, non-ACL-based rule** (M5 Große
+ * Aufgabe 5's own privilege table names `bind` on the addressbook home
+ * collection for this route): `{userId}` must be the requesting
+ * principal's own id, or this returns `403`. Unlike `AddressbookCollection`/
+ * `AddressObject`, the home collection is synthetic
+ * (`AddressbookHomeCollection`, `addressbook-home-tree-resource.ts`) —
+ * there is no ACE table to evaluate a `bind` privilege against, the
+ * same reason `registerAddressbookHomeRoute`'s PROPFIND keeps this rule
+ * too, and the same structural gap `VirtualPrincipalCollection` (M3)
+ * has for its own read-only tree. Since nobody but the home's own owner
+ * can ever have a reason to create an addressbook under it, this
+ * identity check *is* the addressbook home's authorization — sharing
+ * another user's home for addressbook creation isn't a case RFC 6352
+ * or this codebase's ACL model has a slot for.
  *
  * On success, creates the default-owner ACE (`createOwnerAllAce`,
  * `'addressbook'`) in the same transaction as the new row, so the owner

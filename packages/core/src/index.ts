@@ -18,12 +18,14 @@ export {
 export {
   collectAces,
   collectWebDavAces,
+  collectAddressbookAces,
   type AceLike,
   type CollectedAce,
 } from './acl/collect-aces.js';
 export {
   hasPrivilege,
   getCurrentUserPrivilegeSet,
+  hasAddressbookPrivilege,
 } from './acl/evaluate-privilege.js';
 export {
   parseAclRequestBody,
@@ -45,7 +47,7 @@ export {
   type DavNodeDbSchema,
   type DavNodeDbType,
 } from './db/data-source.js';
-export type { DataSource } from 'typeorm';
+export type { DataSource, EntityManager } from 'typeorm';
 
 export { ALL_MIGRATIONS as ALL_SQLITE_MIGRATIONS } from './migrations/sqlite/index.js';
 
@@ -230,3 +232,4 @@ export { AddressbookLiveProperties } from './carddav/addressbook-live-properties
 export { AddressbookHomeSetProperty } from './carddav/addressbook-home-set-property.js';
 export { requestsAddressbookResourcetype } from './carddav/mkcol-addressbook-request.js';
 export { AddressbookChangeService } from './carddav/addressbook-change.service.js';
+export type { AddressbookAclResource } from './carddav/addressbook-acl-resource.js';

@@ -2,6 +2,7 @@ import type { AddressInfo } from 'node:net';
 import {
   ALL_ENTITIES,
   ALL_SQLITE_MIGRATIONS,
+  AddressbookAce,
   AddressbookChange,
   AddressbookCollection,
   AddressObject,
@@ -350,5 +351,39 @@ describe('CardDAV AddressObject CRUD routes', () => {
     expect(getResponse.status).toBe(403);
     expect(putResponse.status).toBe(403);
     expect(deleteResponse.status).toBe(403);
+  });
+
+  it('a real RFC 3744 grant, not identity, is what lets bob in: an explicit read ACE on the addressbook allows his GET', async () => {
+    const bob = await new UserService(dataSource).createUser({
+      tenantId: tenant.id,
+      username: 'bob',
+      email: 'bob@example.com',
+      password: PASSWORD,
+    });
+    await put('forrest.vcf', { body: vcard('uid-1') });
+
+    const deniedBeforeGrant = await get('forrest.vcf', { username: 'bob' });
+    expect(deniedBeforeGrant.status).toBe(403);
+
+    await dataSource.getRepository(AddressbookAce).save(
+      dataSource.getRepository(AddressbookAce).create({
+        addressbookId: addressbook.id,
+        principalId: bob.principalId,
+        privilege: 'read',
+        grantDeny: 'grant',
+        position: 1,
+      }),
+    );
+
+    const allowedAfterGrant = await get('forrest.vcf', { username: 'bob' });
+    expect(allowedAfterGrant.status).toBe(200);
+    expect(await allowedAfterGrant.text()).toBe(vcard('uid-1'));
+
+    // write-content wasn't granted — bob still can't overwrite the contact.
+    const stillDeniedForWrite = await put('forrest.vcf', {
+      body: vcard('uid-1', 'Someone Else'),
+      username: 'bob',
+    });
+    expect(stillDeniedForWrite.status).toBe(403);
   });
 });
