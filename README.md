@@ -14,12 +14,19 @@ DavNode is licensed under the [GNU Affero General Public License v3.0](LICENSE)
 
 ## Status
 
-**Current version: v1.7.0.** WebDAV Class 1, WebDAV Class 2 (locking),
+**Current version: v1.11.0.** WebDAV Class 1, WebDAV Class 2 (locking),
 RFC 6578 sync, and RFC 3744 ACLs are implemented and working — see
 [CHANGELOG.md](CHANGELOG.md) for the full history. DavNode can already
 be mounted by standard WebDAV clients for file storage with per-user/
-group access control and locking. CalDAV/CardDAV support is not yet
-implemented.
+group access control and locking.
+
+CardDAV (RFC 6352) is partially implemented (milestone M5 in progress):
+addressbooks can be created via Extended MKCOL, and contacts can be
+managed with GET/PUT/DELETE, with vCard content indexed for search.
+Addressbooks reuse the same ACL evaluation, locking (LOCK/UNLOCK), and
+`sync-collection` infrastructure as the file tree. The
+`addressbook-query`/`addressbook-multiget` REPORTs are still missing.
+CalDAV is not yet implemented.
 
 ## Roadmap
 
@@ -68,13 +75,13 @@ architecture, and data model live under [planning/](planning/).
 | | Lock enforcement middleware | Mutating methods honor lock tokens | ✅ Done |
 | | Lock properties | `supportedlock`/`lockdiscovery` | ✅ Done |
 | | sync-collection REPORT | Incremental client sync (RFC 6578) | ✅ Done |
-| **M5 — CardDAV (RFC 6352)** | | Contact/addressbook synchronization | 🔜 Next |
-| | Addressbook domain entities | Addressbook/AddressObject entities | 🔜 Planned |
-| | vCard parsing & index | Parse vCards into a searchable index | 🔜 Planned |
-| | Addressbook home & extended MKCOL | Per-user addressbook home collection | 🔜 Planned |
-| | AddressObject CRUD | GET/PUT/DELETE for individual contacts | 🔜 Planned |
-| | ACL/lock/sync reuse | Wire addressbooks into M3/M4 infrastructure | 🔜 Planned |
-| | CardDAV REPORTs | `addressbook-query`/`-multiget` | 🔜 Planned |
+| **M5 — CardDAV (RFC 6352)** | | Contact/addressbook synchronization | 🚧 In progress |
+| | Addressbook domain entities | Addressbook/AddressObject entities | ✅ Done |
+| | vCard parsing & index | Parse vCards into a searchable index | ✅ Done |
+| | Addressbook home & extended MKCOL | Per-user addressbook home collection | ✅ Done |
+| | AddressObject CRUD | GET/PUT/DELETE for individual contacts | ✅ Done |
+| | ACL/lock/sync reuse | Wire addressbooks into M3/M4 infrastructure | ✅ Done |
+| | CardDAV REPORTs | `addressbook-query`/`-multiget` | 🔜 Next |
 | **M6 — CalDAV (RFC 4791)** | | Calendar synchronization (excluding scheduling) | ⏳ Planned |
 | | Calendar domain entities | Calendar/CalendarObject entities | ⏳ Planned |
 | | iCalendar parsing & time-range index | Parse events incl. recurrence | ⏳ Planned |
