@@ -32,6 +32,11 @@ import {
  * - A well-formed body whose root element has no registered handler →
  *   `415 Unsupported Media Type` with a `<D:supported-report/>`
  *   `<D:error>` body (RFC 3253 §3.6).
+ *
+ * A handler's `ReportResult.contentType`, if it sets one, overrides the
+ * `application/xml; charset=utf-8` every report but CalDAV's
+ * `free-busy-query` wants (RFC 4791 §7.10 — a bare `text/calendar`
+ * `VFREEBUSY`, not XML).
  */
 export function registerReportRoute(
   app: Express,
@@ -71,7 +76,10 @@ export function registerReportRoute(
       const result = await handler.handle(body, context);
       res
         .status(result.status)
-        .set('Content-Type', 'application/xml; charset=utf-8')
+        .set(
+          'Content-Type',
+          result.contentType ?? 'application/xml; charset=utf-8',
+        )
         .send(result.body);
     },
   );

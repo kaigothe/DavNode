@@ -28,7 +28,10 @@ function basicAuthHeader(username: string, password: string): string {
 class DummyReportHandler implements ReportHandler {
   calls: Array<{ requestXml: string; context: ReportContext }> = [];
 
-  async handle(requestXml: string, context: ReportContext): Promise<ReportResult> {
+  async handle(
+    requestXml: string,
+    context: ReportContext,
+  ): Promise<ReportResult> {
     this.calls.push({ requestXml, context });
     return { status: 207, body: '<D:multistatus xmlns:D="DAV:"/>' };
   }
@@ -117,8 +120,7 @@ describe('REPORT route', () => {
   });
 
   it('returns 415 with a <D:supported-report/> error body for an unregistered report type', async () => {
-    const body =
-      '<D:principal-property-search xmlns:D="DAV:"/>';
+    const body = '<D:principal-property-search xmlns:D="DAV:"/>';
 
     const response = await report('/dav/acme/files', body);
 
@@ -126,6 +128,40 @@ describe('REPORT route', () => {
     const responseBody = await response.text();
     expect(responseBody).toContain('supported-report');
     expect(dummyHandler.calls).toHaveLength(0);
+  });
+
+  it('defaults the response Content-Type to application/xml, and honours a handler-chosen one', async () => {
+    const xmlResponse = await report(
+      '/dav/acme/files',
+      '<dummy-report xmlns="urn:example:ns"/>',
+    );
+    expect(xmlResponse.headers.get('content-type')).toBe(
+      'application/xml; charset=utf-8',
+    );
+
+    class TextCalendarHandler implements ReportHandler {
+      handle(): Promise<ReportResult> {
+        return {
+          status: 200,
+          body: 'BEGIN:VCALENDAR\r\nEND:VCALENDAR',
+          contentType: 'text/calendar',
+        };
+      }
+    }
+    registry.register(
+      'urn:example:ns',
+      'text-report',
+      new TextCalendarHandler(),
+    );
+
+    const textResponse = await report(
+      '/dav/acme/files',
+      '<text-report xmlns="urn:example:ns"/>',
+    );
+    expect(textResponse.headers.get('content-type')).toBe(
+      'text/calendar; charset=utf-8',
+    );
+    expect(await textResponse.text()).toBe('BEGIN:VCALENDAR\r\nEND:VCALENDAR');
   });
 
   it('returns 400 for a missing or malformed body', async () => {

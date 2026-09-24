@@ -48,6 +48,14 @@ export interface ReportContext {
 export interface ReportResult {
   status: number;
   body: string;
+  /**
+   * The response's `Content-Type`; `report.route.ts` defaults to
+   * `application/xml; charset=utf-8` when this is absent, which every
+   * report but CalDAV's `free-busy-query` wants (RFC 4791 §7.10: its
+   * response is a bare `text/calendar` `VFREEBUSY`, not a
+   * `DAV:multistatus`).
+   */
+  contentType?: string;
 }
 
 /**

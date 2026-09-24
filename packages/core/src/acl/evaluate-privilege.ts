@@ -3,6 +3,10 @@ import { AddressbookAce } from '../entities/addressbook-ace.entity.js';
 import type { AddressbookCollection } from '../entities/addressbook-collection.entity.js';
 import { AddressObjectAce } from '../entities/address-object-ace.entity.js';
 import type { AddressObject } from '../entities/address-object.entity.js';
+import { CalendarAce } from '../entities/calendar-ace.entity.js';
+import { CalendarObjectAce } from '../entities/calendar-object-ace.entity.js';
+import type { CalendarCollection } from '../entities/calendar-collection.entity.js';
+import type { CalendarObject } from '../entities/calendar-object.entity.js';
 import { Principal } from '../entities/principal.entity.js';
 import { GroupMembershipService } from '../services/group-membership.service.js';
 import type { AddressbookAclResource } from '../carddav/addressbook-acl-resource.js';
@@ -324,6 +328,100 @@ export async function selectAddressObjectsWithPrivilege(
       )
     ) {
       allowed.add(addressObject.id);
+    }
+  }
+  return allowed;
+}
+
+/** How many calendar object ids one `IN (...)` ACE lookup carries — well below every supported driver's bound-parameter limit. */
+const CALENDAR_ACE_LOOKUP_CHUNK_SIZE = 500;
+
+/**
+ * The batched form of {@link hasCalendarPrivilege} for many objects of
+ * one calendar — what the CalDAV REPORTs need, since every object in a
+ * result must pass the same `read` check `GET` does (an object's own
+ * ACEs can deny what the calendar grants) and one full evaluation per
+ * object would cost several queries each.
+ *
+ * Gives exactly the per-object answer {@link hasCalendarPrivilege} would,
+ * but loads the calendar's ACEs once, every object's own ACEs in
+ * `IN (...)` chunks, and the matching-principal set once per distinct
+ * object owner (`DAV:owner` matches per object, and a `bind`-only writer
+ * makes the writing principal an object's owner — not necessarily the
+ * calendar's).
+ *
+ * @param manager - The `EntityManager` to query with.
+ * @param principal - The requesting principal (already authenticated).
+ * @param calendar - The calendar every object in `calendarObjects`
+ * belongs to (the source of their inherited ACEs).
+ * @param calendarObjects - The objects to check.
+ * @param requestedPrivilege - The privilege being checked for.
+ * @returns The ids of the objects `principal` holds `requestedPrivilege` on.
+ */
+export async function selectCalendarObjectsWithPrivilege(
+  manager: EntityManager,
+  principal: Principal,
+  calendar: CalendarCollection,
+  calendarObjects: readonly CalendarObject[],
+  requestedPrivilege: CalendarPrivilege,
+): Promise<Set<string>> {
+  const allowed = new Set<string>();
+  if (calendarObjects.length === 0) {
+    return allowed;
+  }
+
+  const calendarAces = await manager
+    .getRepository(CalendarAce)
+    .findBy({ calendarId: calendar.id });
+
+  const ownAcesByObject = new Map<string, CalendarObjectAce[]>();
+  for (
+    let start = 0;
+    start < calendarObjects.length;
+    start += CALENDAR_ACE_LOOKUP_CHUNK_SIZE
+  ) {
+    const ids = calendarObjects
+      .slice(start, start + CALENDAR_ACE_LOOKUP_CHUNK_SIZE)
+      .map((object) => object.id);
+    const rows = await manager
+      .getRepository(CalendarObjectAce)
+      .findBy({ calendarObjectId: In(ids) });
+    for (const row of rows) {
+      const own = ownAcesByObject.get(row.calendarObjectId);
+      if (own) {
+        own.push(row);
+      } else {
+        ownAcesByObject.set(row.calendarObjectId, [row]);
+      }
+    }
+  }
+
+  const matchingByOwner = new Map<string, Set<string>>();
+  for (const object of calendarObjects) {
+    let matchingPrincipalIds = matchingByOwner.get(object.ownerPrincipalId);
+    if (!matchingPrincipalIds) {
+      matchingPrincipalIds = await buildMatchingPrincipalIds(
+        manager,
+        principal,
+        object.ownerPrincipalId,
+      );
+      matchingByOwner.set(object.ownerPrincipalId, matchingPrincipalIds);
+    }
+    const aces = await collectAces(
+      ownAcesByObject.get(object.id) ?? [],
+      calendar.id,
+      () => Promise.resolve(calendarAces),
+      () => Promise.resolve(null),
+    );
+    if (
+      evaluateAces(
+        aces,
+        matchingPrincipalIds,
+        requestedPrivilege,
+        calendarPrivilegeSatisfies,
+      )
+    ) {
+      allowed.add(object.id);
     }
   }
   return allowed;

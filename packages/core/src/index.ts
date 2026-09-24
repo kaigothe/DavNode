@@ -36,6 +36,7 @@ export {
   hasAddressbookPrivilege,
   hasCalendarPrivilege,
   selectAddressObjectsWithPrivilege,
+  selectCalendarObjectsWithPrivilege,
 } from './acl/evaluate-privilege.js';
 export {
   parseAclRequestBody,
@@ -360,8 +361,51 @@ export { AddressbookHomeSetProperty } from './carddav/addressbook-home-set-prope
 export { CALDAV_NAMESPACE } from './caldav/caldav-namespace.js';
 export { CalendarChangeLog } from './caldav/calendar-change-log.js';
 export { CalendarObjectLiveProperties } from './caldav/calendar-object-live-properties.js';
-export { resolveReportCalendar } from './caldav/calendar-report-support.js';
+export {
+  resolveReportCalendar,
+  checkSupportedCalendarData,
+  buildCalendarObjectResponses,
+  calendarObjectNameOf,
+  findCalendarObjectsByName,
+} from './caldav/calendar-report-support.js';
 export { CalendarSyncCollectionDomain } from './caldav/calendar-sync-domain.js';
+export {
+  parseUtcDateTime,
+  CALENDAR_DATA_PROPERTY,
+  InvalidExpandRangeError,
+  parseCalendarReportPropertySelection,
+  type CalendarDataRequest,
+  type CalendarReportPropertySelection,
+} from './caldav/calendar-report-request.js';
+export {
+  SUPPORTED_CALENDAR_COLLATIONS,
+  parseFilterElement,
+  parseTimeRangeElement,
+  classifyCalendarFilter,
+  parseCalendarQueryRequestBody,
+  type CalendarTimeRangeFilter,
+  type CalendarTextMatch,
+  type CalendarPropFilter,
+  type CalendarFilter,
+  type UnsupportedCalendarFilterParts,
+  type CalendarQueryRequestBody,
+} from './caldav/calendar-query-request.js';
+export {
+  parseCalendarMultigetRequestBody,
+  type CalendarMultigetRequestBody,
+} from './caldav/calendar-multiget-request.js';
+export { parseFreeBusyQueryRequestBody } from './caldav/free-busy-query-request.js';
+export { resolveReportFloatingTimeZone } from './caldav/calendar-query-timezone.js';
+export { calendarTextMatches } from './caldav/calendar-text-match.js';
+export { renderExpandedCalendarData } from './caldav/calendar-data-expand.js';
+export { CalendarMultigetReportHandler } from './caldav/calendar-multiget-report.js';
+export {
+  CalendarQueryReportHandler,
+  MAX_QUERY_RESULTS as MAX_CALENDAR_QUERY_RESULTS,
+  matchesTimeRange,
+  matchesPropFilters,
+} from './caldav/calendar-query-report.js';
+export { FreeBusyQueryReportHandler } from './caldav/free-busy-query-report.js';
 export type { CalendarAclResource } from './caldav/calendar-acl-resource.js';
 export {
   toCalendarHomeUrl,

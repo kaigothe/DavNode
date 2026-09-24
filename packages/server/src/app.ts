@@ -2,9 +2,13 @@ import {
   AddressbookMultigetReportHandler,
   AddressbookQueryReportHandler,
   AddressbookSyncCollectionDomain,
+  CALDAV_NAMESPACE,
+  CalendarMultigetReportHandler,
+  CalendarQueryReportHandler,
   CalendarSyncCollectionDomain,
   CARDDAV_NAMESPACE,
   DAV_NAMESPACE,
+  FreeBusyQueryReportHandler,
   PrincipalPropertySearchReportHandler,
   ReportRegistry,
   SyncCollectionReportHandler,
@@ -124,6 +128,21 @@ export function createApp(dataSource: DataSource): express.Express {
     CARDDAV_NAMESPACE,
     'addressbook-query',
     new AddressbookQueryReportHandler(),
+  );
+  reportRegistry.register(
+    CALDAV_NAMESPACE,
+    'calendar-multiget',
+    new CalendarMultigetReportHandler(),
+  );
+  reportRegistry.register(
+    CALDAV_NAMESPACE,
+    'calendar-query',
+    new CalendarQueryReportHandler(),
+  );
+  reportRegistry.register(
+    CALDAV_NAMESPACE,
+    'free-busy-query',
+    new FreeBusyQueryReportHandler(),
   );
   registerReportRoute(app, dataSource, reportRegistry);
 
