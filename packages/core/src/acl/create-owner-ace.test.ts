@@ -9,6 +9,8 @@ import {
   AddressObjectAce,
   CalendarAce,
   CalendarCollection,
+  CalendarObject,
+  CalendarObjectAce,
   Collection,
   CollectionAce,
   FileAce,
@@ -26,6 +28,7 @@ describe('createOwnerAllAce', () => {
   let addressbook: AddressbookCollection;
   let addressObject: AddressObject;
   let calendar: CalendarCollection;
+  let calendarObject: CalendarObject;
   let ownerPrincipal: Principal;
 
   beforeEach(async () => {
@@ -92,6 +95,18 @@ describe('createOwnerAllAce', () => {
         ownerPrincipalId: ownerPrincipal.id,
         name: 'work',
         displayName: 'Work',
+      }),
+    );
+    calendarObject = await dataSource.getRepository(CalendarObject).save(
+      dataSource.getRepository(CalendarObject).create({
+        tenantId: tenant.id,
+        calendarId: calendar.id,
+        name: 'event.ics',
+        uid: 'uid-1',
+        etag: 'etag-1',
+        componentType: 'VEVENT',
+        ownerPrincipalId: ownerPrincipal.id,
+        dtstart: new Date(0),
       }),
     );
   });
@@ -204,6 +219,30 @@ describe('createOwnerAllAce', () => {
     const aces = await dataSource
       .getRepository(CalendarAce)
       .findBy({ calendarId: calendar.id });
+    expect(aces).toEqual([
+      expect.objectContaining({
+        principalId: ownerPrincipal.id,
+        privilege: 'all',
+        grantDeny: 'grant',
+        protected: true,
+        position: 0,
+      }),
+    ]);
+  });
+
+  it('creates exactly one protected all/grant ACE for a calendar object', async () => {
+    await dataSource.transaction(async (manager) => {
+      await createOwnerAllAce(
+        manager,
+        'calendar-object',
+        calendarObject.id,
+        ownerPrincipal.id,
+      );
+    });
+
+    const aces = await dataSource
+      .getRepository(CalendarObjectAce)
+      .findBy({ calendarObjectId: calendarObject.id });
     expect(aces).toEqual([
       expect.objectContaining({
         principalId: ownerPrincipal.id,

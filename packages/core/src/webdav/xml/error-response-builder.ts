@@ -21,6 +21,8 @@ export interface ErrorCondition {
   attributes?: Readonly<Record<string, string>>;
   /** Nested condition elements. */
   children?: readonly ErrorCondition[];
+  /** Text content, for a condition that carries a value — e.g. the `DAV:href` inside CalDAV's `no-uid-conflict`. */
+  text?: string;
 }
 
 /**
@@ -44,6 +46,9 @@ export function appendErrorConditions(
       condition.attributes ?? {},
     )) {
       element.att(attribute, value);
+    }
+    if (condition.text !== undefined) {
+      element.txt(condition.text);
     }
     appendErrorConditions(element, condition.children ?? []);
   }

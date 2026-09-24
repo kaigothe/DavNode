@@ -2,27 +2,32 @@ import type { EntityManager } from 'typeorm';
 import { AddressbookAce } from '../entities/addressbook-ace.entity.js';
 import { CalendarAce } from '../entities/calendar-ace.entity.js';
 import { AddressObjectAce } from '../entities/address-object-ace.entity.js';
+import { CalendarObjectAce } from '../entities/calendar-object-ace.entity.js';
 import { CollectionAce } from '../entities/collection-ace.entity.js';
 import { FileAce } from '../entities/file-ace.entity.js';
 
 /**
  * Which ACE table {@link createOwnerAllAce} inserts its row into.
- * `'addressbook'`/`'address-object'` (M5) and `'calendar'` (M6) are each
- * handled by their own branch below rather than a fully generic "any ACE
- * entity" parameterization — Große Aufgabe 5 ("ACL-/Lock-/Sync-
- * Wiederverwendung") is where that generalization happens; this is the
- * minimal extension the MKCOL/MKCALENDAR and object-CRUD sub-tasks need
- * in the meantime. The calendar-object counterpart follows with the
- * CalendarObject-CRUD handlers (Große Aufgabe 4).
+ * `'addressbook'`/`'address-object'` (M5) and `'calendar'`/
+ * `'calendar-object'` (M6) are each handled by their own branch below
+ * rather than a fully generic "any ACE entity" parameterization — Große
+ * Aufgabe 5 ("ACL-/Lock-/Sync-Wiederverwendung") is where that
+ * generalization happens; this is the minimal extension the MKCOL/
+ * MKCALENDAR and object-CRUD sub-tasks need in the meantime.
  */
 export type OwnerAceResourceType =
-  'collection' | 'file' | 'addressbook' | 'address-object' | 'calendar';
+  | 'collection'
+  | 'file'
+  | 'addressbook'
+  | 'address-object'
+  | 'calendar'
+  | 'calendar-object';
 
 /**
  * Creates the default-owner ACE every newly created `Collection`/
- * `FileResource`/`AddressbookCollection`/`CalendarCollection` needs: a `protected = true` row
- * granting `DAV:all` to `ownerPrincipalId`, at `position = 0` (always
- * evaluated first).
+ * `FileResource`/`AddressbookCollection`/`CalendarCollection`/
+ * `CalendarObject` needs: a `protected = true` row granting `DAV:all` to
+ * `ownerPrincipalId`, at `position = 0` (always evaluated first).
  *
  * RFC 3744 is default-deny (see milestones/M3-webdav-acl/00-setting-goal.md,
  * Runde 19) — without this, a freshly created resource would be
@@ -37,9 +42,10 @@ export type OwnerAceResourceType =
  * @param manager - The same `EntityManager` the resource's own creation
  * is using.
  * @param resourceType - Whether `resourceId` names a `Collection`, a
- * `FileResource`, an `AddressbookCollection`, an `AddressObject`, or a
- * `CalendarCollection` — selects `collection_aces`/`file_aces`/
- * `addressbook_aces`/`address_object_aces`/`calendar_aces`.
+ * `FileResource`, an `AddressbookCollection`, an `AddressObject`, a
+ * `CalendarCollection`, or a `CalendarObject` — selects
+ * `collection_aces`/`file_aces`/`addressbook_aces`/`address_object_aces`/
+ * `calendar_aces`/`calendar_object_aces`.
  * @param resourceId - Id of the newly created resource.
  * @param ownerPrincipalId - Id of the principal granted `DAV:all`.
  */
@@ -99,6 +105,21 @@ export async function createOwnerAllAce(
     await aces.save(
       aces.create({
         calendarId: resourceId,
+        principalId: ownerPrincipalId,
+        privilege: 'all',
+        grantDeny: 'grant',
+        protected: true,
+        position: 0,
+      }),
+    );
+    return;
+  }
+
+  if (resourceType === 'calendar-object') {
+    const aces = manager.getRepository(CalendarObjectAce);
+    await aces.save(
+      aces.create({
+        calendarObjectId: resourceId,
         principalId: ownerPrincipalId,
         privilege: 'all',
         grantDeny: 'grant',

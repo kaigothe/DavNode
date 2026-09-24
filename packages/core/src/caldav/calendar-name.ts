@@ -41,3 +41,21 @@ export function isValidCalendarName(name: string): boolean {
     !RESERVED_CALENDAR_NAMES.includes(name.toLowerCase())
   );
 }
+
+/**
+ * Whether `name` can be the URL path segment of a new calendar object
+ * resource: like {@link isValidCalendarName} — not empty, not `.`/`..`,
+ * no control characters, at most {@link MAX_CALENDAR_NAME_LENGTH}
+ * characters (the `varchar` the database holds) — but without the
+ * reserved names, which only apply to calendars in the home.
+ */
+export function isValidCalendarObjectName(name: string): boolean {
+  return (
+    name !== '' &&
+    name !== '.' &&
+    name !== '..' &&
+    // eslint-disable-next-line no-control-regex -- control characters are exactly what a resource name must not contain.
+    !/[\u0000-\u001F\u007F]/.test(name) &&
+    codePointLength(name) <= MAX_CALENDAR_NAME_LENGTH
+  );
+}

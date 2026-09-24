@@ -353,7 +353,11 @@ export {
 } from './caldav/index-calendar-object.js';
 export { AddressbookHomeSetProperty } from './carddav/addressbook-home-set-property.js';
 export { CALDAV_NAMESPACE } from './caldav/caldav-namespace.js';
-export { toCalendarHomeUrl } from './caldav/calendar-home-url.js';
+export {
+  toCalendarHomeUrl,
+  toCalendarObjectUrl,
+  toCalendarUrl,
+} from './caldav/calendar-home-url.js';
 export {
   CalendarHomeCollection,
   type CalendarHomeTreeResource,
@@ -364,6 +368,7 @@ export {
   RESERVED_CALENDAR_NAMES,
   MAX_CALENDAR_NAME_LENGTH,
   isValidCalendarName,
+  isValidCalendarObjectName,
 } from './caldav/calendar-name.js';
 export { parseCalendarTimezone } from './caldav/calendar-timezone.js';
 export {
@@ -385,6 +390,17 @@ export {
   type NewCalendar,
 } from './caldav/create-calendar.js';
 export { isUniqueConstraintViolationError } from './services/unique-constraint.util.js';
+export { CalendarChangeService } from './caldav/calendar-change.service.js';
+export { MAX_CALENDAR_OBJECT_BYTES } from './caldav/calendar-limits.js';
+export {
+  CalendarObjectChangedError,
+  CalendarUidConflictError,
+  deleteCalendarObject,
+  saveCalendarObject,
+  type DeleteCalendarObjectInput,
+  type SaveCalendarObjectInput,
+  type SavedCalendarObject,
+} from './caldav/calendar-object-writes.js';
 export { requestsAddressbookResourcetype } from './carddav/mkcol-addressbook-request.js';
 export { AddressbookChangeService } from './carddav/addressbook-change.service.js';
 export type { AddressbookAclResource } from './carddav/addressbook-acl-resource.js';

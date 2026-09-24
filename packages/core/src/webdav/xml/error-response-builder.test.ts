@@ -51,6 +51,24 @@ describe('buildErrorResponse', () => {
     ).toBe('X-FOO');
   });
 
+  it('emits the text of a condition, e.g. the href inside no-uid-conflict', () => {
+    const xml = buildErrorResponse([
+      {
+        namespace: 'urn:ietf:params:xml:ns:caldav',
+        name: 'no-uid-conflict',
+        children: [
+          { namespace: 'DAV:', name: 'D:href', text: '/dav/a b/x&y.ics' },
+        ],
+      },
+    ]);
+
+    const root = create(xml).root();
+    const [href] = root.filter((n) => n.node.localName === 'href', false, true);
+    expect(href?.node.namespaceURI).toBe('DAV:');
+    expect(href?.node.textContent).toBe('/dav/a b/x&y.ics');
+    expect(xml).toContain('x&amp;y.ics');
+  });
+
   it('mixes bare and namespaced conditions in order', () => {
     const xml = buildErrorResponse([
       'number-of-matches-within-limits',

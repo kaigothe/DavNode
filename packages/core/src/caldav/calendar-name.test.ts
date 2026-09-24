@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   codePointLength,
   isValidCalendarName,
+  isValidCalendarObjectName,
   MAX_CALENDAR_NAME_LENGTH,
   RESERVED_CALENDAR_NAMES,
 } from './calendar-name.js';
@@ -53,5 +54,37 @@ describe('codePointLength', () => {
     expect(codePointLength('')).toBe(0);
     expect(codePointLength('abc')).toBe(3);
     expect(codePointLength('a😀b')).toBe(3);
+  });
+});
+
+describe('isValidCalendarObjectName', () => {
+  it.each([
+    'event.ics',
+    'a b&c.ics',
+    'inbox',
+    'outbox',
+    '.hidden',
+    'Fußball 😀',
+  ])('accepts %s, reserved calendar names included', (name) => {
+    expect(isValidCalendarObjectName(name)).toBe(true);
+  });
+
+  it.each(['', '.', '..', 'a\u0000b', 'a\nb', 'a\u007Fb'])(
+    'rejects %j',
+    (name) => {
+      expect(isValidCalendarObjectName(name)).toBe(false);
+    },
+  );
+
+  it('limits the length to what the database holds, in code points', () => {
+    expect(
+      isValidCalendarObjectName('a'.repeat(MAX_CALENDAR_NAME_LENGTH)),
+    ).toBe(true);
+    expect(
+      isValidCalendarObjectName('a'.repeat(MAX_CALENDAR_NAME_LENGTH + 1)),
+    ).toBe(false);
+    expect(
+      isValidCalendarObjectName('😀'.repeat(MAX_CALENDAR_NAME_LENGTH)),
+    ).toBe(true);
   });
 });

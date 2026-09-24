@@ -1,8 +1,6 @@
 import {
-  buildErrorResponse,
   buildMkcalendarResponse,
   buildMultistatusResponse,
-  CALDAV_NAMESPACE,
   CalendarCollection,
   createCalendarCollection,
   interpretMkcalendarProperties,
@@ -19,6 +17,7 @@ import express, {
   type Request,
   type Response,
 } from 'express';
+import { sendCalDavPrecondition } from './caldav/precondition.util.js';
 import {
   pathSegments,
   requirePrincipal,
@@ -36,16 +35,6 @@ import {
 const MAX_BODY_BYTES = 48 * 1024;
 
 const APPLICATION_XML = 'application/xml; charset=utf-8';
-
-/** Sends a `403` whose `<D:error>` names the violated CalDAV `precondition` (RFC 4918 §16). */
-function sendPrecondition(res: Response, precondition: string): void {
-  res
-    .status(403)
-    .set('Content-Type', APPLICATION_XML)
-    .send(
-      buildErrorResponse([{ namespace: CALDAV_NAMESPACE, name: precondition }]),
-    );
-}
 
 /**
  * Turns body-parser's "too large" error into `413`; everything else goes
@@ -129,7 +118,7 @@ export function registerMkcalendarRoute(
           name: segments[0],
         });
         if (parent && segments.length === 2) {
-          sendPrecondition(res, 'calendar-collection-location-ok');
+          sendCalDavPrecondition(res, 'calendar-collection-location-ok');
         } else {
           res.sendStatus(409);
         }
@@ -137,7 +126,7 @@ export function registerMkcalendarRoute(
       }
       const [name] = segments;
       if (!isValidCalendarName(name)) {
-        sendPrecondition(res, 'calendar-collection-location-ok');
+        sendCalDavPrecondition(res, 'calendar-collection-location-ok');
         return;
       }
       const existing = await calendars.findOneBy({
@@ -165,7 +154,7 @@ export function registerMkcalendarRoute(
 
       const interpretation = interpretMkcalendarProperties(body.properties);
       if (interpretation.outcome === 'invalid-timezone') {
-        sendPrecondition(res, 'valid-calendar-data');
+        sendCalDavPrecondition(res, 'valid-calendar-data');
         return;
       }
       if (interpretation.outcome === 'rejected') {

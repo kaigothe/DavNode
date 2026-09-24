@@ -141,6 +141,18 @@ describe('CalendarLiveProperties', () => {
     });
   });
 
+  it('reports the size limit of a calendar object as max-resource-size', async () => {
+    const calendar = await createCalendar();
+
+    const properties = await provider.listLiveProperties(calendar, context);
+
+    expect(properties.find((p) => p.name === 'max-resource-size')).toEqual({
+      namespace: CALDAV,
+      name: 'max-resource-size',
+      value: '5242880',
+    });
+  });
+
   it('omits calendar-description and calendar-timezone until the client sets them', async () => {
     const calendar = await createCalendar();
 
@@ -179,6 +191,7 @@ describe('CalendarLiveProperties', () => {
       'calendar-timezone',
       'supported-calendar-component-set',
       'supported-calendar-data',
+      'max-resource-size',
     ]) {
       expect(provider.isLiveProperty(CALDAV, name)).toBe(true);
     }

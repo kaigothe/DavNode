@@ -7,6 +7,7 @@ import type {
 } from '../webdav/properties/property-provider.interface.js';
 import type { CalendarComponentType } from '../entities/calendar-collection.entity.js';
 import { CALDAV_NAMESPACE } from './caldav-namespace.js';
+import { MAX_CALENDAR_OBJECT_BYTES } from './calendar-limits.js';
 import {
   CalendarHomeCollection,
   type CalendarHomeTreeResource,
@@ -24,6 +25,7 @@ const CALDAV_LIVE_PROPERTY_NAMES = new Set([
   'calendar-timezone',
   'supported-calendar-component-set',
   'supported-calendar-data',
+  'max-resource-size',
 ]);
 
 function property(
@@ -70,9 +72,10 @@ export function serializeComponentSet(
  * `calendar-timezone` only when the client set them, and always
  * `supported-calendar-component-set` (the stored set, §5.2.3) and
  * `supported-calendar-data` (iCalendar 2.0 as `text/calendar`, §5.2.4 —
- * what `parseCalendarObject` accepts). The last two are protected: only
- * `MKCALENDAR` can initialise the component set, and nothing changes
- * the calendar-data type.
+ * what `parseCalendarObject` accepts) and `max-resource-size` (§5.2.5, the
+ * most octets one calendar object may have). These three are protected:
+ * only `MKCALENDAR` can initialise the component set, and nothing changes
+ * the calendar-data type or the size limit.
  */
 export class CalendarLiveProperties implements PropertyProvider<CalendarHomeTreeResource> {
   /**
@@ -121,6 +124,11 @@ export class CalendarLiveProperties implements PropertyProvider<CalendarHomeTree
         CALDAV_NAMESPACE,
         'supported-calendar-data',
         `<C:calendar-data content-type="text/calendar" version="2.0" xmlns:C="${CALDAV_NAMESPACE}"/>`,
+      ),
+      property(
+        CALDAV_NAMESPACE,
+        'max-resource-size',
+        String(MAX_CALENDAR_OBJECT_BYTES),
       ),
     ];
     if (resource.description !== null) {
