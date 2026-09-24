@@ -22,6 +22,28 @@ const INDEXED_PROPERTIES: ReadonlyArray<{
 ];
 
 /**
+ * The vCard property names that have {@link AddressObjectIndex} rows —
+ * exactly the properties `addressbook-query` can filter on. Derived from
+ * `INDEXED_PROPERTIES`, so extending the index extends what the
+ * query report accepts, with no second list to keep in step.
+ */
+export const INDEXED_PROPERTY_NAMES: readonly string[] = INDEXED_PROPERTIES.map(
+  ({ propertyName }) => propertyName,
+);
+
+/**
+ * Normalizes a vCard property value (or a query's search text) for
+ * comparison against {@link AddressObjectIndex.propertyValue}: trimmed
+ * and lowercased. Shared by the writer ({@link indexVCard}) and the
+ * reader (`addressbook-query`), so both sides of a comparison are
+ * normalized identically — the case-insensitivity of the
+ * `i;unicode-casemap` collation lives in this one function.
+ */
+export function normalizeIndexValue(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+/**
  * Replaces an `AddressObject`'s {@link AddressObjectIndex} rows with
  * freshly parsed values from its vCard content — one row per property
  * occurrence (e.g. two `EMAIL` addresses produce two rows), so a future
@@ -54,7 +76,7 @@ export async function indexVCard(
       repository.create({
         addressObjectId,
         propertyName,
-        propertyValue: value.trim().toLowerCase(),
+        propertyValue: normalizeIndexValue(value),
       }),
     ),
   );

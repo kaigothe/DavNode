@@ -239,7 +239,11 @@ export {
   VCardParseError,
   type ParsedVCard,
 } from './carddav/vcard-parser.js';
-export { indexVCard } from './carddav/index-vcard.js';
+export {
+  indexVCard,
+  INDEXED_PROPERTY_NAMES,
+  normalizeIndexValue,
+} from './carddav/index-vcard.js';
 export { CARDDAV_NAMESPACE } from './carddav/carddav-namespace.js';
 export { toAddressbookHomeUrl } from './carddav/addressbook-home-url.js';
 export {
@@ -255,6 +259,27 @@ export {
   parseAddressbookMultigetRequestBody,
   type AddressbookMultigetRequestBody,
 } from './carddav/addressbook-multiget-report.js';
+export {
+  AddressbookQueryReportHandler,
+  MAX_QUERY_RESULTS,
+} from './carddav/addressbook-query-report.js';
+export {
+  MAX_FILTER_CONDITIONS,
+  parseAddressbookQueryRequestBody,
+  type AddressbookFilter,
+  type AddressbookQueryRequestBody,
+  type ParamFilter,
+  type PropFilter,
+  type TextMatch,
+  type TextMatchType,
+} from './carddav/addressbook-query-request.js';
+export {
+  buildFilterCondition,
+  findUnsupportedFilterParts,
+  unsupportedFilterResult,
+  type FilterCondition,
+  type UnsupportedFilterParts,
+} from './carddav/addressbook-query-filter.js';
 export {
   parseReportPropertySelection,
   type AddressDataRequest,

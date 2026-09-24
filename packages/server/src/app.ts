@@ -1,5 +1,6 @@
 import {
   AddressbookMultigetReportHandler,
+  AddressbookQueryReportHandler,
   AddressbookSyncCollectionDomain,
   CARDDAV_NAMESPACE,
   DAV_NAMESPACE,
@@ -102,6 +103,11 @@ export function createApp(dataSource: DataSource): express.Express {
     CARDDAV_NAMESPACE,
     'addressbook-multiget',
     new AddressbookMultigetReportHandler(),
+  );
+  reportRegistry.register(
+    CARDDAV_NAMESPACE,
+    'addressbook-query',
+    new AddressbookQueryReportHandler(),
   );
   registerReportRoute(app, dataSource, reportRegistry);
 
