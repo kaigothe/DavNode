@@ -1,6 +1,5 @@
 import { hasAddressbookPrivilege } from '../acl/evaluate-privilege.js';
 import { AddressObject } from '../entities/address-object.entity.js';
-import { AddressbookCollection } from '../entities/addressbook-collection.entity.js';
 import { PropertyProviderRegistry } from '../webdav/properties/property-provider-registry.js';
 import type {
   PropertyProviderContext,
@@ -15,7 +14,10 @@ import type {
 import type { PropertyName } from '../webdav/xml/request-parser.js';
 import { AddressObjectLiveProperties } from './address-object-live-properties.js';
 import { AddressbookChangeLog } from './addressbook-change-log.js';
-import { toAddressbookHomeUrl } from './addressbook-home-url.js';
+import {
+  resolveReportAddressbook,
+  toAddressbookUrl,
+} from './addressbook-report-support.js';
 
 /**
  * The addressbook tree's side of `sync-collection`
@@ -25,6 +27,11 @@ import { toAddressbookHomeUrl } from './addressbook-home-url.js';
  * `hasAddressbookPrivilege`, the change log is `addressbook_changes`, and
  * members are the addressbook's `AddressObject`s carrying
  * `AddressObjectLiveProperties`.
+ *
+ * The addressbook is resolved by `resolveReportAddressbook`, shared with
+ * the CardDAV query/multiget reports: it accepts a trailing slash on the
+ * Request-URI and answers a `{userId}` that isn't a UUID with "not found"
+ * (Postgres would otherwise fail the query with a `500`).
  *
  * Only live properties are resolved for members: there is no dead-
  * property service for the addressbook domain yet (no PROPPATCH route
@@ -43,28 +50,12 @@ export class AddressbookSyncCollectionDomain implements SyncCollectionDomain {
   async resolveTarget(
     context: ReportContext,
   ): Promise<SyncCollectionTarget | null> {
-    const [tree, ownerPrincipalId, addressbookName, ...rest] = context.segments;
-    if (
-      tree !== 'addressbooks' ||
-      ownerPrincipalId === undefined ||
-      addressbookName === undefined ||
-      rest.length > 0
-    ) {
-      return null;
-    }
-
-    const addressbook = await context.manager
-      .getRepository(AddressbookCollection)
-      .findOneBy({
-        tenantId: context.tenant.id,
-        ownerPrincipalId,
-        displayName: addressbookName,
-      });
+    const addressbook = await resolveReportAddressbook(context);
     if (!addressbook) {
       return null;
     }
 
-    const addressbookHref = `${toAddressbookHomeUrl(ownerPrincipalId, context.tenant)}/${encodeURIComponent(addressbook.displayName)}`;
+    const addressbookHref = toAddressbookUrl(addressbook, context.tenant);
     const propertyContext: PropertyProviderContext = {
       tenant: context.tenant,
       principal: context.principal,

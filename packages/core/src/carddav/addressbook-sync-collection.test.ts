@@ -317,6 +317,29 @@ describe('SyncCollectionReportHandler for addressbooks', () => {
     expect(tooDeep.status).toBe(404);
   });
 
+  it('accepts a trailing slash on the addressbook URL', async () => {
+    await addContact('a.vcf');
+
+    const result = await handler.handle(
+      requestBody(),
+      context({ segments: ['addressbooks', principal.id, 'Contacts', ''] }),
+    );
+
+    expect(result.status).toBe(207);
+    expect(hrefsInMultistatus(result.body)).toEqual([
+      `/dav/acme/addressbooks/${principal.id}/Contacts/a.vcf`,
+    ]);
+  });
+
+  it('a user id that is not a UUID is 404 (Postgres would fail the uuid comparison with a 500)', async () => {
+    const result = await handler.handle(
+      requestBody(),
+      context({ segments: ['addressbooks', 'not-a-uuid', 'Contacts'] }),
+    );
+
+    expect(result.status).toBe(404);
+  });
+
   it('the same handler still serves WebDAV file-tree collections alongside addressbooks', async () => {
     const root = await dataSource.getRepository(Collection).save(
       dataSource.getRepository(Collection).create({
