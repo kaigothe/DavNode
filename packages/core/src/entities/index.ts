@@ -10,6 +10,14 @@ import { AddressObjectLock } from './address-object-lock.entity.js';
 import { AddressObjectProperty } from './address-object-property.entity.js';
 import { AddressObject } from './address-object.entity.js';
 import {
+  CalendarObject,
+  CALENDAR_STATUS_VALUES,
+  CALENDAR_TRANSPARENCY_VALUES,
+  type CalendarStatus,
+  type CalendarTransparency,
+} from './calendar-object.entity.js';
+import { CalendarObjectContent } from './calendar-object-content.entity.js';
+import {
   CalendarCollection,
   CALENDAR_COMPONENT_TYPES,
   type CalendarComponentType,
@@ -70,6 +78,12 @@ export {
   CalendarCollection,
   CALENDAR_COMPONENT_TYPES,
   type CalendarComponentType,
+  CalendarObject,
+  CalendarObjectContent,
+  CALENDAR_STATUS_VALUES,
+  CALENDAR_TRANSPARENCY_VALUES,
+  type CalendarStatus,
+  type CalendarTransparency,
   Collection,
   CollectionAce,
   GRANT_DENY_VALUES,
@@ -141,4 +155,6 @@ export const ALL_ENTITIES = [
   AddressbookChange,
   AddressObjectIndex,
   CalendarCollection,
+  CalendarObject,
+  CalendarObjectContent,
 ];
