@@ -1,3 +1,16 @@
+# [1.16.0](https://github.com/kaigothe/DavNode/compare/v1.15.0...v1.16.0) (2026-09-24)
+
+
+### Bug Fixes
+
+* **core:** resolve skipped and repeated local times of a VTIMEZONE ([4487016](https://github.com/kaigothe/DavNode/commit/4487016170867f1a56d9d7f83279d22eb13efc80))
+
+
+### Features
+
+* **server:** add CalendarObject GET, PUT and DELETE ([aa53323](https://github.com/kaigothe/DavNode/commit/aa53323c0b3dbf598e1fc20232d5068467413181))
+* **server:** instantiate ACL, locks and sync for calendars ([8f36a64](https://github.com/kaigothe/DavNode/commit/8f36a64b4c0c1bac94bf9c323a4b69ada9226455))
+
 # [1.15.0](https://github.com/kaigothe/DavNode/compare/v1.14.0...v1.15.0) (2026-09-24)
 
 
