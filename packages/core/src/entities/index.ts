@@ -16,7 +16,12 @@ import {
   type CalendarStatus,
   type CalendarTransparency,
 } from './calendar-object.entity.js';
+import { CalendarAce } from './calendar-ace.entity.js';
+import { CalendarChange } from './calendar-change.entity.js';
+import { CalendarLock } from './calendar-lock.entity.js';
+import { CalendarObjectAce } from './calendar-object-ace.entity.js';
 import { CalendarObjectContent } from './calendar-object-content.entity.js';
+import { CalendarObjectLock } from './calendar-object-lock.entity.js';
 import { CalendarObjectProperty } from './calendar-object-property.entity.js';
 import { CalendarProperty } from './calendar-property.entity.js';
 import {
@@ -84,6 +89,11 @@ export {
   CalendarObjectContent,
   CalendarObjectProperty,
   CalendarProperty,
+  CalendarAce,
+  CalendarChange,
+  CalendarLock,
+  CalendarObjectAce,
+  CalendarObjectLock,
   CALENDAR_STATUS_VALUES,
   CALENDAR_TRANSPARENCY_VALUES,
   type CalendarStatus,
@@ -163,4 +173,9 @@ export const ALL_ENTITIES = [
   CalendarObjectContent,
   CalendarProperty,
   CalendarObjectProperty,
+  CalendarAce,
+  CalendarObjectAce,
+  CalendarLock,
+  CalendarObjectLock,
+  CalendarChange,
 ];

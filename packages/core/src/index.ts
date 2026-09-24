@@ -6,7 +6,12 @@ export type { AuthProvider } from './auth/auth-provider.interface.js';
 export { BasicAuthProvider } from './auth/basic-auth-provider.js';
 export { hashPassword, verifyPassword } from './auth/password-hashing.js';
 
-export { ALL_PRIVILEGES, type Privilege } from './acl/privilege.js';
+export {
+  ALL_PRIVILEGES,
+  CALENDAR_PRIVILEGES,
+  type CalendarPrivilege,
+  type Privilege,
+} from './acl/privilege.js';
 export {
   expandPrivilege,
   privilegeSatisfies,
@@ -72,6 +77,11 @@ export {
   CalendarObjectContent,
   CalendarObjectProperty,
   CalendarProperty,
+  CalendarAce,
+  CalendarChange,
+  CalendarLock,
+  CalendarObjectAce,
+  CalendarObjectLock,
   CALENDAR_STATUS_VALUES,
   CALENDAR_TRANSPARENCY_VALUES,
   type CalendarStatus,
