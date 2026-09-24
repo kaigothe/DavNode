@@ -1,6 +1,7 @@
 import {
   AddressbookCollection,
   AddressObject,
+  type AddressbookAclResource,
   type DataSource,
 } from '@davnode/core';
 
@@ -38,4 +39,57 @@ export async function resolveAddressObject(
   return dataSource
     .getRepository(AddressObject)
     .findOneBy({ addressbookId, name: objectName });
+}
+
+/**
+ * Every `AddressObject` directly inside `addressbookId` — used by
+ * `carddav/lock.route.ts` to find the `Depth: infinity` "subtree" a
+ * lock on the addressbook itself would also cover. Never recurses:
+ * unlike `ResourcePathResolver.listChildren`'s arbitrary-depth WebDAV
+ * tree, addressbooks don't nest (Runde 20), so this is the whole
+ * subtree in one query.
+ */
+export async function listAddressObjects(
+  dataSource: DataSource,
+  addressbookId: string,
+): Promise<AddressObject[]> {
+  return dataSource.getRepository(AddressObject).findBy({ addressbookId });
+}
+
+/**
+ * Resolves the LOCK/UNLOCK target for
+ * `/dav/{tenantSlug}/addressbooks/{userId}{/*splat}`: one segment
+ * addresses the `AddressbookCollection` itself, two address a single
+ * `AddressObject` inside it — unlike GET/PUT/DELETE (which only ever
+ * address a contact), LOCK/UNLOCK can target either, the same way the
+ * WebDAV LOCK route can target a `Collection` or a `FileResource`.
+ */
+export async function resolveLockTarget(
+  dataSource: DataSource,
+  tenantId: string,
+  ownerPrincipalId: string,
+  segments: string[],
+): Promise<AddressbookAclResource | null> {
+  if (segments.length === 1) {
+    return resolveAddressbook(
+      dataSource,
+      tenantId,
+      ownerPrincipalId,
+      segments[0],
+    );
+  }
+  if (segments.length === 2) {
+    const [addressbookName, objectName] = segments;
+    const addressbook = await resolveAddressbook(
+      dataSource,
+      tenantId,
+      ownerPrincipalId,
+      addressbookName,
+    );
+    if (!addressbook) {
+      return null;
+    }
+    return resolveAddressObject(dataSource, addressbook.id, objectName);
+  }
+  return null;
 }

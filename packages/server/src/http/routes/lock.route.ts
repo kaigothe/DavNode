@@ -5,7 +5,7 @@ import {
   Collection,
   CollectionLock,
   FileLock,
-  getEffectiveLocks,
+  getEffectiveWebDavLocks,
   hasPrivilege,
   parseLockInfoRequestBody,
   ResourcePathResolver,
@@ -30,7 +30,11 @@ import {
 } from './lock.util.js';
 
 /** Sends a `423 Locked`/`412 Precondition Failed` with an RFC 4918 §16 `<D:error>` body naming `condition`. */
-function sendLockError(res: Response, status: 423 | 412, condition: string): void {
+function sendLockError(
+  res: Response,
+  status: 423 | 412,
+  condition: string,
+): void {
   res
     .status(status)
     .set('Content-Type', 'application/xml; charset=utf-8')
@@ -54,7 +58,7 @@ async function subtreeHasConflict(
 ): Promise<boolean> {
   const children = await resourcePathResolver.listChildren(collection);
   for (const child of children) {
-    const childLocks = await getEffectiveLocks(dataSource.manager, child);
+    const childLocks = await getEffectiveWebDavLocks(dataSource.manager, child);
     if (wouldConflict(childLocks, requestedScope)) {
       return true;
     }
@@ -82,7 +86,7 @@ async function subtreeHasConflict(
  * every effective lock — see `milestones/M4-locking-sync/06-lock-properties`).
  */
 function buildLockDiscoveryResponseBody(
-  lock: EffectiveLock,
+  lock: EffectiveLock<CollectionLock | FileLock>,
   lockRootHref: string,
 ): string {
   return (
@@ -105,7 +109,7 @@ function buildLockDiscoveryResponseBody(
  */
 async function persistRefreshedTimeout(
   dataSource: DataSource,
-  lock: EffectiveLock,
+  lock: EffectiveLock<CollectionLock | FileLock>,
   timeoutSeconds: number,
   expiresAt: Date,
 ): Promise<void> {
@@ -207,7 +211,7 @@ export function registerLockRoute(app: Express, dataSource: DataSource): void {
           return;
         }
 
-        const effectiveLocks = await getEffectiveLocks(
+        const effectiveLocks = await getEffectiveWebDavLocks(
           dataSource.manager,
           target,
         );
@@ -232,7 +236,7 @@ export function registerLockRoute(app: Express, dataSource: DataSource): void {
           expiresAt,
         );
 
-        const refreshedLock: EffectiveLock = {
+        const refreshedLock: EffectiveLock<CollectionLock | FileLock> = {
           ...matchingLock,
           timeoutSeconds,
           expiresAt,
@@ -277,7 +281,10 @@ export function registerLockRoute(app: Express, dataSource: DataSource): void {
         return;
       }
 
-      const ownLocks = await getEffectiveLocks(dataSource.manager, target);
+      const ownLocks = await getEffectiveWebDavLocks(
+        dataSource.manager,
+        target,
+      );
       if (wouldConflict(ownLocks, lockInfo.scope)) {
         sendLockError(res, 423, 'no-conflicting-lock');
         return;
@@ -329,7 +336,7 @@ export function registerLockRoute(app: Express, dataSource: DataSource): void {
         );
       });
 
-      const effectiveLock: EffectiveLock = {
+      const effectiveLock: EffectiveLock<CollectionLock | FileLock> = {
         ...created,
         inherited: false,
         inheritedFrom: null,

@@ -1,4 +1,4 @@
-import type { EffectiveLock } from './collect-locks.js';
+import type { EffectiveLock, LockLike } from './collect-locks.js';
 
 /**
  * Whether `ifHeaderTokens` covers every one of `effectiveLocks` — i.e.
@@ -10,6 +10,9 @@ import type { EffectiveLock } from './collect-locks.js';
  * with no effective locks is trivially satisfied, even by an empty
  * token set.
  *
+ * Generic over any domain's lock row (`LockLike`, the loosest bound) —
+ * only `token` matters here.
+ *
  * @param effectiveLocks - The resource's currently-effective locks (see
  * {@link getEffectiveLocks}).
  * @param ifHeaderTokens - Lock tokens submitted in the request's `If`
@@ -17,7 +20,7 @@ import type { EffectiveLock } from './collect-locks.js';
  * @returns Whether every effective lock is covered by a submitted token.
  */
 export function hasValidLockToken(
-  effectiveLocks: readonly EffectiveLock[],
+  effectiveLocks: readonly EffectiveLock<LockLike>[],
   ifHeaderTokens: ReadonlySet<string>,
 ): boolean {
   return effectiveLocks.every((lock) => ifHeaderTokens.has(lock.token));

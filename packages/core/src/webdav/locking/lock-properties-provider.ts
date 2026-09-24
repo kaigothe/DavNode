@@ -1,5 +1,8 @@
 import { fragment } from 'xmlbuilder2';
-import { resolveCollectionHref, resolveResourceHref } from '../resource-path-resolver.js';
+import {
+  resolveCollectionHref,
+  resolveResourceHref,
+} from '../resource-path-resolver.js';
 import { DAV_NAMESPACE } from '../xml/request-parser.js';
 import type {
   PropertyProvider,
@@ -7,8 +10,15 @@ import type {
   PropertyValue,
   WebDavResource,
 } from '../properties/property-provider.interface.js';
-import { getEffectiveLocks, type EffectiveLock } from './collect-locks.js';
-import { buildLockDiscoveryContent, type RootedLock } from './lock-discovery.js';
+import {
+  getEffectiveWebDavLocks,
+  type EffectiveLock,
+  type LockLike,
+} from './collect-locks.js';
+import {
+  buildLockDiscoveryContent,
+  type RootedLock,
+} from './lock-discovery.js';
 
 const LOCK_PROPERTY_NAMES = new Set(['supportedlock', 'lockdiscovery']);
 
@@ -51,7 +61,7 @@ const SUPPORTED_LOCK_VALUE = ((): string => {
 async function resolveLockRootHref(
   context: PropertyProviderContext,
   resource: WebDavResource,
-  lock: EffectiveLock,
+  lock: EffectiveLock<LockLike>,
 ): Promise<string> {
   if (lock.inheritedFrom === null) {
     return resolveResourceHref(context.manager, context.tenant, resource);
@@ -71,7 +81,7 @@ async function resolveLockRootHref(
  *
  * - `DAV:supportedlock` — a static value (the same for every resource).
  * - `DAV:lockdiscovery` — every lock currently effective on the queried
- *   resource (`getEffectiveLocks`, direct or inherited via
+ *   resource (`getEffectiveWebDavLocks`, direct or inherited via
  *   `Depth: infinity`, milestones/M4-locking-sync/02-lock-evaluation),
  *   rendered via `buildLockDiscoveryContent` — the same builder the
  *   LOCK route's own response body uses. Unlike that route (which, per
@@ -89,7 +99,10 @@ export class LockPropertiesProvider implements PropertyProvider<WebDavResource> 
     resource: WebDavResource,
     context: PropertyProviderContext,
   ): Promise<PropertyValue[]> {
-    const effectiveLocks = await getEffectiveLocks(context.manager, resource);
+    const effectiveLocks = await getEffectiveWebDavLocks(
+      context.manager,
+      resource,
+    );
     const rootedLocks: RootedLock[] = await Promise.all(
       effectiveLocks.map(async (lock) => ({
         lock,

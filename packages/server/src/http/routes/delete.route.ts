@@ -1,6 +1,7 @@
 import {
   Collection,
   CollectionChangeService,
+  getEffectiveWebDavLocks,
   hasPrivilege,
   ResourcePathResolver,
   ResourceTreeService,
@@ -65,25 +66,29 @@ export function registerDeleteRoute(
       },
       hasPrivilege,
     ),
-    createLockEnforcementMiddleware(dataSource, async (req) => {
-      const target = await resourcePathResolver.resolve(
-        requireTenant(req).id,
-        pathSegments(req),
-      );
-      if (!target) {
-        return null;
-      }
-      // Both the target and its parent are within the scope of a lock
-      // that would need to be honored: deleting the target requires
-      // covering any lock directly on (or inherited by) it, and
-      // deleting it out of its parent requires covering any lock on
-      // (or inherited by) the parent too. The tenant root has no
-      // parent, but the handler already forbids deleting it (403)
-      // regardless of locks, so — same as the ACL check above — no
-      // check is needed in that case either.
-      const parent = await resolveParentCollection(dataSource, target);
-      return parent ? { resources: [target, parent] } : null;
-    }),
+    createLockEnforcementMiddleware(
+      dataSource,
+      async (req) => {
+        const target = await resourcePathResolver.resolve(
+          requireTenant(req).id,
+          pathSegments(req),
+        );
+        if (!target) {
+          return null;
+        }
+        // Both the target and its parent are within the scope of a lock
+        // that would need to be honored: deleting the target requires
+        // covering any lock directly on (or inherited by) it, and
+        // deleting it out of its parent requires covering any lock on
+        // (or inherited by) the parent too. The tenant root has no
+        // parent, but the handler already forbids deleting it (403)
+        // regardless of locks, so — same as the ACL check above — no
+        // check is needed in that case either.
+        const parent = await resolveParentCollection(dataSource, target);
+        return parent ? { resources: [target, parent] } : null;
+      },
+      getEffectiveWebDavLocks,
+    ),
     async (req: Request, res): Promise<void> => {
       const tenant = requireTenant(req);
       const segments = pathSegments(req);

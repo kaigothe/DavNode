@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { EffectiveLock } from './collect-locks.js';
+import type { EffectiveLock, LockLike } from './collect-locks.js';
 import { wouldConflict } from './check-lock-conflict.js';
 
-function lock(scope: 'exclusive' | 'shared'): EffectiveLock {
-  return { scope } as EffectiveLock;
+function lock(scope: 'exclusive' | 'shared'): EffectiveLock<LockLike> {
+  return { scope } as EffectiveLock<LockLike>;
 }
 
 describe('wouldConflict', () => {
@@ -30,7 +30,10 @@ describe('wouldConflict', () => {
 
   it('a requested shared lock conflicts if any existing lock among several is exclusive', () => {
     expect(
-      wouldConflict([lock('shared'), lock('shared'), lock('exclusive')], 'shared'),
+      wouldConflict(
+        [lock('shared'), lock('shared'), lock('exclusive')],
+        'shared',
+      ),
     ).toBe(true);
   });
 });

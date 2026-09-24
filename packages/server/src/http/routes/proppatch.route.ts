@@ -1,6 +1,7 @@
 import {
   buildMultistatusResponse,
   DeadPropertyService,
+  getEffectiveWebDavLocks,
   hasPrivilege,
   LockPropertiesProvider,
   parseProppatchRequestBody,
@@ -75,13 +76,17 @@ export function registerProppatchRoute(
       },
       hasPrivilege,
     ),
-    createLockEnforcementMiddleware(dataSource, async (req) => {
-      const target = await resourcePathResolver.resolve(
-        requireTenant(req).id,
-        pathSegments(req),
-      );
-      return target ? { resources: [target] } : null;
-    }),
+    createLockEnforcementMiddleware(
+      dataSource,
+      async (req) => {
+        const target = await resourcePathResolver.resolve(
+          requireTenant(req).id,
+          pathSegments(req),
+        );
+        return target ? { resources: [target] } : null;
+      },
+      getEffectiveWebDavLocks,
+    ),
     async (req: Request, res): Promise<void> => {
       const tenant = requireTenant(req);
       const segments = pathSegments(req);

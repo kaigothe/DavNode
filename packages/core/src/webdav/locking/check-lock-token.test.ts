@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { EffectiveLock } from './collect-locks.js';
+import type { EffectiveLock, LockLike } from './collect-locks.js';
 import { hasValidLockToken } from './check-lock-token.js';
 
-function lock(token: string): EffectiveLock {
-  return { token } as EffectiveLock;
+function lock(token: string): EffectiveLock<LockLike> {
+  return { token } as EffectiveLock<LockLike>;
 }
 
 describe('hasValidLockToken', () => {

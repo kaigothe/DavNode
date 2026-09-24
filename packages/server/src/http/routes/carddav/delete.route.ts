@@ -3,12 +3,14 @@ import {
   AddressObject,
   AddressObjectAce,
   AddressObjectProperty,
+  getEffectiveAddressbookLocks,
   hasAddressbookPrivilege,
   type AddressbookAclResource,
   type DataSource,
 } from '@davnode/core';
 import type { Express, Request } from 'express';
 import { createAclAuthorizationMiddleware } from '../../acl-authorization.middleware.js';
+import { createLockEnforcementMiddleware } from '../../lock-enforcement.middleware.js';
 import {
   addressbookOwnerIdParam,
   pathSegments,
@@ -38,6 +40,13 @@ import {
  * "unbind on the parent, not the target" rule. `{userId}` in the URL
  * only identifies whose addressbook this is, not who's allowed to
  * delete from it.
+ *
+ * **Lock enforcement** (M5 Große Aufgabe 5, instantiating M4 for the
+ * addressbook domain): a covering `If`-header token is required for a
+ * lock on the target *or* its addressbook (e.g. an unlocked contact
+ * inside a `Depth: infinity`-locked addressbook), mirroring the WebDAV
+ * DELETE route's own two-resource check. Runs after ACL authorization,
+ * so missing privilege is still `403`, not `423`.
  */
 export function registerCarddavDeleteRoute(
   app: Express,
@@ -74,6 +83,34 @@ export function registerCarddavDeleteRoute(
         return target ? { resource: addressbook, privilege: 'unbind' } : null;
       },
       hasAddressbookPrivilege,
+    ),
+    createLockEnforcementMiddleware<AddressbookAclResource>(
+      dataSource,
+      async (req) => {
+        const tenant = requireTenant(req);
+        const userId = addressbookOwnerIdParam(req);
+        const segments = pathSegments(req);
+        if (segments.length !== 2) {
+          return null;
+        }
+        const [addressbookName, objectName] = segments;
+        const addressbook = await resolveAddressbook(
+          dataSource,
+          tenant.id,
+          userId,
+          addressbookName,
+        );
+        if (!addressbook) {
+          return null;
+        }
+        const target = await resolveAddressObject(
+          dataSource,
+          addressbook.id,
+          objectName,
+        );
+        return target ? { resources: [target, addressbook] } : null;
+      },
+      getEffectiveAddressbookLocks,
     ),
     async (req: Request, res): Promise<void> => {
       const tenant = requireTenant(req);

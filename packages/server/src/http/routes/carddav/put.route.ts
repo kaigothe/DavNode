@@ -4,6 +4,7 @@ import {
   AddressObject,
   AddressObjectContent,
   createOwnerAllAce,
+  getEffectiveAddressbookLocks,
   hasAddressbookPrivilege,
   indexVCard,
   parseVCard,
@@ -13,6 +14,7 @@ import {
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
 import { createAclAuthorizationMiddleware } from '../../acl-authorization.middleware.js';
+import { createLockEnforcementMiddleware } from '../../lock-enforcement.middleware.js';
 import {
   addressbookOwnerIdParam,
   pathSegments,
@@ -57,6 +59,12 @@ function computeEtag(content: string): string {
  * same overwrite-vs-create split the WebDAV PUT route's own resolver
  * uses. `{userId}` in the URL only identifies whose addressbook this
  * is, not who's allowed to write to it.
+ *
+ * **Lock enforcement** (M5 Große Aufgabe 5, instantiating M4 for the
+ * addressbook domain): a covering `If`-header token is required for a
+ * locked target on overwrite, or a locked addressbook on create — the
+ * same overwrite-vs-create split the ACL check above uses. Runs after
+ * ACL authorization, so missing privilege is still `403`, not `423`.
  *
  * On success, records an `AddressbookChange` entry (`added` for a new
  * contact, `modified` for an overwrite), bumps the addressbook's
@@ -105,6 +113,34 @@ export function registerCarddavPutRoute(
         return { resource: addressbook, privilege: 'bind' };
       },
       hasAddressbookPrivilege,
+    ),
+    createLockEnforcementMiddleware<AddressbookAclResource>(
+      dataSource,
+      async (req) => {
+        const tenant = requireTenant(req);
+        const userId = addressbookOwnerIdParam(req);
+        const segments = pathSegments(req);
+        if (segments.length !== 2) {
+          return null;
+        }
+        const [addressbookName, objectName] = segments;
+        const addressbook = await resolveAddressbook(
+          dataSource,
+          tenant.id,
+          userId,
+          addressbookName,
+        );
+        if (!addressbook) {
+          return null;
+        }
+        const target = await resolveAddressObject(
+          dataSource,
+          addressbook.id,
+          objectName,
+        );
+        return { resources: [target ?? addressbook] };
+      },
+      getEffectiveAddressbookLocks,
     ),
     async (req: Request, res): Promise<void> => {
       const tenant = requireTenant(req);

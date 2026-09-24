@@ -1,22 +1,20 @@
 import { create } from 'xmlbuilder2';
 import { DAV_NAMESPACE } from '../xml/request-parser.js';
 import { embedRawXmlContent } from '../xml/xml-value.js';
-import type { EffectiveLock } from './collect-locks.js';
+import type { EffectiveLock, LockLike } from './collect-locks.js';
 
 const DAV_PREFIX = 'D';
 
 /**
  * The `<D:depth>` value (RFC 4918 §14.7) for `lock`: its own `depth`
- * field for a `CollectionLock` (mapping the stored `'zero'`/`'infinity'`
- * enum to the XML element's literal `'0'`/`'infinity'` values), or
- * always `'0'` for a `FileLock` — a single file has no members for the
- * lock to cover beyond itself.
+ * field for a collection-level lock (mapping the stored
+ * `'zero'`/`'infinity'` enum to the XML element's literal
+ * `'0'`/`'infinity'` values), or always `'0'` for an object-level lock
+ * (`FileLock`/`AddressObjectLock`, `depth === undefined`) — a single
+ * object has no members for the lock to cover beyond itself.
  */
-function activeLockDepth(lock: EffectiveLock): string {
-  if ('depth' in lock) {
-    return lock.depth === 'infinity' ? 'infinity' : '0';
-  }
-  return '0';
+function activeLockDepth(lock: EffectiveLock<LockLike>): string {
+  return lock.depth === 'infinity' ? 'infinity' : '0';
 }
 
 /**
@@ -28,7 +26,7 @@ function activeLockDepth(lock: EffectiveLock): string {
  * `getEffectiveLocks` already excludes expired locks, so `lock` is
  * always still active here.
  */
-function activeLockTimeout(lock: EffectiveLock): string {
+function activeLockTimeout(lock: EffectiveLock<LockLike>): string {
   if (lock.expiresAt === null) {
     return 'Infinite';
   }
@@ -52,7 +50,7 @@ function activeLockTimeout(lock: EffectiveLock): string {
  * server must preserve it unaltered.
  */
 export function buildActiveLockXml(
-  lock: EffectiveLock,
+  lock: EffectiveLock<LockLike>,
   lockRootHref: string,
 ): string {
   const activelock = create().ele(DAV_NAMESPACE, `${DAV_PREFIX}:activelock`);
@@ -89,7 +87,7 @@ export function buildActiveLockXml(
 
 /** One {@link EffectiveLock}, paired with its already-resolved `lockroot` href. */
 export interface RootedLock {
-  lock: EffectiveLock;
+  lock: EffectiveLock<LockLike>;
   lockRootHref: string;
 }
 

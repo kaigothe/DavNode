@@ -2,6 +2,8 @@ import type { AddressInfo } from 'node:net';
 import {
   ALL_ENTITIES,
   ALL_SQLITE_MIGRATIONS,
+  AddressbookCollection,
+  AddressObject,
   Collection,
   CollectionAce,
   createDataSource,
@@ -83,7 +85,12 @@ describe('Lock-enforcement middleware', () => {
           displayName: 'root',
         }),
       );
-      await createOwnerAllAce(manager, 'collection', root.id, alice.principalId);
+      await createOwnerAllAce(
+        manager,
+        'collection',
+        root.id,
+        alice.principalId,
+      );
 
       doc = await manager.getRepository(FileResource).save(
         manager.getRepository(FileResource).create({
@@ -97,11 +104,13 @@ describe('Lock-enforcement middleware', () => {
         }),
       );
       await createOwnerAllAce(manager, 'file', doc.id, alice.principalId);
-      await manager.getRepository(FileContent).save(
-        manager
-          .getRepository(FileContent)
-          .create({ fileResourceId: doc.id, data: Buffer.from('hello') }),
-      );
+      await manager
+        .getRepository(FileContent)
+        .save(
+          manager
+            .getRepository(FileContent)
+            .create({ fileResourceId: doc.id, data: Buffer.from('hello') }),
+        );
     });
 
     const app = createApp(dataSource);
@@ -395,5 +404,165 @@ describe('Lock-enforcement middleware', () => {
     });
 
     expect(response.status).toBe(423);
+  });
+});
+
+/**
+ * The same cross-cutting lock-enforcement acceptance criteria as above,
+ * instantiated for the addressbook domain (M5 Große Aufgabe 5): PUT and
+ * DELETE on `carddav/put.route.ts`/`carddav/delete.route.ts` wired to
+ * `getEffectiveAddressbookLocks`.
+ */
+describe('CardDAV lock-enforcement middleware', () => {
+  let dataSource: DataSource;
+  let tenant: Tenant;
+  let alice: User;
+  let addressbook: AddressbookCollection;
+  let contact: AddressObject;
+  let baseUrl: string;
+  let server: ReturnType<ReturnType<typeof createApp>['listen']>;
+
+  beforeEach(async () => {
+    dataSource = createDataSource(
+      {},
+      { entities: ALL_ENTITIES, migrations: ALL_SQLITE_MIGRATIONS },
+    );
+    await dataSource.initialize();
+    await dataSource.runMigrations();
+
+    tenant = await new TenantService(dataSource).createTenant({
+      slug: 'acme',
+      name: 'Acme Inc.',
+    });
+    alice = await new UserService(dataSource).createUser({
+      tenantId: tenant.id,
+      username: 'alice',
+      email: 'alice@example.com',
+      password: PASSWORD,
+    });
+
+    await dataSource.transaction(async (manager) => {
+      addressbook = await manager.getRepository(AddressbookCollection).save(
+        manager.getRepository(AddressbookCollection).create({
+          tenantId: tenant.id,
+          ownerPrincipalId: alice.principalId,
+          displayName: 'Contacts',
+        }),
+      );
+      await createOwnerAllAce(
+        manager,
+        'addressbook',
+        addressbook.id,
+        alice.principalId,
+      );
+
+      contact = await manager.getRepository(AddressObject).save(
+        manager.getRepository(AddressObject).create({
+          tenantId: tenant.id,
+          addressbookId: addressbook.id,
+          name: 'forrest.vcf',
+          uid: 'uid-1',
+          etag: 'etag-1',
+          ownerPrincipalId: alice.principalId,
+        }),
+      );
+      await createOwnerAllAce(
+        manager,
+        'address-object',
+        contact.id,
+        alice.principalId,
+      );
+    });
+
+    const app = createApp(dataSource);
+    server = app.listen(0);
+    const address = server.address() as AddressInfo;
+    baseUrl = `http://127.0.0.1:${address.port}`;
+  });
+
+  afterEach(async () => {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await dataSource.destroy();
+  });
+
+  function contactUrl(): string {
+    return `/dav/acme/addressbooks/${alice.principalId}/${addressbook.displayName}/${contact.name}`;
+  }
+
+  function addressbookUrl(): string {
+    return `/dav/acme/addressbooks/${alice.principalId}/${addressbook.displayName}`;
+  }
+
+  async function lock(
+    path: string,
+    options: { depth?: string } = {},
+  ): Promise<string> {
+    const headers: Record<string, string> = {
+      Authorization: basicAuthHeader('alice', PASSWORD),
+      'Content-Type': 'application/xml',
+    };
+    if (options.depth !== undefined) {
+      headers.Depth = options.depth;
+    }
+    const response = await fetch(`${baseUrl}${path}`, {
+      method: 'LOCK',
+      headers,
+      body: lockInfoBody(),
+    });
+    const token = response.headers.get('Lock-Token');
+    if (!token) {
+      throw new Error(`LOCK setup failed for ${path}: ${response.status}`);
+    }
+    return token.slice(1, -1);
+  }
+
+  function withIf(token?: string): Record<string, string> {
+    return token ? { If: `(<${token}>)` } : {};
+  }
+
+  it('PUT (overwrite) of a locked contact without an If header returns 423, and succeeds with the token', async () => {
+    const token = await lock(contactUrl());
+    const vcard =
+      'BEGIN:VCARD\r\nVERSION:4.0\r\nUID:uid-1\r\nFN:New\r\nEND:VCARD\r\n';
+
+    const withoutToken = await fetch(`${baseUrl}${contactUrl()}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: basicAuthHeader('alice', PASSWORD),
+        'Content-Type': 'text/vcard',
+      },
+      body: vcard,
+    });
+    expect(withoutToken.status).toBe(423);
+
+    const withToken = await fetch(`${baseUrl}${contactUrl()}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: basicAuthHeader('alice', PASSWORD),
+        'Content-Type': 'text/vcard',
+        ...withIf(token),
+      },
+      body: vcard,
+    });
+    expect(withToken.status).toBe(204);
+  });
+
+  it('DELETE of an unlocked contact inside a Depth: infinity-locked addressbook without a token returns 423, and succeeds with it', async () => {
+    const token = await lock(addressbookUrl(), { depth: 'infinity' });
+
+    const withoutToken = await fetch(`${baseUrl}${contactUrl()}`, {
+      method: 'DELETE',
+      headers: { Authorization: basicAuthHeader('alice', PASSWORD) },
+    });
+    expect(withoutToken.status).toBe(423);
+
+    const withToken = await fetch(`${baseUrl}${contactUrl()}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: basicAuthHeader('alice', PASSWORD),
+        ...withIf(token),
+      },
+    });
+    expect(withToken.status).toBe(204);
   });
 });

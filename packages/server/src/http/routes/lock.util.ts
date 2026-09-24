@@ -1,4 +1,9 @@
-import type { CollectionLock, EffectiveLock } from '@davnode/core';
+import type {
+  AddressbookLock,
+  CollectionLock,
+  EffectiveLock,
+  LockLike,
+} from '@davnode/core';
 
 /**
  * Whether `lock` came from `collection_locks` (has a `collectionId`)
@@ -7,9 +12,21 @@ import type { CollectionLock, EffectiveLock } from '@davnode/core';
  * handlers need this to pick the right repository to act on.
  */
 export function isCollectionLock(
-  lock: EffectiveLock,
-): lock is EffectiveLock & CollectionLock {
+  lock: EffectiveLock<LockLike>,
+): lock is EffectiveLock<CollectionLock> {
   return 'collectionId' in lock;
+}
+
+/**
+ * Whether `lock` came from `addressbook_locks` (has an `addressbookId`)
+ * rather than `address_object_locks` — the CardDAV analog of
+ * {@link isCollectionLock}, used by `carddav/lock.route.ts`/
+ * `carddav/unlock.route.ts`.
+ */
+export function isAddressbookLock(
+  lock: EffectiveLock<LockLike>,
+): lock is EffectiveLock<AddressbookLock> {
+  return 'addressbookId' in lock;
 }
 
 /**

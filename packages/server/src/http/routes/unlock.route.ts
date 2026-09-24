@@ -2,7 +2,7 @@ import {
   buildErrorResponse,
   CollectionLock,
   FileLock,
-  getEffectiveLocks,
+  getEffectiveWebDavLocks,
   hasPrivilege,
   ResourcePathResolver,
   type DataSource,
@@ -80,7 +80,7 @@ export function registerUnlockRoute(
         return;
       }
 
-      const effectiveLocks = await getEffectiveLocks(
+      const effectiveLocks = await getEffectiveWebDavLocks(
         dataSource.manager,
         target,
       );
@@ -108,7 +108,9 @@ export function registerUnlockRoute(
           .getRepository(CollectionLock)
           .delete({ id: matchingLock.id });
       } else {
-        await dataSource.getRepository(FileLock).delete({ id: matchingLock.id });
+        await dataSource
+          .getRepository(FileLock)
+          .delete({ id: matchingLock.id });
       }
 
       res.sendStatus(204);

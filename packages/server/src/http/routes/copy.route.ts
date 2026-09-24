@@ -1,6 +1,7 @@
 import {
   Collection,
   CollectionChangeService,
+  getEffectiveWebDavLocks,
   hasPrivilege,
   ResourcePathResolver,
   ResourceTreeService,
@@ -106,7 +107,9 @@ export function registerCopyRoute(app: Express, dataSource: DataSource): void {
         res.sendStatus(404);
         return;
       }
-      if (!(await hasPrivilege(dataSource.manager, principal, source, 'read'))) {
+      if (
+        !(await hasPrivilege(dataSource.manager, principal, source, 'read'))
+      ) {
         res.sendStatus(403);
         return;
       }
@@ -157,9 +160,12 @@ export function registerCopyRoute(app: Express, dataSource: DataSource): void {
       // table).
       if (
         existingTarget &&
-        !(await checkLockEnforcement(dataSource, req.header('If'), [
-          destParent,
-        ]))
+        !(await checkLockEnforcement(
+          dataSource,
+          req.header('If'),
+          [destParent],
+          getEffectiveWebDavLocks,
+        ))
       ) {
         sendLockEnforcementError(res);
         return;

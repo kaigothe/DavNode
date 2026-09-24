@@ -178,7 +178,10 @@ export { ResourceTreeService } from './webdav/resource-tree.service.js';
 
 export {
   getEffectiveLocks,
+  getEffectiveWebDavLocks,
+  getEffectiveAddressbookLocks,
   type EffectiveLock,
+  type LockLike,
 } from './webdav/locking/collect-locks.js';
 export { wouldConflict } from './webdav/locking/check-lock-conflict.js';
 export { hasValidLockToken } from './webdav/locking/check-lock-token.js';

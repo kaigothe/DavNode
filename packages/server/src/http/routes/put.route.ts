@@ -5,6 +5,7 @@ import {
   createOwnerAllAce,
   FileContent,
   FileResource,
+  getEffectiveWebDavLocks,
   hasPrivilege,
   ResourcePathResolver,
   type DataSource,
@@ -85,22 +86,26 @@ export function registerPutRoute(app: Express, dataSource: DataSource): void {
       },
       hasPrivilege,
     ),
-    createLockEnforcementMiddleware(dataSource, async (req) => {
-      const tenant = requireTenant(req);
-      const segments = pathSegments(req);
-      if (segments.length === 0) {
-        return null;
-      }
-      const target = await resourcePathResolver.resolve(tenant.id, segments);
-      if (target) {
-        return { resources: [target] };
-      }
-      const parent = await resourcePathResolver.resolve(
-        tenant.id,
-        segments.slice(0, -1),
-      );
-      return parent ? { resources: [parent] } : null;
-    }),
+    createLockEnforcementMiddleware(
+      dataSource,
+      async (req) => {
+        const tenant = requireTenant(req);
+        const segments = pathSegments(req);
+        if (segments.length === 0) {
+          return null;
+        }
+        const target = await resourcePathResolver.resolve(tenant.id, segments);
+        if (target) {
+          return { resources: [target] };
+        }
+        const parent = await resourcePathResolver.resolve(
+          tenant.id,
+          segments.slice(0, -1),
+        );
+        return parent ? { resources: [parent] } : null;
+      },
+      getEffectiveWebDavLocks,
+    ),
     async (req: Request, res): Promise<void> => {
       const tenant = requireTenant(req);
       const principal = requirePrincipal(req);

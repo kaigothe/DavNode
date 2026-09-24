@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { EffectiveLock } from './collect-locks.js';
-import { buildActiveLockXml, buildLockDiscoveryContent } from './lock-discovery.js';
+import type { EffectiveLock, LockLike } from './collect-locks.js';
+import {
+  buildActiveLockXml,
+  buildLockDiscoveryContent,
+} from './lock-discovery.js';
 
-function baseLock(overrides: Partial<EffectiveLock> = {}): EffectiveLock {
+function baseLock(
+  overrides: Partial<EffectiveLock<LockLike>> = {},
+): EffectiveLock<LockLike> {
   return {
     id: 'lock-1',
     collectionId: 'collection-1',
@@ -17,7 +22,7 @@ function baseLock(overrides: Partial<EffectiveLock> = {}): EffectiveLock {
     inherited: false,
     inheritedFrom: null,
     ...overrides,
-  } as EffectiveLock;
+  } as EffectiveLock<LockLike>;
 }
 
 describe('buildActiveLockXml', () => {
@@ -66,7 +71,7 @@ describe('buildActiveLockXml', () => {
       createdAt: new Date(),
       inherited: false,
       inheritedFrom: null,
-    } as EffectiveLock;
+    } as EffectiveLock<LockLike>;
 
     const xml = buildActiveLockXml(lock, '/x');
     expect(xml).toContain('<D:depth>0</D:depth>');

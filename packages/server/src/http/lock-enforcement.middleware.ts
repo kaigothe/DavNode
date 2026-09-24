@@ -1,9 +1,10 @@
 import {
   buildErrorResponse,
-  getEffectiveLocks,
   hasValidLockToken,
   type DataSource,
-  type WebDavTreeResource,
+  type EffectiveLock,
+  type EntityManager,
+  type LockLike,
 } from '@davnode/core';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 
@@ -23,9 +24,7 @@ import type { NextFunction, Request, RequestHandler, Response } from 'express';
  * findable content only" posture `extractIfHeaderLockToken` (LOCK
  * refresh, `lock.util.ts`) already takes.
  */
-function parseIfHeaderLockTokens(
-  headerValue: string | undefined,
-): Set<string> {
+function parseIfHeaderLockTokens(headerValue: string | undefined): Set<string> {
   const tokens = new Set<string>();
   if (headerValue === undefined) {
     return tokens;
@@ -44,6 +43,20 @@ function parseIfHeaderLockTokens(
 }
 
 /**
+ * Fetches every lock currently effective on `resource` — the shape both
+ * `getEffectiveWebDavLocks` and `getEffectiveAddressbookLocks` already
+ * have, passed in explicitly rather than imported here so this
+ * middleware carries no compile-time dependency on any specific
+ * domain's lock evaluation, the same reason
+ * `createAclAuthorizationMiddleware` takes its `checkPrivilege`
+ * parameter the same way.
+ */
+export type GetEffectiveLocks<TResource> = (
+  manager: EntityManager,
+  resource: TResource,
+) => Promise<EffectiveLock<LockLike>[]>;
+
+/**
  * Whether a request carrying `ifHeader` is entitled to mutate every one
  * of `resources` despite whatever locks (RFC 4918 §6, direct or
  * inherited) are currently in effect on each — every resource's
@@ -53,15 +66,20 @@ function parseIfHeaderLockTokens(
  * routes, which check locks inline rather than through that middleware
  * (see there for why — the same reason they don't use
  * `createAclAuthorizationMiddleware` either).
+ *
+ * @param getEffectiveLocksFn - The domain's own effective-locks lookup
+ * (`getEffectiveWebDavLocks` for the WebDAV file tree,
+ * `getEffectiveAddressbookLocks` for the addressbook domain).
  */
-export async function checkLockEnforcement(
+export async function checkLockEnforcement<TResource>(
   dataSource: DataSource,
   ifHeader: string | undefined,
-  resources: readonly WebDavTreeResource[],
+  resources: readonly TResource[],
+  getEffectiveLocksFn: GetEffectiveLocks<TResource>,
 ): Promise<boolean> {
   const submittedTokens = parseIfHeaderLockTokens(ifHeader);
   for (const resource of resources) {
-    const effectiveLocks = await getEffectiveLocks(
+    const effectiveLocks = await getEffectiveLocksFn(
       dataSource.manager,
       resource,
     );
@@ -85,8 +103,8 @@ export function sendLockEnforcementError(res: Response): void {
  * request's lock check: every resource RFC 4918 §7.4 requires a
  * covering lock token for, given this request's method and outcome.
  */
-export interface LockEnforcementCheck {
-  resources: WebDavTreeResource[];
+export interface LockEnforcementCheck<TResource> {
+  resources: TResource[];
 }
 
 /**
@@ -96,9 +114,9 @@ export interface LockEnforcementCheck {
  * which the route handler is better positioned to turn into the right
  * `404`/`409`).
  */
-export type LockEnforcementCheckResolver = (
+export type LockEnforcementCheckResolver<TResource> = (
   req: Request,
-) => Promise<LockEnforcementCheck | null>;
+) => Promise<LockEnforcementCheck<TResource> | null>;
 
 /**
  * Creates the lock-enforcement middleware (RFC 4918 §7.4/§10.4): a
@@ -129,10 +147,14 @@ export type LockEnforcementCheckResolver = (
  * wrapped in a transaction — nothing here writes).
  * @param resolveCheck - Determines the resource(s) the current request
  * needs checked.
+ * @param getEffectiveLocksFn - The domain's own effective-locks lookup
+ * (`getEffectiveWebDavLocks` for the WebDAV file tree,
+ * `getEffectiveAddressbookLocks` for the addressbook domain).
  */
-export function createLockEnforcementMiddleware(
+export function createLockEnforcementMiddleware<TResource>(
   dataSource: DataSource,
-  resolveCheck: LockEnforcementCheckResolver,
+  resolveCheck: LockEnforcementCheckResolver<TResource>,
+  getEffectiveLocksFn: GetEffectiveLocks<TResource>,
 ): RequestHandler {
   return async (
     req: Request,
@@ -149,6 +171,7 @@ export function createLockEnforcementMiddleware(
       dataSource,
       req.header('If'),
       check.resources,
+      getEffectiveLocksFn,
     );
     if (!allowed) {
       sendLockEnforcementError(res);

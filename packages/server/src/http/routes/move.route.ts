@@ -2,6 +2,7 @@ import {
   Collection,
   CollectionChangeService,
   FileResource,
+  getEffectiveWebDavLocks,
   hasPrivilege,
   ResourcePathResolver,
   ResourceTreeService,
@@ -123,7 +124,12 @@ export function registerMoveRoute(app: Express, dataSource: DataSource): void {
         return;
       }
       if (
-        !(await hasPrivilege(dataSource.manager, principal, sourceParent, 'unbind'))
+        !(await hasPrivilege(
+          dataSource.manager,
+          principal,
+          sourceParent,
+          'unbind',
+        ))
       ) {
         res.sendStatus(403);
         return;
@@ -151,11 +157,12 @@ export function registerMoveRoute(app: Express, dataSource: DataSource): void {
       // milestones/M4-locking-sync/05-lock-enforcement-middleware/
       // 01-if-header-enforcement.md's table.
       if (
-        !(await checkLockEnforcement(dataSource, req.header('If'), [
-          source,
-          sourceParent,
-          destParent,
-        ]))
+        !(await checkLockEnforcement(
+          dataSource,
+          req.header('If'),
+          [source, sourceParent, destParent],
+          getEffectiveWebDavLocks,
+        ))
       ) {
         sendLockEnforcementError(res);
         return;

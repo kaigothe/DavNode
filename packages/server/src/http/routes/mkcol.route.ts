@@ -2,6 +2,7 @@ import {
   Collection,
   CollectionChangeService,
   createOwnerAllAce,
+  getEffectiveWebDavLocks,
   hasPrivilege,
   ResourcePathResolver,
   type DataSource,
@@ -63,18 +64,22 @@ export function registerMkcolRoute(app: Express, dataSource: DataSource): void {
       },
       hasPrivilege,
     ),
-    createLockEnforcementMiddleware(dataSource, async (req) => {
-      const tenant = requireTenant(req);
-      const segments = pathSegments(req);
-      if (segments.length === 0) {
-        return null;
-      }
-      const parent = await resourcePathResolver.resolve(
-        tenant.id,
-        segments.slice(0, -1),
-      );
-      return parent ? { resources: [parent] } : null;
-    }),
+    createLockEnforcementMiddleware(
+      dataSource,
+      async (req) => {
+        const tenant = requireTenant(req);
+        const segments = pathSegments(req);
+        if (segments.length === 0) {
+          return null;
+        }
+        const parent = await resourcePathResolver.resolve(
+          tenant.id,
+          segments.slice(0, -1),
+        );
+        return parent ? { resources: [parent] } : null;
+      },
+      getEffectiveWebDavLocks,
+    ),
     async (req: Request, res): Promise<void> => {
       if (typeof req.body === 'string' && req.body.trim() !== '') {
         res.sendStatus(415);

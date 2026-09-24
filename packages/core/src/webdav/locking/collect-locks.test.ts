@@ -11,9 +11,9 @@ import {
   Tenant,
 } from '../../entities/index.js';
 import { ALL_MIGRATIONS } from '../../migrations/sqlite/index.js';
-import { getEffectiveLocks } from './collect-locks.js';
+import { getEffectiveWebDavLocks } from './collect-locks.js';
 
-describe('getEffectiveLocks', () => {
+describe('getEffectiveWebDavLocks', () => {
   let dataSource: DataSource;
   let principal: Principal;
   let root: Collection;
@@ -142,7 +142,7 @@ describe('getEffectiveLocks', () => {
     const lock = await collectionLock(a.id, { depth: 'infinity' });
 
     const result = await dataSource.manager.transaction((manager) =>
-      getEffectiveLocks(manager, doc),
+      getEffectiveWebDavLocks(manager, doc),
     );
 
     expect(result).toEqual([
@@ -160,7 +160,7 @@ describe('getEffectiveLocks', () => {
     await collectionLock(a.id, { depth: 'zero' });
 
     const result = await dataSource.manager.transaction((manager) =>
-      getEffectiveLocks(manager, doc),
+      getEffectiveWebDavLocks(manager, doc),
     );
 
     expect(result).toEqual([]);
@@ -171,7 +171,7 @@ describe('getEffectiveLocks', () => {
     const lock = await collectionLock(a.id, { depth: 'zero' });
 
     const result = await dataSource.manager.transaction((manager) =>
-      getEffectiveLocks(manager, a),
+      getEffectiveWebDavLocks(manager, a),
     );
 
     expect(result).toEqual([
@@ -188,7 +188,7 @@ describe('getEffectiveLocks', () => {
     await fileLock(doc.id, { expiresAt: new Date(Date.now() - 1000) });
 
     const result = await dataSource.manager.transaction((manager) =>
-      getEffectiveLocks(manager, doc),
+      getEffectiveWebDavLocks(manager, doc),
     );
 
     expect(result).toEqual([]);
@@ -201,7 +201,7 @@ describe('getEffectiveLocks', () => {
     });
 
     const result = await dataSource.manager.transaction((manager) =>
-      getEffectiveLocks(manager, doc),
+      getEffectiveWebDavLocks(manager, doc),
     );
 
     expect(result).toEqual([expect.objectContaining({ id: lock.id })]);
@@ -212,7 +212,7 @@ describe('getEffectiveLocks', () => {
     const lock = await fileLock(doc.id, { expiresAt: null });
 
     const result = await dataSource.manager.transaction((manager) =>
-      getEffectiveLocks(manager, doc),
+      getEffectiveWebDavLocks(manager, doc),
     );
 
     expect(result).toEqual([expect.objectContaining({ id: lock.id })]);
@@ -225,7 +225,7 @@ describe('getEffectiveLocks', () => {
     const ancestorLock = await collectionLock(a.id, { depth: 'infinity' });
 
     const result = await dataSource.manager.transaction((manager) =>
-      getEffectiveLocks(manager, doc),
+      getEffectiveWebDavLocks(manager, doc),
     );
 
     expect(result).toEqual([
