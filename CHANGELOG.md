@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/kaigothe/DavNode/compare/v1.10.0...v1.11.0) (2026-09-24)
+
+
+### Features
+
+* **server:** genericize lock evaluation and add CardDAV LOCK/UNLOCK ([aba9c70](https://github.com/kaigothe/DavNode/commit/aba9c7012ff8daf51d16c704bde2adb40430fc32))
+
 # [1.10.0](https://github.com/kaigothe/DavNode/compare/v1.9.0...v1.10.0) (2026-09-06)
 
 
