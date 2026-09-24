@@ -1,74 +1,22 @@
-import { MoreThan } from 'typeorm';
-import { hasPrivilege } from '../../acl/evaluate-privilege.js';
-import { AclPropertiesProvider } from '../../acl/acl-properties-provider.js';
-import { Collection } from '../../entities/collection.entity.js';
-import {
-  CollectionChange,
-  type CollectionChangeAction,
-} from '../../entities/collection-change.entity.js';
-import { LockPropertiesProvider } from '../locking/lock-properties-provider.js';
-import { DeadPropertyService } from '../properties/dead-property.service.js';
-import { PropertyProviderRegistry } from '../properties/property-provider-registry.js';
+import type { CollectionChangeAction } from '../../entities/collection-change.entity.js';
 import type {
-  PropertyProviderContext,
-  PropertyValue,
-  WebDavResource,
-} from '../properties/property-provider.interface.js';
-import { WebDavLiveProperties } from '../properties/webdav-live-properties.js';
-import type { ReportContext, ReportHandler, ReportResult } from '../report-registry.js';
-import {
-  ResourcePathResolver,
-  resolveCollectionHref,
-  resolveResourceHref,
-  type WebDavTreeResource,
-} from '../resource-path-resolver.js';
+  ReportContext,
+  ReportHandler,
+  ReportResult,
+} from '../report-registry.js';
 import { buildErrorResponse } from '../xml/error-response-builder.js';
 import {
   buildMultistatusResponse,
-  type MultistatusPropertyResult,
   type MultistatusResourceResult,
 } from '../xml/multistatus-builder.js';
-import type { PropertyName } from '../xml/request-parser.js';
+import type {
+  SyncCollectionDomain,
+  SyncCollectionTarget,
+} from './sync-collection-domain.js';
 import { parseSyncCollectionRequestBody } from './sync-collection-request-parser.js';
 import { encodeSyncToken } from './sync-token.js';
 import { validateSyncToken } from './validate-sync-token.js';
-
-/** `child`'s own path segment: a `Collection`'s `displayName`, or a `FileResource`'s `name`. */
-function resourceName(resource: WebDavTreeResource): string {
-  return resource instanceof Collection ? resource.displayName : resource.name;
-}
-
-/**
- * Resolves `requested` against `resource`'s combined live + dead
- * properties — conceptually the same "found → 200, not found → 404"
- * lookup PROPFIND's own `prop`-mode request uses
- * (`packages/server/src/http/routes/propfind.route.ts`), reimplemented
- * here rather than shared: this report only ever needs that one mode
- * (RFC 6578 §6.1's `<D:prop>` has no `allprop`/`propname` equivalent),
- * and PROPFIND's version is server-package-private, not something a
- * `@davnode/core` report handler can import.
- */
-async function resolveRequestedProperties(
-  resource: WebDavResource,
-  requested: readonly PropertyName[],
-  registry: PropertyProviderRegistry<WebDavResource>,
-  deadProperties: DeadPropertyService,
-  context: PropertyProviderContext,
-): Promise<MultistatusPropertyResult[]> {
-  const live = await registry.listLiveProperties(resource, context);
-  const dead =
-    resource instanceof Collection
-      ? await deadProperties.listForCollection(resource.id)
-      : await deadProperties.listForFileResource(resource.id);
-  const all: PropertyValue[] = [...live, ...dead];
-
-  return requested.map((request) => {
-    const found = all.find(
-      (p) => p.namespace === request.namespace && p.name === request.name,
-    );
-    return found ? { ...found, status: 200 } : { ...request, status: 404 };
-  });
-}
+import { WebDavSyncCollectionDomain } from './webdav-sync-domain.js';
 
 /**
  * Handles the `{DAV:}sync-collection` REPORT (RFC 6578) — registered
@@ -76,10 +24,17 @@ async function resolveRequestedProperties(
  * `milestones/M3-webdav-acl/06-principals-and-report-infrastructure/02-generic-report-dispatcher.md`)
  * the same way `PrincipalPropertySearchReportHandler` is.
  *
- * The target collection is resolved from `context.segments`: this
- * report only supports the WebDAV file tree (`/dav/{tenant}/files/...`),
- * so a request whose first segment isn't `files`, or whose resolved
- * target isn't a `Collection`, is `404`.
+ * **One handler, several resource domains**: `{DAV:}sync-collection` is
+ * a single registry key, and RFC 6578 defines the report identically for
+ * every collection type, so this class holds the shared algorithm
+ * (parsing, token validation, change-log reduction, response building)
+ * and delegates everything domain-specific to a list of
+ * {@link SyncCollectionDomain}s — the WebDAV file tree
+ * (`WebDavSyncCollectionDomain`, the default) and, from M5 on, the
+ * addressbook tree (`AddressbookSyncCollectionDomain`). The first
+ * domain whose `resolveTarget` recognizes the request path handles it;
+ * none does → `404`. Each domain reads its own change-log table behind
+ * the `ChangeLogRepository` interface, so this file never names one.
  *
  * **Authorization**: `read` on the target collection (the ACL
  * evaluation engine, M3), else `403`.
@@ -102,7 +57,7 @@ async function resolveRequestedProperties(
  * response with the requested properties.
  *
  * **Incremental sync** (any non-empty token, `seq: 0` included): every
- * `collection_changes` row with `seq > token.seq` is loaded, grouped by
+ * change-log entry with `seq > token.seq` is loaded, grouped by
  * the child's `name`, and reduced to each name's *last* recorded
  * action — a name changed multiple times since the last sync (e.g.
  * `added` then `modified`) appears only once, with its current live
@@ -125,37 +80,37 @@ async function resolveRequestedProperties(
  * collection's *current* `syncSeq` — feeding that back into the next
  * `sync-collection` request is what makes the next sync see only
  * changes recorded after this response.
- *
- * Concrete to `collection_changes`/`Collection` rather than generic
- * over a change-log table, unlike some M3 evaluation code — the same
- * kind of deferred genericization `getEffectiveLocks` already notes for
- * M5 (`milestones/M4-locking-sync/07-sync-collection-report/00-overview.md`'s
- * own "Nachtrag").
  */
 export class SyncCollectionReportHandler implements ReportHandler {
+  /**
+   * @param domains - The resource domains this handler serves, tried in
+   * order. Defaults to the WebDAV file tree alone, which keeps the M4
+   * construction (`new SyncCollectionReportHandler()`) working
+   * unchanged; the application passes every domain it serves.
+   */
+  constructor(
+    private readonly domains: readonly SyncCollectionDomain[] = [
+      new WebDavSyncCollectionDomain(),
+    ],
+  ) {}
+
   /** See {@link ReportHandler.handle}. */
-  async handle(requestXml: string, context: ReportContext): Promise<ReportResult> {
-    if (context.segments[0] !== 'files') {
-      return { status: 404, body: '' };
+  async handle(
+    requestXml: string,
+    context: ReportContext,
+  ): Promise<ReportResult> {
+    let target: SyncCollectionTarget | null = null;
+    for (const domain of this.domains) {
+      target = await domain.resolveTarget(context);
+      if (target) {
+        break;
+      }
     }
-    const resourcePathResolver = new ResourcePathResolver(
-      context.manager.connection,
-    );
-    const target = await resourcePathResolver.resolve(
-      context.tenant.id,
-      context.segments.slice(1),
-    );
-    if (!target || !(target instanceof Collection)) {
+    if (!target) {
       return { status: 404, body: '' };
     }
 
-    const allowed = await hasPrivilege(
-      context.manager,
-      context.principal,
-      target,
-      'read',
-    );
-    if (!allowed) {
+    if (!(await target.canRead())) {
       return { status: 403, body: '' };
     }
 
@@ -181,26 +136,11 @@ export class SyncCollectionReportHandler implements ReportHandler {
       };
     }
 
-    const registry = new PropertyProviderRegistry<WebDavResource>();
-    registry.register(new WebDavLiveProperties());
-    registry.register(new AclPropertiesProvider());
-    registry.register(new LockPropertiesProvider());
-    const deadProperties = new DeadPropertyService(context.manager.connection);
-    const propertyContext: PropertyProviderContext = {
-      tenant: context.tenant,
-      principal: context.principal,
-      manager: context.manager,
-    };
-
-    const children = await resourcePathResolver.listChildren(target);
-    const childByName = new Map(
-      children.map((child) => [resourceName(child), child]),
+    const members = await target.listMembers();
+    const memberByName = new Map(
+      members.map((member) => [member.name, member]),
     );
-    const targetHref = await resolveCollectionHref(
-      context.manager,
-      context.tenant,
-      target.id,
-    );
+    const targetHref = await target.resolveHref();
 
     const names: Array<{ name: string; action: CollectionChangeAction }> = [];
     if (requestBody.syncToken === '') {
@@ -211,14 +151,15 @@ export class SyncCollectionReportHandler implements ReportHandler {
       // history — that one must still consult the change log below, not
       // take this shortcut, or a since-deleted name from that history
       // would silently vanish instead of being reported as removed).
-      for (const child of children) {
-        names.push({ name: resourceName(child), action: 'added' });
+      for (const member of members) {
+        names.push({ name: member.name, action: 'added' });
       }
     } else {
-      const changes = await context.manager.getRepository(CollectionChange).find({
-        where: { collectionId: target.id, seq: MoreThan(validation.seq) },
-        order: { seq: 'ASC' },
-      });
+      const changes = await target.changeLog.loadChangesSince(
+        context.manager,
+        target.id,
+        validation.seq,
+      );
       const lastActionByName = new Map<string, CollectionChangeAction>();
       for (const change of changes) {
         lastActionByName.set(change.name, change.action);
@@ -230,8 +171,8 @@ export class SyncCollectionReportHandler implements ReportHandler {
 
     const resources: MultistatusResourceResult[] = [];
     for (const { name, action } of names) {
-      const child = childByName.get(name);
-      if (action === 'deleted' || !child) {
+      const member = memberByName.get(name);
+      if (action === 'deleted' || !member) {
         resources.push({
           href: `${targetHref.replace(/\/$/, '')}/${encodeURIComponent(name)}`,
           properties: [],
@@ -240,14 +181,8 @@ export class SyncCollectionReportHandler implements ReportHandler {
         continue;
       }
       resources.push({
-        href: await resolveResourceHref(context.manager, context.tenant, child),
-        properties: await resolveRequestedProperties(
-          child,
-          requestBody.properties,
-          registry,
-          deadProperties,
-          propertyContext,
-        ),
+        href: await member.resolveHref(),
+        properties: await member.resolveProperties(requestBody.properties),
       });
     }
 

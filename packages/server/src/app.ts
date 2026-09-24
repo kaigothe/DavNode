@@ -1,8 +1,10 @@
 import {
+  AddressbookSyncCollectionDomain,
   DAV_NAMESPACE,
   PrincipalPropertySearchReportHandler,
   ReportRegistry,
   SyncCollectionReportHandler,
+  WebDavSyncCollectionDomain,
   type DataSource,
 } from '@davnode/core';
 import express from 'express';
@@ -89,7 +91,10 @@ export function createApp(dataSource: DataSource): express.Express {
   reportRegistry.register(
     DAV_NAMESPACE,
     'sync-collection',
-    new SyncCollectionReportHandler(),
+    new SyncCollectionReportHandler([
+      new WebDavSyncCollectionDomain(),
+      new AddressbookSyncCollectionDomain(),
+    ]),
   );
   registerReportRoute(app, dataSource, reportRegistry);
 

@@ -210,6 +210,17 @@ export {
   type SyncCollectionRequestBody,
 } from './webdav/sync/sync-collection-request-parser.js';
 export { SyncCollectionReportHandler } from './webdav/sync/sync-collection-report.js';
+export {
+  CollectionChangeLog,
+  type ChangeEntry,
+  type ChangeLogRepository,
+} from './webdav/sync/change-log.js';
+export type {
+  SyncCollectionDomain,
+  SyncCollectionMember,
+  SyncCollectionTarget,
+} from './webdav/sync/sync-collection-domain.js';
+export { WebDavSyncCollectionDomain } from './webdav/sync/webdav-sync-domain.js';
 
 export {
   ReportRegistry,
@@ -232,6 +243,9 @@ export {
   type AddressbookHomeTreeResource,
 } from './carddav/addressbook-home-tree-resource.js';
 export { AddressbookLiveProperties } from './carddav/addressbook-live-properties.js';
+export { AddressObjectLiveProperties } from './carddav/address-object-live-properties.js';
+export { AddressbookChangeLog } from './carddav/addressbook-change-log.js';
+export { AddressbookSyncCollectionDomain } from './carddav/addressbook-sync-domain.js';
 export { AddressbookHomeSetProperty } from './carddav/addressbook-home-set-property.js';
 export { requestsAddressbookResourcetype } from './carddav/mkcol-addressbook-request.js';
 export { AddressbookChangeService } from './carddav/addressbook-change.service.js';
