@@ -2,6 +2,9 @@ import type { EntityManager } from 'typeorm';
 import { AddressbookLock } from '../../entities/addressbook-lock.entity.js';
 import { AddressbookCollection } from '../../entities/addressbook-collection.entity.js';
 import { AddressObjectLock } from '../../entities/address-object-lock.entity.js';
+import { CalendarCollection } from '../../entities/calendar-collection.entity.js';
+import { CalendarLock } from '../../entities/calendar-lock.entity.js';
+import { CalendarObjectLock } from '../../entities/calendar-object-lock.entity.js';
 import {
   type LockDepth,
   type LockScope,
@@ -10,19 +13,20 @@ import {
 import { Collection } from '../../entities/collection.entity.js';
 import { FileLock } from '../../entities/file-lock.entity.js';
 import type { AddressbookAclResource } from '../../carddav/addressbook-acl-resource.js';
+import type { CalendarAclResource } from '../../caldav/calendar-acl-resource.js';
 import type { WebDavTreeResource } from '../resource-path-resolver.js';
 
 /**
  * The shape every domain's lock row shares (see `CollectionLock`/
- * `FileLock` and their addressbook counterparts, M5) — everything
+ * `FileLock` and their addressbook and calendar counterparts, M5/M6) — everything
  * {@link getEffectiveLocks}, {@link wouldConflict}, and
  * {@link hasValidLockToken} need, independent of which specific foreign
  * key column ties a row to its resource. Mirrors `AceLike`
  * (`acl/collect-aces.ts`).
  *
  * `depth` is optional: only a collection-level lock (`CollectionLock`/
- * `AddressbookLock`) has one at all — an object-level lock
- * (`FileLock`/`AddressObjectLock`) has no descendants for a lock to
+ * `AddressbookLock`/`CalendarLock`) has one at all — an object-level lock
+ * (`FileLock`/`AddressObjectLock`/`CalendarObjectLock`) has no descendants for a lock to
  * cascade to, so it structurally satisfies this field by omitting it,
  * the same way `activeLockDepth` (`lock-discovery.ts`) already treated
  * a missing `depth` as `'0'` before this type existed.
@@ -234,6 +238,55 @@ export async function getEffectiveAddressbookLocks(
   return getEffectiveLocks(
     ownLocks,
     resource.addressbookId,
+    findAncestorLocks,
+    findParentCollectionId,
+  );
+}
+
+/**
+ * The calendar-domain instantiation of {@link getEffectiveLocks}:
+ * resolves `resource`'s own direct lock(s) (`CalendarLock` for a
+ * `CalendarCollection`, `CalendarObjectLock` for a `CalendarObject`) and,
+ * for a `CalendarObject`, adds its parent calendar's `Depth: infinity`
+ * lock(s).
+ *
+ * Like {@link getEffectiveAddressbookLocks}, at most one level of
+ * inheritance: calendars don't nest (Runde 21), so
+ * `findParentCollectionId` always returns `null`.
+ *
+ * @param manager - The `EntityManager` to query with.
+ * @param resource - The resource to find effective locks for.
+ * @returns Every currently-effective lock, direct locks first.
+ */
+export async function getEffectiveCalendarLocks(
+  manager: EntityManager,
+  resource: CalendarAclResource,
+): Promise<EffectiveLock<CalendarLock | CalendarObjectLock>[]> {
+  const findAncestorLocks = (calendarId: string): Promise<CalendarLock[]> =>
+    manager
+      .getRepository(CalendarLock)
+      .findBy({ calendarId, depth: 'infinity' });
+  const findParentCollectionId = (): Promise<string | null> =>
+    Promise.resolve(null);
+
+  if (resource instanceof CalendarCollection) {
+    const ownLocks = await manager
+      .getRepository(CalendarLock)
+      .findBy({ calendarId: resource.id });
+    return getEffectiveLocks(
+      ownLocks,
+      null,
+      findAncestorLocks,
+      findParentCollectionId,
+    );
+  }
+
+  const ownLocks = await manager
+    .getRepository(CalendarObjectLock)
+    .findBy({ calendarObjectId: resource.id });
+  return getEffectiveLocks(
+    ownLocks,
+    resource.calendarId,
     findAncestorLocks,
     findParentCollectionId,
   );

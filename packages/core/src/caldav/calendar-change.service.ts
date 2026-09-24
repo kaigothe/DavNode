@@ -7,8 +7,8 @@ import type { CollectionChangeAction } from '../entities/collection-change.entit
  * Records a mutating CalendarObject-CRUD operation's effect on one of a
  * calendar's direct children, and bumps that calendar's `syncSeq` — the
  * calendar domain's counterpart to `AddressbookChangeService` (M5) and
- * `CollectionChangeService` (M2/M4), the groundwork for `sync-collection`
- * on calendars (Große Aufgabe 5).
+ * `CollectionChangeService` (M2/M4). The entries it writes are what
+ * `CalendarChangeLog` hands the `sync-collection` REPORT.
  *
  * Takes an `EntityManager` rather than owning its own transaction: a
  * change record must commit or roll back together with the mutation it

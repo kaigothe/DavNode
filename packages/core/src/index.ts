@@ -13,6 +13,8 @@ export {
   type Privilege,
 } from './acl/privilege.js';
 export {
+  calendarPrivilegeSatisfies,
+  expandCalendarPrivilege,
   expandPrivilege,
   privilegeSatisfies,
 } from './acl/privilege-aggregation.js';
@@ -24,6 +26,7 @@ export {
   collectAces,
   collectWebDavAces,
   collectAddressbookAces,
+  collectCalendarAces,
   type AceLike,
   type CollectedAce,
 } from './acl/collect-aces.js';
@@ -31,6 +34,7 @@ export {
   hasPrivilege,
   getCurrentUserPrivilegeSet,
   hasAddressbookPrivilege,
+  hasCalendarPrivilege,
   selectAddressObjectsWithPrivilege,
 } from './acl/evaluate-privilege.js';
 export {
@@ -205,6 +209,7 @@ export {
   getEffectiveLocks,
   getEffectiveWebDavLocks,
   getEffectiveAddressbookLocks,
+  getEffectiveCalendarLocks,
   type EffectiveLock,
   type LockLike,
 } from './webdav/locking/collect-locks.js';
@@ -353,6 +358,11 @@ export {
 } from './caldav/index-calendar-object.js';
 export { AddressbookHomeSetProperty } from './carddav/addressbook-home-set-property.js';
 export { CALDAV_NAMESPACE } from './caldav/caldav-namespace.js';
+export { CalendarChangeLog } from './caldav/calendar-change-log.js';
+export { CalendarObjectLiveProperties } from './caldav/calendar-object-live-properties.js';
+export { resolveReportCalendar } from './caldav/calendar-report-support.js';
+export { CalendarSyncCollectionDomain } from './caldav/calendar-sync-domain.js';
+export type { CalendarAclResource } from './caldav/calendar-acl-resource.js';
 export {
   toCalendarHomeUrl,
   toCalendarObjectUrl,

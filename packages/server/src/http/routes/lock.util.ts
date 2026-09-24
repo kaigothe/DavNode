@@ -1,5 +1,6 @@
 import type {
   AddressbookLock,
+  CalendarLock,
   CollectionLock,
   EffectiveLock,
   LockLike,
@@ -27,6 +28,18 @@ export function isAddressbookLock(
   lock: EffectiveLock<LockLike>,
 ): lock is EffectiveLock<AddressbookLock> {
   return 'addressbookId' in lock;
+}
+
+/**
+ * Whether `lock` came from `calendar_locks` (has a `calendarId`) rather
+ * than `calendar_object_locks` — the CalDAV analog of
+ * {@link isAddressbookLock}, used by `caldav/lock.route.ts`/
+ * `caldav/unlock.route.ts`.
+ */
+export function isCalendarLock(
+  lock: EffectiveLock<LockLike>,
+): lock is EffectiveLock<CalendarLock> {
+  return 'calendarId' in lock;
 }
 
 /**

@@ -10,6 +10,7 @@ import {
   CalendarObjectContent,
   CalendarObjectProperty,
   createDataSource,
+  createOwnerAllAce,
   MAX_CALENDAR_OBJECT_BYTES,
   TenantService,
   UserService,
@@ -140,19 +141,29 @@ describe('calendar object CRUD routes', () => {
     });
   }
 
-  function createCalendar(
+  /** A calendar the way MKCALENDAR creates one: the row and its default-owner ACE. */
+  async function createCalendar(
     owner: User,
     name: string,
   ): Promise<CalendarCollection> {
-    const calendars = dataSource.getRepository(CalendarCollection);
-    return calendars.save(
-      calendars.create({
-        tenantId: tenant.id,
-        ownerPrincipalId: owner.principalId,
-        name,
-        displayName: name,
-      }),
-    );
+    return dataSource.transaction(async (manager) => {
+      const calendars = manager.getRepository(CalendarCollection);
+      const created = await calendars.save(
+        calendars.create({
+          tenantId: tenant.id,
+          ownerPrincipalId: owner.principalId,
+          name,
+          displayName: name,
+        }),
+      );
+      await createOwnerAllAce(
+        manager,
+        'calendar',
+        created.id,
+        owner.principalId,
+      );
+      return created;
+    });
   }
 
   const url = (objectName: string, user: User = alice, calendarName = 'work') =>

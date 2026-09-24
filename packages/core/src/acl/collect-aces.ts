@@ -2,6 +2,9 @@ import type { EntityManager } from 'typeorm';
 import { AddressbookAce } from '../entities/addressbook-ace.entity.js';
 import { AddressbookCollection } from '../entities/addressbook-collection.entity.js';
 import { AddressObjectAce } from '../entities/address-object-ace.entity.js';
+import { CalendarAce } from '../entities/calendar-ace.entity.js';
+import { CalendarCollection } from '../entities/calendar-collection.entity.js';
+import { CalendarObjectAce } from '../entities/calendar-object-ace.entity.js';
 import {
   CollectionAce,
   type GrantDeny,
@@ -9,27 +12,32 @@ import {
 import { Collection } from '../entities/collection.entity.js';
 import { FileAce } from '../entities/file-ace.entity.js';
 import type { AddressbookAclResource } from '../carddav/addressbook-acl-resource.js';
+import type { CalendarAclResource } from '../caldav/calendar-acl-resource.js';
 import type { WebDavTreeResource } from '../webdav/resource-path-resolver.js';
-import type { Privilege } from './privilege.js';
+import type { CalendarPrivilege, Privilege } from './privilege.js';
 
 /**
  * The shape every domain's ACE row shares (see the ACE entities,
- * `CollectionAce`/`FileAce`, and their future calendar/addressbook
- * counterparts, M5/M6) — everything {@link collectAces}'s ordering and
- * inheritance logic needs, independent of which specific foreign key
- * column ties a row to its resource.
+ * `CollectionAce`/`FileAce` and their addressbook/calendar counterparts)
+ * — everything {@link collectAces}'s ordering and inheritance logic
+ * needs, independent of which specific foreign key column ties a row to
+ * its resource.
+ *
+ * Generic over the privilege vocabulary: the shared {@link Privilege}
+ * for WebDAV and CardDAV, {@link CalendarPrivilege} (which adds
+ * `read-free-busy`) for the calendar tables.
  */
-export interface AceLike {
+export interface AceLike<TPrivilege extends CalendarPrivilege = Privilege> {
   id: string;
   principalId: string;
-  privilege: Privilege;
+  privilege: TPrivilege;
   grantDeny: GrantDeny;
   protected: boolean;
   position: number;
 }
 
 /** One ACE as returned by {@link collectAces}: the stored row, plus where it came from. */
-export type CollectedAce<TAce extends AceLike> = TAce & {
+export type CollectedAce<TAce extends AceLike<CalendarPrivilege>> = TAce & {
   /**
    * `false` for a direct ACE on the resource itself, `true` for one
    * inherited from an ancestor collection.
@@ -74,8 +82,8 @@ export type CollectedAce<TAce extends AceLike> = TAce & {
  * @returns The combined, ordered ACE list.
  */
 export async function collectAces<
-  TAce extends AceLike,
-  TCollectionAce extends AceLike,
+  TAce extends AceLike<CalendarPrivilege>,
+  TCollectionAce extends AceLike<CalendarPrivilege>,
 >(
   ownAces: readonly TAce[],
   startCollectionId: string | null,
@@ -206,6 +214,53 @@ export async function collectAddressbookAces(
   return collectAces(
     ownAces,
     resource.addressbookId,
+    findCollectionAces,
+    findParentCollectionId,
+  );
+}
+
+/**
+ * The calendar-domain instantiation of {@link collectAces}: resolves
+ * `resource`'s own ACEs (`CalendarAce` if it's a `CalendarCollection`,
+ * `CalendarObjectAce` if it's a `CalendarObject`) and, for a
+ * `CalendarObject`, adds its parent calendar's ACEs.
+ *
+ * Like {@link collectAddressbookAces}, at most one level of inheritance:
+ * calendars don't nest (Runde 21, see `CalendarCollection`'s doc comment),
+ * so `findParentCollectionId` always returns `null`, ending the walk after
+ * an object's single parent calendar (or at once, for a calendar itself).
+ *
+ * @param manager - The `EntityManager` to query with.
+ * @param resource - The resource to collect ACEs for.
+ * @returns The combined, ordered ACE list.
+ */
+export async function collectCalendarAces(
+  manager: EntityManager,
+  resource: CalendarAclResource,
+): Promise<CollectedAce<CalendarAce | CalendarObjectAce>[]> {
+  const findCollectionAces = (calendarId: string): Promise<CalendarAce[]> =>
+    manager.getRepository(CalendarAce).findBy({ calendarId });
+  const findParentCollectionId = (): Promise<string | null> =>
+    Promise.resolve(null);
+
+  if (resource instanceof CalendarCollection) {
+    const ownAces = await manager
+      .getRepository(CalendarAce)
+      .findBy({ calendarId: resource.id });
+    return collectAces(
+      ownAces,
+      null,
+      findCollectionAces,
+      findParentCollectionId,
+    );
+  }
+
+  const ownAces = await manager
+    .getRepository(CalendarObjectAce)
+    .findBy({ calendarObjectId: resource.id });
+  return collectAces(
+    ownAces,
+    resource.calendarId,
     findCollectionAces,
     findParentCollectionId,
   );

@@ -1,7 +1,16 @@
-import { deleteCalendarObject, type DataSource } from '@davnode/core';
+import {
+  deleteCalendarObject,
+  getEffectiveCalendarLocks,
+  hasCalendarPrivilege,
+  type CalendarAclResource,
+  type DataSource,
+} from '@davnode/core';
 import type { Express, Request } from 'express';
+import { createAclAuthorizationMiddleware } from '../../acl-authorization.middleware.js';
+import { createLockEnforcementMiddleware } from '../../lock-enforcement.middleware.js';
 import { ifMatchSatisfied } from '../conditional-request.util.js';
 import {
+  calendarOwnerIdParam,
   pathSegments,
   requirePrincipal,
   requireTenant,
@@ -19,15 +28,22 @@ import {
  * object's own columns, its index — and records the `deleted` change in
  * one transaction.
  *
+ * **Real RFC 3744 ACL**: deletion needs `unbind` on the calendar — the
+ * parent of the object being removed, mirroring the WebDAV and CardDAV
+ * DELETE routes' "unbind on the parent, not the target" rule. It is
+ * checked whether or not the object exists, and a calendar that doesn't
+ * exist under someone else's home is `403` (see the GET route for why),
+ * so nothing leaks to a caller without access.
+ *
+ * **Lock enforcement**: a covering `If`-header token is required for a
+ * lock on the object *or* its calendar (e.g. an unlocked event inside a
+ * `Depth: infinity`-locked calendar). Runs after the ACL check, so a
+ * missing privilege is still `403`, not `423`.
+ *
  * **Conditional**: `If-Match` (a client deleting an object it last saw as
  * such-and-such) fails with `412` when the ETag has moved on, checked
  * atomically with the delete. Only single objects are deletable here —
  * `DELETE` on a calendar or the home is `405`, on anything deeper `404`.
- *
- * **Authorization is an owner-only placeholder** until Große Aufgabe 5
- * (`{userId}` must be the requesting principal, else `403`), like the
- * other calendar object routes; the ACL check will then be `unbind` on
- * the calendar.
  */
 export function registerCaldavDeleteRoute(
   app: Express,
@@ -35,14 +51,57 @@ export function registerCaldavDeleteRoute(
 ): void {
   app.delete(
     '/dav/:tenantSlug/calendars/:userId{/*splat}',
+    createAclAuthorizationMiddleware<CalendarAclResource>(
+      dataSource,
+      async (req) => {
+        const tenant = requireTenant(req);
+        const userId = calendarOwnerIdParam(req);
+        const segments = pathSegments(req);
+        if (segments.length !== 2) {
+          return null;
+        }
+        const calendar = await resolveCalendar(
+          dataSource,
+          tenant.id,
+          userId,
+          segments[0],
+        );
+        return calendar ? { resource: calendar, privilege: 'unbind' } : null;
+      },
+      hasCalendarPrivilege,
+    ),
+    createLockEnforcementMiddleware<CalendarAclResource>(
+      dataSource,
+      async (req) => {
+        const tenant = requireTenant(req);
+        const userId = calendarOwnerIdParam(req);
+        const segments = pathSegments(req);
+        if (segments.length !== 2) {
+          return null;
+        }
+        const [calendarName, objectName] = segments;
+        const calendar = await resolveCalendar(
+          dataSource,
+          tenant.id,
+          userId,
+          calendarName,
+        );
+        if (!calendar) {
+          return null;
+        }
+        const target = await resolveCalendarObject(
+          dataSource,
+          calendar.id,
+          objectName,
+        );
+        return target ? { resources: [target, calendar] } : null;
+      },
+      getEffectiveCalendarLocks,
+    ),
     async (req: Request, res): Promise<void> => {
       const tenant = requireTenant(req);
       const principal = requirePrincipal(req);
-      const userId = req.params.userId as string;
-      if (userId !== principal.id) {
-        res.sendStatus(403);
-        return;
-      }
+      const userId = calendarOwnerIdParam(req);
 
       const segments = pathSegments(req);
       if (segments.length < 2) {
@@ -62,10 +121,16 @@ export function registerCaldavDeleteRoute(
         userId,
         calendarName,
       );
-      const target = calendar
-        ? await resolveCalendarObject(dataSource, calendar.id, objectName)
-        : null;
-      if (!calendar || !target) {
+      if (!calendar) {
+        res.sendStatus(userId === principal.id ? 404 : 403);
+        return;
+      }
+      const target = await resolveCalendarObject(
+        dataSource,
+        calendar.id,
+        objectName,
+      );
+      if (!target) {
         res.sendStatus(404);
         return;
       }

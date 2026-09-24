@@ -1,7 +1,14 @@
-import { CalendarObjectContent, type DataSource } from '@davnode/core';
+import {
+  CalendarObjectContent,
+  hasCalendarPrivilege,
+  type CalendarAclResource,
+  type DataSource,
+} from '@davnode/core';
 import type { Express, Request } from 'express';
+import { createAclAuthorizationMiddleware } from '../../acl-authorization.middleware.js';
 import { ifNoneMatchMatches } from '../conditional-request.util.js';
 import {
+  calendarOwnerIdParam,
   pathSegments,
   requirePrincipal,
   requireTenant,
@@ -19,13 +26,15 @@ import {
  * `ETag` header §5.3.4 requires on every GET; `If-None-Match` answers
  * `304` for an unchanged object.
  *
- * **Authorization is an owner-only placeholder** until Große Aufgabe 5
- * wires the calendar domain into the RFC 3744 engine (as M5 first did for
- * addressbooks): `{userId}` must be the requesting principal's own id,
- * else `403` — nobody but the owner can reach a calendar yet, so nothing
- * shared can leak in the meantime. The `404`s for a missing calendar or
- * object only follow that check, so a caller learns nothing about
- * anyone else's calendars.
+ * **Real RFC 3744 ACL**: `{userId}` in the URL identifies whose calendar
+ * this is, not who may read it — access is `read`, decided by
+ * `hasCalendarPrivilege` against the object (which inherits its
+ * calendar's ACEs). A calendar that exists but doesn't hold the object is
+ * checked for `read` too, so someone without access gets `403` whether or
+ * not the name exists, and only a reader learns that an object is missing
+ * (`404`). A calendar that doesn't exist under someone *else's* home is
+ * `403` as well — the same "learn nothing about any identity but your own"
+ * rule the home routes follow — and `404` only under the requester's own.
  */
 export function registerCaldavGetRoute(
   app: Express,
@@ -33,14 +42,38 @@ export function registerCaldavGetRoute(
 ): void {
   app.get(
     '/dav/:tenantSlug/calendars/:userId{/*splat}',
+    createAclAuthorizationMiddleware<CalendarAclResource>(
+      dataSource,
+      async (req) => {
+        const tenant = requireTenant(req);
+        const userId = calendarOwnerIdParam(req);
+        const segments = pathSegments(req);
+        if (segments.length !== 2) {
+          return null;
+        }
+        const [calendarName, objectName] = segments;
+        const calendar = await resolveCalendar(
+          dataSource,
+          tenant.id,
+          userId,
+          calendarName,
+        );
+        if (!calendar) {
+          return null;
+        }
+        const target = await resolveCalendarObject(
+          dataSource,
+          calendar.id,
+          objectName,
+        );
+        return { resource: target ?? calendar, privilege: 'read' };
+      },
+      hasCalendarPrivilege,
+    ),
     async (req: Request, res): Promise<void> => {
       const tenant = requireTenant(req);
       const principal = requirePrincipal(req);
-      const userId = req.params.userId as string;
-      if (userId !== principal.id) {
-        res.sendStatus(403);
-        return;
-      }
+      const userId = calendarOwnerIdParam(req);
 
       const segments = pathSegments(req);
       if (segments.length !== 2) {
@@ -55,9 +88,15 @@ export function registerCaldavGetRoute(
         userId,
         calendarName,
       );
-      const target = calendar
-        ? await resolveCalendarObject(dataSource, calendar.id, objectName)
-        : null;
+      if (!calendar) {
+        res.sendStatus(userId === principal.id ? 404 : 403);
+        return;
+      }
+      const target = await resolveCalendarObject(
+        dataSource,
+        calendar.id,
+        objectName,
+      );
       if (!target) {
         res.sendStatus(404);
         return;

@@ -35,6 +35,18 @@ export function addressbookOwnerIdParam(req: Request): string {
 }
 
 /**
+ * `req.params.userId`, from the CalDAV
+ * `/dav/:tenantSlug/calendars/:userId{/*splat}` routes — the calendar
+ * counterpart of {@link addressbookOwnerIdParam}, read via the same
+ * untyped cast and for the same reason (a route that combines the generic
+ * ACL/lock middleware with a handler typed from its literal path widens
+ * every named param to `string | string[]`).
+ */
+export function calendarOwnerIdParam(req: Request): string {
+  return (req.params as Record<string, unknown>).userId as string;
+}
+
+/**
  * `req.tenant`, guaranteed set by this point on every `/dav/:tenantSlug`
  * route (tenant-resolution and basic-auth both run first and both
  * require it — see `tenant-resolution.middleware.ts`/

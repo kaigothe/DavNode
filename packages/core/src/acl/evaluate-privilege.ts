@@ -12,10 +12,19 @@ import {
   type CollectedAce,
   collectAces,
   collectAddressbookAces,
+  collectCalendarAces,
   collectWebDavAces,
 } from './collect-aces.js';
-import { ALL_PRIVILEGES, type Privilege } from './privilege.js';
-import { privilegeSatisfies } from './privilege-aggregation.js';
+import type { CalendarAclResource } from '../caldav/calendar-acl-resource.js';
+import {
+  ALL_PRIVILEGES,
+  type CalendarPrivilege,
+  type Privilege,
+} from './privilege.js';
+import {
+  calendarPrivilegeSatisfies,
+  privilegeSatisfies,
+} from './privilege-aggregation.js';
 
 /**
  * Every principal id an ACE could match for a given requesting
@@ -71,25 +80,30 @@ async function buildMatchingPrincipalIds(
  * RFC 3744 §5.4's first-match-wins algorithm over an already-collected,
  * ordered ACE list: the first ACE whose `principalId` is in
  * `matchingPrincipalIds` and whose `privilege` covers
- * `requestedPrivilege` (via `privilegeSatisfies`) decides the outcome —
- * `grant` → `true`, `deny` → `false` — and evaluation stops there,
- * without looking at the rest of the list. No matching ACE at all is
- * default-deny (`false`).
+ * `requestedPrivilege` (via `satisfies`) decides the outcome — `grant` →
+ * `true`, `deny` → `false` — and evaluation stops there, without looking
+ * at the rest of the list. No matching ACE at all is default-deny
+ * (`false`).
  *
  * Pure and synchronous (no I/O): `aces` is already fully collected, and
- * `matchingPrincipalIds` already fully resolved. Kept generic over the
- * ACE row type so it works for any domain's `collectAces` output, not
- * just WebDAV's.
+ * `matchingPrincipalIds` already fully resolved. Generic over the
+ * privilege vocabulary and its aggregation rule (`satisfies`), so it
+ * works for any domain's `collectAces` output: `privilegeSatisfies` for
+ * WebDAV and CardDAV, `calendarPrivilegeSatisfies` for calendars.
  */
-function evaluateAces<TAce extends AceLike>(
+function evaluateAces<
+  TPrivilege extends CalendarPrivilege,
+  TAce extends AceLike<TPrivilege>,
+>(
   aces: readonly CollectedAce<TAce>[],
   matchingPrincipalIds: ReadonlySet<string>,
-  requestedPrivilege: Privilege,
+  requestedPrivilege: TPrivilege,
+  satisfies: (granted: TPrivilege, requested: TPrivilege) => boolean,
 ): boolean {
   for (const ace of aces) {
     if (
       matchingPrincipalIds.has(ace.principalId) &&
-      privilegeSatisfies(ace.privilege, requestedPrivilege)
+      satisfies(ace.privilege, requestedPrivilege)
     ) {
       return ace.grantDeny === 'grant';
     }
@@ -119,7 +133,12 @@ export async function hasPrivilege(
     collectWebDavAces(manager, resource),
     buildMatchingPrincipalIds(manager, principal, resource.ownerPrincipalId),
   ]);
-  return evaluateAces(aces, matchingPrincipalIds, requestedPrivilege);
+  return evaluateAces(
+    aces,
+    matchingPrincipalIds,
+    requestedPrivilege,
+    privilegeSatisfies,
+  );
 }
 
 /**
@@ -149,7 +168,7 @@ export async function getCurrentUserPrivilegeSet(
     buildMatchingPrincipalIds(manager, principal, resource.ownerPrincipalId),
   ]);
   return ALL_PRIVILEGES.filter((privilege) =>
-    evaluateAces(aces, matchingPrincipalIds, privilege),
+    evaluateAces(aces, matchingPrincipalIds, privilege, privilegeSatisfies),
   );
 }
 
@@ -175,7 +194,43 @@ export async function hasAddressbookPrivilege(
     collectAddressbookAces(manager, resource),
     buildMatchingPrincipalIds(manager, principal, resource.ownerPrincipalId),
   ]);
-  return evaluateAces(aces, matchingPrincipalIds, requestedPrivilege);
+  return evaluateAces(
+    aces,
+    matchingPrincipalIds,
+    requestedPrivilege,
+    privilegeSatisfies,
+  );
+}
+
+/**
+ * The calendar-domain instantiation of {@link hasPrivilege}: decides
+ * whether `principal` has `requestedPrivilege` on `resource` (RFC 3744
+ * §5.4), collecting ACEs via {@link collectCalendarAces} and aggregating
+ * privileges by `calendarPrivilegeSatisfies`, so `CALDAV:read-free-busy`
+ * is covered by `read` and `all` (RFC 4791 §6.1.1) yet grantable alone.
+ * Same default-deny semantics — no matching ACE at all means `false`.
+ *
+ * @param manager - The `EntityManager` to query with.
+ * @param principal - The requesting principal (already authenticated).
+ * @param resource - The resource access is being checked against.
+ * @param requestedPrivilege - The privilege being checked for.
+ */
+export async function hasCalendarPrivilege(
+  manager: EntityManager,
+  principal: Principal,
+  resource: CalendarAclResource,
+  requestedPrivilege: CalendarPrivilege,
+): Promise<boolean> {
+  const [aces, matchingPrincipalIds] = await Promise.all([
+    collectCalendarAces(manager, resource),
+    buildMatchingPrincipalIds(manager, principal, resource.ownerPrincipalId),
+  ]);
+  return evaluateAces(
+    aces,
+    matchingPrincipalIds,
+    requestedPrivilege,
+    calendarPrivilegeSatisfies,
+  );
 }
 
 /** How many address object ids one `IN (...)` ACE lookup carries — well below every supported driver's bound-parameter limit. */
@@ -260,7 +315,14 @@ export async function selectAddressObjectsWithPrivilege(
       () => Promise.resolve(addressbookAces),
       () => Promise.resolve(null),
     );
-    if (evaluateAces(aces, matchingPrincipalIds, requestedPrivilege)) {
+    if (
+      evaluateAces(
+        aces,
+        matchingPrincipalIds,
+        requestedPrivilege,
+        privilegeSatisfies,
+      )
+    ) {
       allowed.add(addressObject.id);
     }
   }

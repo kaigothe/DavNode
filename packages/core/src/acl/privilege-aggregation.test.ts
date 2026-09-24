@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { expandPrivilege, privilegeSatisfies } from './privilege-aggregation.js';
-import { ALL_PRIVILEGES, type Privilege } from './privilege.js';
+import {
+  calendarPrivilegeSatisfies,
+  expandCalendarPrivilege,
+  expandPrivilege,
+  privilegeSatisfies,
+} from './privilege-aggregation.js';
+import {
+  ALL_PRIVILEGES,
+  CALENDAR_PRIVILEGES,
+  type Privilege,
+} from './privilege.js';
 
 const ELEMENTARY_PRIVILEGES: readonly Privilege[] = [
   'read',
@@ -49,9 +58,7 @@ describe('privilegeSatisfies', () => {
   });
 
   it("'write-content' does not satisfy 'write-properties'", () => {
-    expect(privilegeSatisfies('write-content', 'write-properties')).toBe(
-      false,
-    );
+    expect(privilegeSatisfies('write-content', 'write-properties')).toBe(false);
   });
 
   it.each(ELEMENTARY_PRIVILEGES)(
@@ -65,4 +72,66 @@ describe('privilegeSatisfies', () => {
       }
     },
   );
+});
+
+describe('expandCalendarPrivilege', () => {
+  it("'all' expands to the whole calendar vocabulary, read-free-busy included", () => {
+    const expanded = expandCalendarPrivilege('all');
+
+    expect(expanded).toHaveLength(12);
+    expect(new Set(expanded)).toEqual(new Set(CALENDAR_PRIVILEGES));
+  });
+
+  it("'read' aggregates read-free-busy (RFC 4791 §6.1.1)", () => {
+    expect(expandCalendarPrivilege('read')).toEqual(['read', 'read-free-busy']);
+  });
+
+  it("'read-free-busy' expands to only itself, so it can be granted without read", () => {
+    expect(expandCalendarPrivilege('read-free-busy')).toEqual([
+      'read-free-busy',
+    ]);
+  });
+
+  it("'write' and the elementary privileges expand as in the shared catalog", () => {
+    expect(expandCalendarPrivilege('write')).toEqual(expandPrivilege('write'));
+    for (const privilege of ELEMENTARY_PRIVILEGES.filter((p) => p !== 'read')) {
+      expect(expandCalendarPrivilege(privilege)).toEqual([privilege]);
+    }
+  });
+});
+
+describe('calendarPrivilegeSatisfies', () => {
+  it('lets read and all cover read-free-busy', () => {
+    expect(calendarPrivilegeSatisfies('read', 'read-free-busy')).toBe(true);
+    expect(calendarPrivilegeSatisfies('all', 'read-free-busy')).toBe(true);
+    expect(calendarPrivilegeSatisfies('read-free-busy', 'read-free-busy')).toBe(
+      true,
+    );
+  });
+
+  it('does not let read-free-busy cover read or anything else', () => {
+    for (const requested of ALL_PRIVILEGES) {
+      expect(calendarPrivilegeSatisfies('read-free-busy', requested)).toBe(
+        false,
+      );
+    }
+  });
+
+  it('does not let write or the other privileges cover read-free-busy', () => {
+    for (const granted of ALL_PRIVILEGES.filter(
+      (p) => p !== 'read' && p !== 'all',
+    )) {
+      expect(calendarPrivilegeSatisfies(granted, 'read-free-busy')).toBe(false);
+    }
+  });
+
+  it('agrees with privilegeSatisfies on the shared catalog', () => {
+    for (const granted of ALL_PRIVILEGES) {
+      for (const requested of ALL_PRIVILEGES) {
+        expect(calendarPrivilegeSatisfies(granted, requested)).toBe(
+          privilegeSatisfies(granted, requested),
+        );
+      }
+    }
+  });
 });

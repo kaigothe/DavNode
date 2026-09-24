@@ -4,11 +4,14 @@ import {
   CalendarParseError,
   CalendarUidConflictError,
   DAV_NAMESPACE,
+  getEffectiveCalendarLocks,
+  hasCalendarPrivilege,
   isValidCalendarObjectName,
   MAX_CALENDAR_OBJECT_BYTES,
   parseCalendarObject,
   saveCalendarObject,
   toCalendarObjectUrl,
+  type CalendarAclResource,
   type DataSource,
   type ParsedCalendarObject,
 } from '@davnode/core';
@@ -18,11 +21,14 @@ import express, {
   type Request,
   type Response,
 } from 'express';
+import { createAclAuthorizationMiddleware } from '../../acl-authorization.middleware.js';
+import { createLockEnforcementMiddleware } from '../../lock-enforcement.middleware.js';
 import {
   ifMatchSatisfied,
   ifNoneMatchMatches,
 } from '../conditional-request.util.js';
 import {
+  calendarOwnerIdParam,
   pathSegments,
   requirePrincipal,
   requireTenant,
@@ -134,12 +140,21 @@ function sendParseFailure(res: Response, error: CalendarParseError): void {
  * The response carries the new strong `ETag` (`201` created, `204`
  * overwritten): the text is stored exactly as submitted (§5.3.4).
  *
- * **Authorization is an owner-only placeholder** until Große Aufgabe 5
- * (`{userId}` must be the requesting principal, else `403`); the ACL
- * check will then be `write-content` on the object, or `bind` on the
- * calendar for a new one. PUT on the home or on a calendar itself is
- * `405`; a path deeper than an object is `409`. No lock enforcement or
- * quota yet (Große Aufgabe 5, M8).
+ * **Real RFC 3744 ACL**: overwriting an existing object needs
+ * `write-content` on it, creating a new one `bind` on the calendar — the
+ * overwrite-vs-create split the WebDAV and CardDAV PUT routes use.
+ * `{userId}` in the URL only identifies whose calendar this is. A calendar
+ * that doesn't exist is `409` under the requester's own home and `403`
+ * under anyone else's, which reveals nothing about identities but their
+ * own (see the GET route).
+ *
+ * **Lock enforcement**: a covering `If`-header token is required for a
+ * locked object on overwrite, or a locked calendar on create — the same
+ * split as the ACL check, running after it so a missing privilege is `403`,
+ * not `423`.
+ *
+ * PUT on the home or on a calendar itself is `405`; a path deeper than an
+ * object is `409`. No quota yet (M8).
  */
 export function registerCaldavPutRoute(
   app: Express,
@@ -148,14 +163,68 @@ export function registerCaldavPutRoute(
   app.put(
     '/dav/:tenantSlug/calendars/:userId{/*splat}',
     express.text({ type: () => true, limit: MAX_CALENDAR_OBJECT_BYTES }),
+    createAclAuthorizationMiddleware<CalendarAclResource>(
+      dataSource,
+      async (req) => {
+        const tenant = requireTenant(req);
+        const userId = calendarOwnerIdParam(req);
+        const segments = pathSegments(req);
+        if (segments.length !== 2) {
+          return null;
+        }
+        const [calendarName, objectName] = segments;
+        const calendar = await resolveCalendar(
+          dataSource,
+          tenant.id,
+          userId,
+          calendarName,
+        );
+        if (!calendar) {
+          return null;
+        }
+        const target = await resolveCalendarObject(
+          dataSource,
+          calendar.id,
+          objectName,
+        );
+        return target
+          ? { resource: target, privilege: 'write-content' }
+          : { resource: calendar, privilege: 'bind' };
+      },
+      hasCalendarPrivilege,
+    ),
+    createLockEnforcementMiddleware<CalendarAclResource>(
+      dataSource,
+      async (req) => {
+        const tenant = requireTenant(req);
+        const userId = calendarOwnerIdParam(req);
+        const segments = pathSegments(req);
+        if (segments.length !== 2) {
+          return null;
+        }
+        const [calendarName, objectName] = segments;
+        const calendar = await resolveCalendar(
+          dataSource,
+          tenant.id,
+          userId,
+          calendarName,
+        );
+        if (!calendar) {
+          return null;
+        }
+        const target = await resolveCalendarObject(
+          dataSource,
+          calendar.id,
+          objectName,
+        );
+        return { resources: [target ?? calendar] };
+      },
+      getEffectiveCalendarLocks,
+    ),
     async (req: Request, res: Response): Promise<void> => {
       const tenant = requireTenant(req);
       const principal = requirePrincipal(req);
-      const userId = req.params.userId as string;
-      if (userId !== principal.id) {
-        res.sendStatus(403);
-        return;
-      }
+      const userId = calendarOwnerIdParam(req);
 
       const segments = pathSegments(req);
       if (segments.length < 2) {
@@ -180,7 +249,7 @@ export function registerCaldavPutRoute(
         calendarName,
       );
       if (!calendar) {
-        res.sendStatus(409);
+        res.sendStatus(userId === principal.id ? 409 : 403);
         return;
       }
 

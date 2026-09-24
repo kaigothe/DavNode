@@ -2,6 +2,7 @@ import {
   AddressbookMultigetReportHandler,
   AddressbookQueryReportHandler,
   AddressbookSyncCollectionDomain,
+  CalendarSyncCollectionDomain,
   CARDDAV_NAMESPACE,
   DAV_NAMESPACE,
   PrincipalPropertySearchReportHandler,
@@ -19,7 +20,9 @@ import { registerAddressbookMkcolRoute } from './http/routes/addressbook-mkcol.r
 import { registerCalendarHomeRoute } from './http/routes/calendar-home.route.js';
 import { registerCaldavDeleteRoute } from './http/routes/caldav/delete.route.js';
 import { registerCaldavGetRoute } from './http/routes/caldav/get.route.js';
+import { registerCaldavLockRoute } from './http/routes/caldav/lock.route.js';
 import { registerCaldavPutRoute } from './http/routes/caldav/put.route.js';
+import { registerCaldavUnlockRoute } from './http/routes/caldav/unlock.route.js';
 import { registerCarddavDeleteRoute } from './http/routes/carddav/delete.route.js';
 import { registerCarddavGetRoute } from './http/routes/carddav/get.route.js';
 import { registerCarddavLockRoute } from './http/routes/carddav/lock.route.js';
@@ -87,6 +90,8 @@ export function createApp(dataSource: DataSource): express.Express {
   registerCaldavGetRoute(app, dataSource);
   registerCaldavPutRoute(app, dataSource);
   registerCaldavDeleteRoute(app, dataSource);
+  registerCaldavLockRoute(app, dataSource);
+  registerCaldavUnlockRoute(app, dataSource);
   registerCarddavGetRoute(app, dataSource);
   registerCarddavPutRoute(app, dataSource);
   registerCarddavDeleteRoute(app, dataSource);
@@ -107,6 +112,7 @@ export function createApp(dataSource: DataSource): express.Express {
     new SyncCollectionReportHandler([
       new WebDavSyncCollectionDomain(),
       new AddressbookSyncCollectionDomain(),
+      new CalendarSyncCollectionDomain(),
     ]),
   );
   reportRegistry.register(

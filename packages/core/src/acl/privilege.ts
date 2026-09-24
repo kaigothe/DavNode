@@ -57,8 +57,9 @@ export const ALL_PRIVILEGES: readonly Privilege[] = [
  * granted without the DAV:read privilege being granted" (holding only
  * `read-free-busy` grants no GET/PROPFIND). This type only *stores* the
  * value; that aggregation is the calendar ACL evaluation's job
- * (milestones/M6-caldav/05-acl-lock-sync-reuse) — `expandPrivilege` and
- * `privilegeSatisfies` still only know the shared catalog.
+ * (`expandCalendarPrivilege`/`calendarPrivilegeSatisfies` in
+ * `privilege-aggregation.ts`, used by `hasCalendarPrivilege`) —
+ * `expandPrivilege` and `privilegeSatisfies` only know the shared catalog.
  */
 export type CalendarPrivilege = Privilege | 'read-free-busy';
 
