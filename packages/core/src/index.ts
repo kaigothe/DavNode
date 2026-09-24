@@ -311,6 +311,30 @@ export {
   readVCardVersion,
   type VCardPropertySelector,
 } from './carddav/vcard-partial.js';
+export {
+  CalendarParseError,
+  parseCalendarObject,
+  type CalendarPrecondition,
+  type CalendarTime,
+  type CalendarTimeKind,
+  type ParsedCalendarObject,
+  type ParsedComponent,
+  type ParsedRecurrenceDate,
+} from './caldav/icalendar-parser.js';
+export {
+  UnknownTimezoneError,
+  ZoneRegistry,
+  type ParsedTimezone,
+  type WallClock,
+} from './caldav/calendar-zones.js';
+export {
+  addWallDays,
+  durationMillis,
+  endMs,
+  startMs,
+  toInstantMs,
+  type TimeResolution,
+} from './caldav/calendar-time.js';
 export { AddressbookHomeSetProperty } from './carddav/addressbook-home-set-property.js';
 export { requestsAddressbookResourcetype } from './carddav/mkcol-addressbook-request.js';
 export { AddressbookChangeService } from './carddav/addressbook-change.service.js';
