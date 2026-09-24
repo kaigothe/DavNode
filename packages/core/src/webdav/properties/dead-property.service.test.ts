@@ -1,10 +1,12 @@
 import type { DataSource } from 'typeorm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createDataSource } from '../../db/data-source.js';
+import { CalendarProperty } from '../../entities/calendar-property.entity.js';
 import { CollectionProperty } from '../../entities/collection-property.entity.js';
 import { FileProperty } from '../../entities/file-property.entity.js';
 import {
   ALL_ENTITIES,
+  CalendarCollection,
   Collection,
   FileResource,
   Principal,
@@ -109,6 +111,55 @@ describe('DeadPropertyService', () => {
       );
 
       expect(await service.listForCollection(collection.id)).toEqual([]);
+    });
+  });
+
+  describe('listForCalendar', () => {
+    async function createCalendar(name: string): Promise<CalendarCollection> {
+      return dataSource.getRepository(CalendarCollection).save(
+        dataSource.getRepository(CalendarCollection).create({
+          tenantId: collection.tenantId,
+          ownerPrincipalId: collection.ownerPrincipalId,
+          name,
+          displayName: name,
+        }),
+      );
+    }
+
+    it('returns an empty array when no dead properties are set', async () => {
+      const calendar = await createCalendar('work');
+
+      expect(await service.listForCalendar(calendar.id)).toEqual([]);
+    });
+
+    it('lists every dead property set on the calendar, and only those', async () => {
+      const calendar = await createCalendar('work');
+      const other = await createCalendar('private');
+      const repository = dataSource.getRepository(CalendarProperty);
+      await repository.save(
+        repository.create({
+          calendarId: calendar.id,
+          namespace: 'http://apple.com/ns/ical/',
+          name: 'calendar-color',
+          value: '#FF0000FF',
+        }),
+      );
+      await repository.save(
+        repository.create({
+          calendarId: other.id,
+          namespace: 'http://apple.com/ns/ical/',
+          name: 'calendar-color',
+          value: '#00FF00FF',
+        }),
+      );
+
+      expect(await service.listForCalendar(calendar.id)).toEqual([
+        {
+          namespace: 'http://apple.com/ns/ical/',
+          name: 'calendar-color',
+          value: '#FF0000FF',
+        },
+      ]);
     });
   });
 

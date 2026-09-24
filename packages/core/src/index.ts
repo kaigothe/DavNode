@@ -352,6 +352,14 @@ export {
   type TimeRangeIndex,
 } from './caldav/index-calendar-object.js';
 export { AddressbookHomeSetProperty } from './carddav/addressbook-home-set-property.js';
+export { CALDAV_NAMESPACE } from './caldav/caldav-namespace.js';
+export { toCalendarHomeUrl } from './caldav/calendar-home-url.js';
+export {
+  CalendarHomeCollection,
+  type CalendarHomeTreeResource,
+} from './caldav/calendar-home-tree-resource.js';
+export { CalendarLiveProperties } from './caldav/calendar-live-properties.js';
+export { CalendarHomeSetProperty } from './caldav/calendar-home-set-property.js';
 export { requestsAddressbookResourcetype } from './carddav/mkcol-addressbook-request.js';
 export { AddressbookChangeService } from './carddav/addressbook-change.service.js';
 export type { AddressbookAclResource } from './carddav/addressbook-acl-resource.js';

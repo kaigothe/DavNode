@@ -1,4 +1,5 @@
 import type { DataSource, FindOptionsWhere, Repository } from 'typeorm';
+import { CalendarProperty } from '../../entities/calendar-property.entity.js';
 import { Collection } from '../../entities/collection.entity.js';
 import { CollectionProperty } from '../../entities/collection-property.entity.js';
 import { FileProperty } from '../../entities/file-property.entity.js';
@@ -73,6 +74,24 @@ export class DeadPropertyService {
   async listForFileResource(fileResourceId: string): Promise<PropertyValue[]> {
     const rows = await this.dataSource.getRepository(FileProperty).findBy({
       fileResourceId,
+    });
+    return rows.map((row) => ({
+      namespace: row.namespace,
+      name: row.name,
+      value: row.value,
+    }));
+  }
+
+  /**
+   * Every dead property set on the calendar identified by `calendarId`
+   * (`calendar_properties`) — the client-defined ones such as Apple's
+   * `calendar-color` that `MKCALENDAR` stores verbatim. Read-only: the
+   * calendar tree has no PROPPATCH yet, so {@link applyOperations} stays
+   * WebDAV-tree-only.
+   */
+  async listForCalendar(calendarId: string): Promise<PropertyValue[]> {
+    const rows = await this.dataSource.getRepository(CalendarProperty).findBy({
+      calendarId,
     });
     return rows.map((row) => ({
       namespace: row.namespace,

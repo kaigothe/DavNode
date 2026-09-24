@@ -16,6 +16,7 @@ import { errorHandlerMiddleware } from './http/error-handler.middleware.js';
 import { registerAclRoute } from './http/routes/acl.route.js';
 import { registerAddressbookHomeRoute } from './http/routes/addressbook-home.route.js';
 import { registerAddressbookMkcolRoute } from './http/routes/addressbook-mkcol.route.js';
+import { registerCalendarHomeRoute } from './http/routes/calendar-home.route.js';
 import { registerCarddavDeleteRoute } from './http/routes/carddav/delete.route.js';
 import { registerCarddavGetRoute } from './http/routes/carddav/get.route.js';
 import { registerCarddavLockRoute } from './http/routes/carddav/lock.route.js';
@@ -77,6 +78,7 @@ export function createApp(dataSource: DataSource): express.Express {
   registerPrincipalsRoute(app, dataSource);
   registerAddressbookHomeRoute(app, dataSource);
   registerAddressbookMkcolRoute(app, dataSource);
+  registerCalendarHomeRoute(app, dataSource);
   registerCarddavGetRoute(app, dataSource);
   registerCarddavPutRoute(app, dataSource);
   registerCarddavDeleteRoute(app, dataSource);

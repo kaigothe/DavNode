@@ -1,6 +1,7 @@
 import {
   AddressbookHomeSetProperty,
   buildMultistatusResponse,
+  CalendarHomeSetProperty,
   Group,
   parsePropfindRequestBody,
   PrincipalLiveProperties,
@@ -164,6 +165,7 @@ export function registerPrincipalsRoute(
   const registry = new PropertyProviderRegistry<PrincipalTreeResource>();
   registry.register(new PrincipalLiveProperties());
   registry.register(new AddressbookHomeSetProperty());
+  registry.register(new CalendarHomeSetProperty());
 
   app.propfind(
     '/dav/:tenantSlug/principals{/*splat}',
