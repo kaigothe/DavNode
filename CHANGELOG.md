@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/kaigothe/DavNode/compare/v1.12.0...v1.13.0) (2026-09-24)
+
+
+### Features
+
+* **core:** add addressbook-multiget REPORT ([a681e9b](https://github.com/kaigothe/DavNode/commit/a681e9b6cea51ef85e6369cc7aef20b44af9d0da))
+
 # [1.12.0](https://github.com/kaigothe/DavNode/compare/v1.11.0...v1.12.0) (2026-09-24)
 
 
