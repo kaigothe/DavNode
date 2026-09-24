@@ -345,6 +345,12 @@ export {
   type Occurrence,
   type RecurrenceOptions,
 } from './caldav/expand-recurrence.js';
+export {
+  FLOATING_TIME_OFFSET_BOUNDS_MS,
+  computeTimeRangeIndex,
+  indexCalendarObject,
+  type TimeRangeIndex,
+} from './caldav/index-calendar-object.js';
 export { AddressbookHomeSetProperty } from './carddav/addressbook-home-set-property.js';
 export { requestsAddressbookResourcetype } from './carddav/mkcol-addressbook-request.js';
 export { AddressbookChangeService } from './carddav/addressbook-change.service.js';
