@@ -24,12 +24,19 @@ import { asElement } from './xml/xml-value.js';
  * needed it yet, the same way `PropertyProviderContext` grew its own
  * fields once a second property provider needed more than the first
  * (M3's ACL properties).
+ *
+ * `depth` is the raw `Depth` request header (`undefined` when absent) —
+ * added for M5's `addressbook-query`, the first report whose scope
+ * depends on it (RFC 6352 §8.6); `sync-collection` and
+ * `principal-property-search` don't read it. Left raw, like `segments`,
+ * so each handler applies its own validation and default.
  */
 export interface ReportContext {
   tenant: Tenant;
   principal: Principal;
   manager: EntityManager;
   segments: readonly string[];
+  depth?: string;
 }
 
 /**

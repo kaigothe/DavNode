@@ -1,4 +1,8 @@
 import { create } from 'xmlbuilder2';
+import {
+  appendErrorConditions,
+  type ErrorCondition,
+} from './error-response-builder.js';
 import { DAV_NAMESPACE, type PropertyName } from './request-parser.js';
 import { embedRawXmlContent } from './xml-value.js';
 
@@ -32,6 +36,16 @@ export interface MultistatusResourceResult {
    * report a status *for* — the whole member is simply gone).
    */
   status?: number;
+  /**
+   * Precondition/postcondition elements for a `<D:error>` placed right
+   * after the response-level `<D:status>` (RFC 4918 §14.6) — only
+   * emitted together with `status`. RFC 6352 uses this for a truncated
+   * `addressbook-query` (`507` + `DAV:number-of-matches-within-limits`,
+   * §8.6.2) and for an address object that can't be converted to the
+   * requested media type (`415` +
+   * `CARDDAV:supported-address-data-conversion`, §8.7.2).
+   */
+  error?: readonly (string | ErrorCondition)[];
 }
 
 /**
@@ -48,6 +62,7 @@ const STATUS_REASON_PHRASES: Record<number, string> = {
   403: 'Forbidden',
   404: 'Not Found',
   409: 'Conflict',
+  415: 'Unsupported Media Type',
   424: 'Failed Dependency',
   507: 'Insufficient Storage',
 };
@@ -134,6 +149,12 @@ export function buildMultistatusResponse(
       response
         .ele(DAV_NAMESPACE, `${DAV_PREFIX}:status`)
         .txt(statusLine(resource.status));
+      if (resource.error !== undefined) {
+        appendErrorConditions(
+          response.ele(DAV_NAMESPACE, `${DAV_PREFIX}:error`),
+          resource.error,
+        );
+      }
       continue;
     }
 
@@ -153,9 +174,7 @@ export function buildMultistatusResponse(
   }
 
   if (options.syncToken !== undefined) {
-    doc
-      .ele(DAV_NAMESPACE, `${DAV_PREFIX}:sync-token`)
-      .txt(options.syncToken);
+    doc.ele(DAV_NAMESPACE, `${DAV_PREFIX}:sync-token`).txt(options.syncToken);
   }
 
   return doc.end();

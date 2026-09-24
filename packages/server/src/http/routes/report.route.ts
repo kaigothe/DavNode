@@ -66,6 +66,7 @@ export function registerReportRoute(
         principal,
         manager: dataSource.manager,
         segments: pathSegments(req),
+        depth: req.header('Depth'),
       };
       const result = await handler.handle(body, context);
       res

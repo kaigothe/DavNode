@@ -39,17 +39,49 @@ export function asElement(node: {
 }
 
 /**
+ * Reads the attribute `name` of `node`'s underlying DOM element — the
+ * `content-type`/`match-type`/`name` attributes CardDAV REPORT bodies
+ * carry, which {@link QualifiedElement} (element names only) can't
+ * reach.
+ *
+ * @returns The attribute's value, or `undefined` if `node` isn't an
+ * element or doesn't carry that attribute.
+ */
+export function getAttributeValue(
+  node: { readonly nodeType: number },
+  name: string,
+): string | undefined {
+  if (node.nodeType !== ELEMENT_NODE) {
+    return undefined;
+  }
+  const value = (
+    node as unknown as { getAttribute(attribute: string): string | null }
+  ).getAttribute(name);
+  return value ?? undefined;
+}
+
+/**
  * Escapes `text` for use as XML text content (not inside an attribute).
  * Useful wherever a live property's value (e.g. `displayname`, taken
  * directly from a `Collection`/`FileResource` column) needs to become
  * an already-escaped value string without going through a parsed XML
  * element the way `serializeElementChildren` does.
+ *
+ * Also drops the characters XML 1.0 forbids outright (C0 controls other
+ * than tab/LF/CR, and U+FFFE/U+FFFF): xmlbuilder2 would serialize them
+ * verbatim, and a single such character — say in a vCard stored via
+ * PUT — would make a whole multistatus response unparseable for the
+ * client, not just its own entry.
  */
 export function escapeXmlText(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return (
+    text
+      // eslint-disable-next-line no-control-regex -- these control characters are exactly what XML 1.0 forbids.
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+  );
 }
 
 /**

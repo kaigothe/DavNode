@@ -1,4 +1,8 @@
-import type { EntityManager } from 'typeorm';
+import { In, type EntityManager } from 'typeorm';
+import { AddressbookAce } from '../entities/addressbook-ace.entity.js';
+import type { AddressbookCollection } from '../entities/addressbook-collection.entity.js';
+import { AddressObjectAce } from '../entities/address-object-ace.entity.js';
+import type { AddressObject } from '../entities/address-object.entity.js';
 import { Principal } from '../entities/principal.entity.js';
 import { GroupMembershipService } from '../services/group-membership.service.js';
 import type { AddressbookAclResource } from '../carddav/addressbook-acl-resource.js';
@@ -6,6 +10,7 @@ import type { WebDavTreeResource } from '../webdav/resource-path-resolver.js';
 import {
   type AceLike,
   type CollectedAce,
+  collectAces,
   collectAddressbookAces,
   collectWebDavAces,
 } from './collect-aces.js';
@@ -171,4 +176,93 @@ export async function hasAddressbookPrivilege(
     buildMatchingPrincipalIds(manager, principal, resource.ownerPrincipalId),
   ]);
   return evaluateAces(aces, matchingPrincipalIds, requestedPrivilege);
+}
+
+/** How many address object ids one `IN (...)` ACE lookup carries — well below every supported driver's bound-parameter limit. */
+const ACE_LOOKUP_CHUNK_SIZE = 500;
+
+/**
+ * The batched form of {@link hasAddressbookPrivilege} for many address
+ * objects of one addressbook — what the CardDAV REPORTs need, since
+ * every contact in a result must pass the same `read` check `GET` does
+ * (a contact's own ACEs can deny what its addressbook grants) and one
+ * full evaluation per contact would cost several queries each.
+ *
+ * Gives exactly the per-object answer `hasAddressbookPrivilege` would,
+ * but loads the addressbook's ACEs once, every object's own ACEs in
+ * `IN (...)` chunks, and the matching-principal set once per distinct
+ * object owner (`DAV:owner` matches per object, and PUT makes the
+ * writing principal a contact's owner — not necessarily the
+ * addressbook's).
+ *
+ * @param manager - The `EntityManager` to query with.
+ * @param principal - The requesting principal (already authenticated).
+ * @param addressbook - The addressbook every object in `addressObjects`
+ * belongs to (the source of their inherited ACEs).
+ * @param addressObjects - The objects to check.
+ * @param requestedPrivilege - The privilege being checked for.
+ * @returns The ids of the objects `principal` holds `requestedPrivilege` on.
+ */
+export async function selectAddressObjectsWithPrivilege(
+  manager: EntityManager,
+  principal: Principal,
+  addressbook: AddressbookCollection,
+  addressObjects: readonly AddressObject[],
+  requestedPrivilege: Privilege,
+): Promise<Set<string>> {
+  const allowed = new Set<string>();
+  if (addressObjects.length === 0) {
+    return allowed;
+  }
+
+  const addressbookAces = await manager
+    .getRepository(AddressbookAce)
+    .findBy({ addressbookId: addressbook.id });
+
+  const ownAcesByObject = new Map<string, AddressObjectAce[]>();
+  for (
+    let start = 0;
+    start < addressObjects.length;
+    start += ACE_LOOKUP_CHUNK_SIZE
+  ) {
+    const ids = addressObjects
+      .slice(start, start + ACE_LOOKUP_CHUNK_SIZE)
+      .map((addressObject) => addressObject.id);
+    const rows = await manager
+      .getRepository(AddressObjectAce)
+      .findBy({ addressObjectId: In(ids) });
+    for (const row of rows) {
+      const own = ownAcesByObject.get(row.addressObjectId);
+      if (own) {
+        own.push(row);
+      } else {
+        ownAcesByObject.set(row.addressObjectId, [row]);
+      }
+    }
+  }
+
+  const matchingByOwner = new Map<string, Set<string>>();
+  for (const addressObject of addressObjects) {
+    let matchingPrincipalIds = matchingByOwner.get(
+      addressObject.ownerPrincipalId,
+    );
+    if (!matchingPrincipalIds) {
+      matchingPrincipalIds = await buildMatchingPrincipalIds(
+        manager,
+        principal,
+        addressObject.ownerPrincipalId,
+      );
+      matchingByOwner.set(addressObject.ownerPrincipalId, matchingPrincipalIds);
+    }
+    const aces = await collectAces(
+      ownAcesByObject.get(addressObject.id) ?? [],
+      addressbook.id,
+      () => Promise.resolve(addressbookAces),
+      () => Promise.resolve(null),
+    );
+    if (evaluateAces(aces, matchingPrincipalIds, requestedPrivilege)) {
+      allowed.add(addressObject.id);
+    }
+  }
+  return allowed;
 }

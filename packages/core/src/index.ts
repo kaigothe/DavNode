@@ -26,6 +26,7 @@ export {
   hasPrivilege,
   getCurrentUserPrivilegeSet,
   hasAddressbookPrivilege,
+  selectAddressObjectsWithPrivilege,
 } from './acl/evaluate-privilege.js';
 export {
   parseAclRequestBody,
@@ -143,7 +144,10 @@ export {
   buildMultistatusResponse,
 } from './webdav/xml/multistatus-builder.js';
 export { buildMkcolResponse } from './webdav/xml/mkcol-response-builder.js';
-export { buildErrorResponse } from './webdav/xml/error-response-builder.js';
+export {
+  buildErrorResponse,
+  type ErrorCondition,
+} from './webdav/xml/error-response-builder.js';
 export {
   DAV_NAMESPACE,
   type MkcolRequestBody,
@@ -246,6 +250,21 @@ export { AddressbookLiveProperties } from './carddav/addressbook-live-properties
 export { AddressObjectLiveProperties } from './carddav/address-object-live-properties.js';
 export { AddressbookChangeLog } from './carddav/addressbook-change-log.js';
 export { AddressbookSyncCollectionDomain } from './carddav/addressbook-sync-domain.js';
+export {
+  AddressbookMultigetReportHandler,
+  parseAddressbookMultigetRequestBody,
+  type AddressbookMultigetRequestBody,
+} from './carddav/addressbook-multiget-report.js';
+export {
+  parseReportPropertySelection,
+  type AddressDataRequest,
+  type ReportPropertySelection,
+} from './carddav/addressbook-report-request.js';
+export {
+  filterVCardProperties,
+  readVCardVersion,
+  type VCardPropertySelector,
+} from './carddav/vcard-partial.js';
 export { AddressbookHomeSetProperty } from './carddav/addressbook-home-set-property.js';
 export { requestsAddressbookResourcetype } from './carddav/mkcol-addressbook-request.js';
 export { AddressbookChangeService } from './carddav/addressbook-change.service.js';

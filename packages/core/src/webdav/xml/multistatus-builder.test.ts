@@ -199,4 +199,59 @@ describe('buildMultistatusResponse', () => {
     const root = create(xml).root();
     expect(findAll(root, 'sync-token')).toHaveLength(0);
   });
+
+  it('emits a <D:error> after a response-level status, for both DAV: and other-namespace conditions', () => {
+    const xml = buildMultistatusResponse([
+      {
+        href: '/dav/acme/addressbooks/u/Contacts',
+        properties: [],
+        status: 507,
+        error: ['number-of-matches-within-limits'],
+      },
+      {
+        href: '/dav/acme/addressbooks/u/Contacts/a.vcf',
+        properties: [],
+        status: 415,
+        error: [
+          {
+            namespace: 'urn:ietf:params:xml:ns:carddav',
+            name: 'supported-address-data-conversion',
+          },
+        ],
+      },
+    ]);
+
+    const root = create(xml).root();
+    const responses = findAll(root, 'response');
+    const [truncated, unconvertible] = responses.map((response) =>
+      response
+        .filter(() => true, false, false)
+        .map((child) => ({
+          name: child.node.localName,
+          text: child.node.textContent,
+          inner: child
+            .filter(() => true, false, true)
+            .map((n) => `${n.node.namespaceURI}${n.node.localName}`),
+        })),
+    );
+    expect(truncated.map((c) => c.name)).toEqual(['href', 'status', 'error']);
+    expect(truncated[1]?.text).toBe('HTTP/1.1 507 Insufficient Storage');
+    expect(truncated[2]?.inner).toEqual([
+      'DAV:number-of-matches-within-limits',
+    ]);
+    expect(unconvertible?.[1]?.text).toBe(
+      'HTTP/1.1 415 Unsupported Media Type',
+    );
+    expect(unconvertible?.[2]?.inner).toEqual([
+      'urn:ietf:params:xml:ns:carddav' + 'supported-address-data-conversion',
+    ]);
+  });
+
+  it('emits no <D:error> for a response without one', () => {
+    const xml = buildMultistatusResponse([
+      { href: '/dav/acme/files/a.txt', properties: [], status: 404 },
+    ]);
+
+    expect(findAll(create(xml).root(), 'error')).toHaveLength(0);
+  });
 });
