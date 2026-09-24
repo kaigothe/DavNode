@@ -20,6 +20,7 @@ import { AddAddressObjectName1788468565224 } from './1788468565224-AddAddressObj
 import { RenameAddressbookChangeToName1788469066723 } from './1788469066723-RenameAddressbookChangeToName.js';
 import { CreateCalendars1790246695540 } from './1790246695540-CreateCalendars.js';
 import { CreateCalendarObjects1790247079650 } from './1790247079650-CreateCalendarObjects.js';
+import { CreateCalendarDeadProperties1790247315148 } from './1790247315148-CreateCalendarDeadProperties.js';
 
 /**
  * Every SQLite migration in `@davnode/core`, in chronological order. Used
@@ -54,4 +55,5 @@ export const ALL_MIGRATIONS: Array<new () => MigrationInterface> = [
   RenameAddressbookChangeToName1788469066723,
   CreateCalendars1790246695540,
   CreateCalendarObjects1790247079650,
+  CreateCalendarDeadProperties1790247315148,
 ];

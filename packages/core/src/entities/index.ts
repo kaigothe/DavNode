@@ -17,6 +17,8 @@ import {
   type CalendarTransparency,
 } from './calendar-object.entity.js';
 import { CalendarObjectContent } from './calendar-object-content.entity.js';
+import { CalendarObjectProperty } from './calendar-object-property.entity.js';
+import { CalendarProperty } from './calendar-property.entity.js';
 import {
   CalendarCollection,
   CALENDAR_COMPONENT_TYPES,
@@ -80,6 +82,8 @@ export {
   type CalendarComponentType,
   CalendarObject,
   CalendarObjectContent,
+  CalendarObjectProperty,
+  CalendarProperty,
   CALENDAR_STATUS_VALUES,
   CALENDAR_TRANSPARENCY_VALUES,
   type CalendarStatus,
@@ -157,4 +161,6 @@ export const ALL_ENTITIES = [
   CalendarCollection,
   CalendarObject,
   CalendarObjectContent,
+  CalendarProperty,
+  CalendarObjectProperty,
 ];

@@ -70,6 +70,8 @@ export {
   type CalendarComponentType,
   CalendarObject,
   CalendarObjectContent,
+  CalendarObjectProperty,
+  CalendarProperty,
   CALENDAR_STATUS_VALUES,
   CALENDAR_TRANSPARENCY_VALUES,
   type CalendarStatus,
