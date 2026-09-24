@@ -60,6 +60,7 @@ describe('CalendarObject and CalendarObjectContent entities', () => {
       calendars.create({
         tenantId: tenant.id,
         ownerPrincipalId: owner.id,
+        name: 'personal',
         displayName: 'Personal',
       }),
     );
@@ -67,6 +68,7 @@ describe('CalendarObject and CalendarObjectContent entities', () => {
       calendars.create({
         tenantId: tenant.id,
         ownerPrincipalId: owner.id,
+        name: 'work',
         displayName: 'Work',
       }),
     );

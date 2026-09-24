@@ -43,6 +43,7 @@ export type CalendarComponentType = (typeof CALENDAR_COMPONENT_TYPES)[number];
  */
 @Entity('calendars')
 @Index(['tenantId', 'ownerPrincipalId'])
+@Index(['tenantId', 'ownerPrincipalId', 'name'], { unique: true })
 export class CalendarCollection {
   /** Primary key. */
   @PrimaryGeneratedColumn('uuid')
@@ -66,7 +67,24 @@ export class CalendarCollection {
   @JoinColumn({ name: 'owner_principal_id' })
   ownerPrincipal!: Principal;
 
-  /** Display name (`DAV:displayname`). */
+  /**
+   * This calendar's own URL path segment
+   * (`/dav/{tenant}/calendars/{userId}/{name}`), unique among its
+   * owner's calendars — the URL identity MKCALENDAR, PROPFIND, PUT etc.
+   * resolve by, client-chosen exactly like `CalendarObject.name` and
+   * `FileResource.name`. Clients typically pick an opaque one (a UUID)
+   * and put the human-readable name into `displayName`, which is why the
+   * two are separate columns (unlike `AddressbookCollection`, whose URL
+   * segment *is* its `displayName`): an ignored body `displayname` would
+   * leave every client-created calendar named after its UUID. Added
+   * after the first version of this entity, which had only `displayName`;
+   * `calendars` could not hold rows yet (nothing created them), so the
+   * migration needs no backfill.
+   */
+  @Column({ type: 'varchar' })
+  name!: string;
+
+  /** Display name (`DAV:displayname`); defaults to {@link CalendarCollection.name} when the client sets none. */
   @Column({ type: 'varchar' })
   displayName!: string;
 

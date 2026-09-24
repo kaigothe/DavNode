@@ -41,6 +41,7 @@ describe('CalendarObjectProperty entity', () => {
       dataSource.getRepository(CalendarCollection).create({
         tenantId: tenant.id,
         ownerPrincipalId: ownerPrincipal.id,
+        name: 'personal',
         displayName: 'Personal',
       }),
     );

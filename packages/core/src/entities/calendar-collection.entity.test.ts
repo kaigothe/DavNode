@@ -49,6 +49,7 @@ describe('CalendarCollection entity', () => {
     return dataSource.getRepository(CalendarCollection).create({
       tenantId: tenant.id,
       ownerPrincipalId: ownerPrincipal.id,
+      name: displayName.toLowerCase().replace(/\W+/g, '-'),
       displayName,
       ...extra,
     });
@@ -87,6 +88,45 @@ describe('CalendarCollection entity', () => {
       'Personal',
       'Work',
     ]);
+  });
+
+  it('keeps the URL name and the display name apart: a client-chosen opaque name with a readable display name', async () => {
+    const repository = dataSource.getRepository(CalendarCollection);
+
+    const saved = await repository.save(
+      newCalendar('Lisa’s Events', { name: '5e2f6c1a-uuid' }),
+    );
+
+    const found = await repository.findOneByOrFail({
+      ownerPrincipalId: ownerPrincipal.id,
+      name: '5e2f6c1a-uuid',
+    });
+    expect(found.id).toBe(saved.id);
+    expect(found.displayName).toBe('Lisa’s Events');
+  });
+
+  it('rejects a second calendar with the same name for the same owner, but allows equal display names and the name under another owner', async () => {
+    const repository = dataSource.getRepository(CalendarCollection);
+    await repository.save(newCalendar('Work', { name: 'work' }));
+    const otherOwner = await dataSource.getRepository(Principal).save(
+      dataSource.getRepository(Principal).create({
+        tenantId: tenant.id,
+        kind: 'user',
+        specialKind: null,
+      }),
+    );
+
+    await expect(
+      repository.save(newCalendar('Another', { name: 'work' })),
+    ).rejects.toThrow();
+    await expect(
+      repository.save(newCalendar('Work', { name: 'work-2' })),
+    ).resolves.toBeDefined();
+    await expect(
+      repository.save(
+        newCalendar('Work', { name: 'work', ownerPrincipalId: otherOwner.id }),
+      ),
+    ).resolves.toBeDefined();
   });
 
   it('rejects an unknown owner principal (FK constraint)', async () => {
@@ -140,7 +180,7 @@ describe('CalendarCollection entity', () => {
     ).toBe('Feed B');
   });
 
-  it('has the (tenant_id, owner_principal_id) index and the unique ics_feed_token index', async () => {
+  it('has the (tenant_id, owner_principal_id) index, the unique (tenant_id, owner_principal_id, name) index and the unique ics_feed_token index', async () => {
     const indexes: Array<{ name: string; unique: number }> =
       await dataSource.query(`PRAGMA index_list('calendars')`);
     const columnsOf = async (name: string): Promise<string[]> =>
@@ -163,6 +203,10 @@ describe('CalendarCollection entity', () => {
     expect(described).toContainEqual({
       unique: true,
       columns: ['ics_feed_token'],
+    });
+    expect(described).toContainEqual({
+      unique: true,
+      columns: ['tenant_id', 'owner_principal_id', 'name'],
     });
   });
 });

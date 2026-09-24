@@ -292,6 +292,7 @@ describe('indexCalendarObject', () => {
       dataSource.getRepository(CalendarCollection).create({
         tenantId: tenant.id,
         ownerPrincipalId: owner.id,
+        name: 'personal',
         displayName: 'Personal',
       }),
     );

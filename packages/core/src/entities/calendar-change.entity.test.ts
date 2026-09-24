@@ -41,6 +41,7 @@ describe('CalendarChange entity', () => {
       dataSource.getRepository(CalendarCollection).create({
         tenantId: tenant.id,
         ownerPrincipalId: ownerPrincipal.id,
+        name: 'personal',
         displayName: 'Personal',
       }),
     );
@@ -97,6 +98,7 @@ describe('CalendarChange entity', () => {
         dataSource.getRepository(CalendarCollection).create({
           tenantId: calendar.tenantId,
           ownerPrincipalId: calendar.ownerPrincipalId,
+          name: 'work',
           displayName: 'Work',
         }),
       );
