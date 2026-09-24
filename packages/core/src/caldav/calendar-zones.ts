@@ -83,6 +83,58 @@ function offsetAtUtc(formatter: Intl.DateTimeFormat, utcMs: number): number {
 
 const DAY_MS = 86_400_000;
 
+/** The wall-clock fields of the UTC instant `ms`. */
+function wallClockOfMillis(ms: number): WallClock {
+  const date = new Date(ms);
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+    hour: date.getUTCHours(),
+    minute: date.getUTCMinutes(),
+    second: date.getUTCSeconds(),
+  };
+}
+
+/**
+ * The offset (seconds, east positive) a zone defined by a `VTIMEZONE` has
+ * at the wall-clock time `clock`, resolved the way RFC 5545 §3.3.5 says
+ * and {@link IanaTimezone} does: the *first* occurrence of a repeated
+ * time, and, for a skipped time, the offset in force *before* the change.
+ *
+ * `ICAL.Timezone#utcOffset` gets both wrong (a repeated time reads as the
+ * second occurrence, a skipped one with the offset after the change), so
+ * it is only trusted where it is unambiguous: the offsets a day before
+ * and a day after `clock`. If they agree there is no change near and its
+ * answer stands. Otherwise `utcOffset` flips from the earlier to the later
+ * offset at one wall-clock time `J` — the start of the skipped time, or
+ * of the repeated time — and the skipped or repeated time is exactly
+ * `[J, J + |change|)`, which the earlier offset applies to, as does
+ * everything before `J`.
+ */
+function vtimezoneOffset(zone: ICAL.Timezone, clock: WallClock): number {
+  const wall = utcMillis(clock);
+  const at = (ms: number): number =>
+    zone.utcOffset(ICAL.Time.fromData(wallClockOfMillis(ms)));
+  const before = at(wall - DAY_MS);
+  const after = at(wall + DAY_MS);
+  if (before === after) {
+    return at(wall);
+  }
+  // Find the wall-clock second `utcOffset` flips to `after` (`low` still reads `before`).
+  let low = wall - DAY_MS;
+  let high = wall + DAY_MS;
+  while (high - low > 1000) {
+    const middle = low + Math.floor((high - low) / 2000) * 1000;
+    if (at(middle) === after) {
+      high = middle;
+    } else {
+      low = middle;
+    }
+  }
+  return wall < high + Math.abs(after - before) * 1000 ? before : after;
+}
+
 /**
  * An IANA time zone (`Europe/Berlin`), resolved with `Intl` — for a
  * `TZID` a calendar object uses without also carrying a `VTIMEZONE`
@@ -166,6 +218,6 @@ export class ZoneRegistry {
     const zone = this.get(tzid);
     return zone instanceof IanaTimezone
       ? zone.offsetFor(clock)
-      : zone.utcOffset(ICAL.Time.fromData({ ...clock }));
+      : vtimezoneOffset(zone, clock);
   }
 }
