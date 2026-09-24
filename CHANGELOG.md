@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/kaigothe/DavNode/compare/v1.11.0...v1.12.0) (2026-09-24)
+
+
+### Features
+
+* **core:** add sync-collection support for addressbooks ([f92b9d6](https://github.com/kaigothe/DavNode/commit/f92b9d6cab121e18af8ae443da596e882f81b1e8))
+
 # [1.11.0](https://github.com/kaigothe/DavNode/compare/v1.10.0...v1.11.0) (2026-09-24)
 
 
