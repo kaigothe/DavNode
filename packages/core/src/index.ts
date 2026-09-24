@@ -335,6 +335,16 @@ export {
   toInstantMs,
   type TimeResolution,
 } from './caldav/calendar-time.js';
+export {
+  MAX_RECURRENCE_INSTANCES,
+  MAX_SPAN_INSTANCES,
+  RecurrenceLimitError,
+  computeRecurrenceSpanEnd,
+  expandOccurrences,
+  type ExpandOptions,
+  type Occurrence,
+  type RecurrenceOptions,
+} from './caldav/expand-recurrence.js';
 export { AddressbookHomeSetProperty } from './carddav/addressbook-home-set-property.js';
 export { requestsAddressbookResourcetype } from './carddav/mkcol-addressbook-request.js';
 export { AddressbookChangeService } from './carddav/addressbook-change.service.js';
