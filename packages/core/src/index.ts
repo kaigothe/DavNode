@@ -360,6 +360,31 @@ export {
 } from './caldav/calendar-home-tree-resource.js';
 export { CalendarLiveProperties } from './caldav/calendar-live-properties.js';
 export { CalendarHomeSetProperty } from './caldav/calendar-home-set-property.js';
+export {
+  RESERVED_CALENDAR_NAMES,
+  MAX_CALENDAR_NAME_LENGTH,
+  isValidCalendarName,
+} from './caldav/calendar-name.js';
+export { parseCalendarTimezone } from './caldav/calendar-timezone.js';
+export {
+  MkcalendarBodyError,
+  parseMkcalendarRequestBody,
+  type MkcalendarBodyErrorKind,
+  type MkcalendarChildElement,
+  type MkcalendarRequestBody,
+  type MkcalendarSetProperty,
+} from './caldav/mkcalendar-request.js';
+export {
+  interpretMkcalendarProperties,
+  type CalendarInitialization,
+  type MkcalendarInterpretation,
+} from './caldav/mkcalendar-properties.js';
+export { buildMkcalendarResponse } from './caldav/mkcalendar-response-builder.js';
+export {
+  createCalendarCollection,
+  type NewCalendar,
+} from './caldav/create-calendar.js';
+export { isUniqueConstraintViolationError } from './services/unique-constraint.util.js';
 export { requestsAddressbookResourcetype } from './carddav/mkcol-addressbook-request.js';
 export { AddressbookChangeService } from './carddav/addressbook-change.service.js';
 export type { AddressbookAclResource } from './carddav/addressbook-acl-resource.js';

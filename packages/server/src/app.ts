@@ -26,6 +26,7 @@ import { registerCopyRoute } from './http/routes/copy.route.js';
 import { registerDeleteRoute } from './http/routes/delete.route.js';
 import { registerGetRoute } from './http/routes/get.route.js';
 import { registerLockRoute } from './http/routes/lock.route.js';
+import { registerMkcalendarRoute } from './http/routes/mkcalendar.route.js';
 import { registerMkcolRoute } from './http/routes/mkcol.route.js';
 import { registerMoveRoute } from './http/routes/move.route.js';
 import { registerPrincipalsRoute } from './http/routes/principals.route.js';
@@ -79,6 +80,7 @@ export function createApp(dataSource: DataSource): express.Express {
   registerAddressbookHomeRoute(app, dataSource);
   registerAddressbookMkcolRoute(app, dataSource);
   registerCalendarHomeRoute(app, dataSource);
+  registerMkcalendarRoute(app, dataSource);
   registerCarddavGetRoute(app, dataSource);
   registerCarddavPutRoute(app, dataSource);
   registerCarddavDeleteRoute(app, dataSource);

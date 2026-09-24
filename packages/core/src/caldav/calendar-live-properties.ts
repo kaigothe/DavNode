@@ -5,6 +5,7 @@ import type {
   PropertyProviderContext,
   PropertyValue,
 } from '../webdav/properties/property-provider.interface.js';
+import type { CalendarComponentType } from '../entities/calendar-collection.entity.js';
 import { CALDAV_NAMESPACE } from './caldav-namespace.js';
 import {
   CalendarHomeCollection,
@@ -31,6 +32,22 @@ function property(
   value: string,
 ): PropertyValue {
   return { namespace, name, value };
+}
+
+/**
+ * The XML content of `CALDAV:supported-calendar-component-set` for
+ * `components` (RFC 4791 §5.2.3): one `<C:comp name="..."/>` per type,
+ * each self-contained like every other live property value.
+ */
+export function serializeComponentSet(
+  components: readonly CalendarComponentType[],
+): string {
+  return components
+    .map(
+      (component) =>
+        `<C:comp name="${component}" xmlns:C="${CALDAV_NAMESPACE}"/>`,
+    )
+    .join('');
 }
 
 /**
@@ -98,12 +115,7 @@ export class CalendarLiveProperties implements PropertyProvider<CalendarHomeTree
       property(
         CALDAV_NAMESPACE,
         'supported-calendar-component-set',
-        resource.supportedComponentSet
-          .map(
-            (component) =>
-              `<C:comp name="${component}" xmlns:C="${CALDAV_NAMESPACE}"/>`,
-          )
-          .join(''),
+        serializeComponentSet(resource.supportedComponentSet),
       ),
       property(
         CALDAV_NAMESPACE,
