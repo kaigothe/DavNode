@@ -1,3 +1,20 @@
+# [1.14.0](https://github.com/kaigothe/DavNode/compare/v1.13.0...v1.14.0) (2026-09-24)
+
+
+### Bug Fixes
+
+* **core:** resolve the sync-collection addressbook via the shared resolver ([71c9e84](https://github.com/kaigothe/DavNode/commit/71c9e8432a2239a864fb87073551d306d4eefa1a))
+
+
+### Features
+
+* **core:** add addressbook-query REPORT ([bb38f5e](https://github.com/kaigothe/DavNode/commit/bb38f5edc10d85465b880e2b12ef05b0527fe066))
+* **core:** add calendar ACE, lock and change entities ([b703e84](https://github.com/kaigothe/DavNode/commit/b703e84a8ffb238c618b3ebd57e3f236822381c1))
+* **core:** add CalendarCollection entity and migrations ([fad41fc](https://github.com/kaigothe/DavNode/commit/fad41fc6cfa9b65394a48110fcd91d25c0178160))
+* **core:** add CalendarObject and CalendarObjectContent entities ([4e541d1](https://github.com/kaigothe/DavNode/commit/4e541d1d7c18d03e51c02cd9e55b8d5b2b171186))
+* **core:** add CalendarProperty and CalendarObjectProperty entities ([84604f2](https://github.com/kaigothe/DavNode/commit/84604f2ed84657b3727be29879ec321f771d40a8))
+* **core:** add iCalendar parser wrapper ([6b7a167](https://github.com/kaigothe/DavNode/commit/6b7a167062c058c30cc12a099966658ea91e816f))
+
 # [1.13.0](https://github.com/kaigothe/DavNode/compare/v1.12.0...v1.13.0) (2026-09-24)
 
 
