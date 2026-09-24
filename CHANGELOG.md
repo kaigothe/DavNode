@@ -1,3 +1,14 @@
+# [1.15.0](https://github.com/kaigothe/DavNode/compare/v1.14.0...v1.15.0) (2026-09-24)
+
+
+### Features
+
+* **core:** add calendar object index population ([09c5bfe](https://github.com/kaigothe/DavNode/commit/09c5bfe7d9b6ff09b61ac64f3a1082b97d3dc0e5))
+* **core:** add recurrence expansion utility ([3d63f2b](https://github.com/kaigothe/DavNode/commit/3d63f2b9881fc244cae0a70a9d046537101e966e))
+* **core:** give CalendarCollection its own URL name ([7a5776c](https://github.com/kaigothe/DavNode/commit/7a5776c2e2008b03c9fd72769a384c5f5407b7a8))
+* **server:** add calendar home route and calendar-home-set ([90a3fc8](https://github.com/kaigothe/DavNode/commit/90a3fc816252b90330dc97090d500d1b67951908))
+* **server:** add MKCALENDAR handler ([3ce13d0](https://github.com/kaigothe/DavNode/commit/3ce13d02343f52a494b12f36bac41d7de6564824))
+
 # [1.14.0](https://github.com/kaigothe/DavNode/compare/v1.13.0...v1.14.0) (2026-09-24)
 
 
