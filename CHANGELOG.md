@@ -1,3 +1,12 @@
+# [1.21.0](https://github.com/kaigothe/DavNode/compare/v1.20.0...v1.21.0) (2026-09-25)
+
+
+### Features
+
+* **core:** add the race-free quota counter utility (M8) ([20076ff](https://github.com/kaigothe/DavNode/commit/20076ff6a488f98db0c1d10f4797f11663fe7172))
+* **server:** add scheduling privileges and Inbox/Outbox routes (M7) ([d21e5ca](https://github.com/kaigothe/DavNode/commit/d21e5ca86eb4c286ab967da8a71e746d6454a030))
+* **server:** add the scheduling Outbox freebusy-request handler (M7) ([d3159f9](https://github.com/kaigothe/DavNode/commit/d3159f9dbf4a384224550f4d044550fcc11a4456))
+
 # [1.20.0](https://github.com/kaigothe/DavNode/compare/v1.19.0...v1.20.0) (2026-09-25)
 
 
