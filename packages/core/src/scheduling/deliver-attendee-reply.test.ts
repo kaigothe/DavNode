@@ -15,7 +15,10 @@ import {
 import { ALL_MIGRATIONS } from '../migrations/sqlite/index.js';
 import { UserService } from '../services/user.service.js';
 import { calendarUserAddressesFor } from './scheduling-principal-properties.js';
-import { deliverAttendeeReply } from './deliver-attendee-reply.js';
+import {
+  deliverAttendeeDecline,
+  deliverAttendeeReply,
+} from './deliver-attendee-reply.js';
 import { extractSchedulingParticipants } from './detect-scheduling-role.js';
 
 const DEFAULT_INIT = {
@@ -231,5 +234,126 @@ describe('deliverAttendeeReply', () => {
       .findOneByOrFail({ calendarObjectId: organizerObject.id });
     const participants = extractSchedulingParticipants(content.icsData);
     expect(participants.attendees[0]?.partstat).toBe('DECLINED');
+  });
+});
+
+describe('deliverAttendeeDecline', () => {
+  let dataSource: DataSource;
+  let tenant: Tenant;
+  let alice: User;
+  let bob: User;
+
+  beforeEach(async () => {
+    dataSource = createDataSource(
+      {},
+      { entities: ALL_ENTITIES, migrations: ALL_MIGRATIONS },
+    );
+    await dataSource.initialize();
+    await dataSource.runMigrations();
+
+    tenant = await dataSource
+      .getRepository(Tenant)
+      .save(
+        dataSource
+          .getRepository(Tenant)
+          .create({ slug: 'acme', name: 'Acme Inc.' }),
+      );
+    const userService = new UserService(dataSource);
+    const createUser = (username: string): Promise<User> =>
+      userService.createUser({
+        tenantId: tenant.id,
+        username,
+        email: `${username}@example.com`,
+        password: `pw-${username}`,
+      });
+    alice = await createUser('alice');
+    bob = await createUser('bob');
+  });
+
+  afterEach(async () => {
+    await dataSource.destroy();
+  });
+
+  async function putOrganizerEvent(ics: string): Promise<void> {
+    const calendar = await createCalendarCollection(dataSource, {
+      tenantId: tenant.id,
+      ownerPrincipalId: alice.principalId,
+      name: 'work',
+      initialization: DEFAULT_INIT,
+    });
+    await saveCalendarObject(dataSource, {
+      tenantId: tenant.id,
+      calendarId: calendar.id,
+      name: 'event.ics',
+      ownerPrincipalId: alice.principalId,
+      ics,
+      parsed: parseCalendarObject(ics),
+      etag: 'etag-1',
+      existing: null,
+    });
+  }
+
+  it("delivers an implicit DECLINED REPLY and merges it into the organizer's copy", async () => {
+    await putOrganizerEvent(
+      event({
+        organizer: `mailto:${alice.email}`,
+        attendees: [{ address: `mailto:${bob.email}` }],
+      }),
+    );
+    const ics = event({
+      organizer: `mailto:${alice.email}`,
+      attendees: [{ address: `mailto:${bob.email}`, partstat: 'NEEDS-ACTION' }],
+    });
+
+    await deliverAttendeeDecline(dataSource, {
+      tenant,
+      uid: 'event-1',
+      ics,
+      writerAddresses: calendarUserAddressesFor(bob, tenant),
+    });
+
+    const aliceItems = await dataSource
+      .getRepository(SchedulingInboxItem)
+      .findBy({ ownerPrincipalId: alice.principalId });
+    expect(aliceItems).toHaveLength(1);
+    expect(aliceItems[0]?.method).toBe('REPLY');
+    const replyParticipants = extractSchedulingParticipants(
+      aliceItems[0]!.icsData,
+    );
+    expect(replyParticipants.attendees[0]?.partstat).toBe('DECLINED');
+
+    const organizerObject = await dataSource
+      .getRepository(CalendarObject)
+      .findOneByOrFail({
+        ownerPrincipalId: alice.principalId,
+        uid: 'event-1',
+      });
+    const content = await dataSource
+      .getRepository(CalendarObjectContent)
+      .findOneByOrFail({ calendarObjectId: organizerObject.id });
+    const copyParticipants = extractSchedulingParticipants(content.icsData);
+    expect(copyParticipants.attendees[0]?.partstat).toBe('DECLINED');
+  });
+
+  it('delivers nothing if the attendee had already explicitly declined', async () => {
+    await putOrganizerEvent(
+      event({
+        organizer: `mailto:${alice.email}`,
+        attendees: [{ address: `mailto:${bob.email}`, partstat: 'DECLINED' }],
+      }),
+    );
+    const ics = event({
+      organizer: `mailto:${alice.email}`,
+      attendees: [{ address: `mailto:${bob.email}`, partstat: 'DECLINED' }],
+    });
+
+    await deliverAttendeeDecline(dataSource, {
+      tenant,
+      uid: 'event-1',
+      ics,
+      writerAddresses: calendarUserAddressesFor(bob, tenant),
+    });
+
+    expect(await dataSource.getRepository(SchedulingInboxItem).count()).toBe(0);
   });
 });

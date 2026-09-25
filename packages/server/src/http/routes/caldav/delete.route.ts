@@ -1,9 +1,16 @@
 import {
+  calendarUserAddressesFor,
+  CalendarObjectContent,
   deleteCalendarObject,
+  deliverAttendeeDecline,
+  deliverOrganizerCancellation,
+  detectSchedulingRole,
   getEffectiveCalendarLocks,
   hasCalendarPrivilege,
+  User,
   type CalendarAclResource,
   type DataSource,
+  type SchedulingRole,
 } from '@davnode/core';
 import type { Express, Request } from 'express';
 import { createAclAuthorizationMiddleware } from '../../acl-authorization.middleware.js';
@@ -44,6 +51,17 @@ import {
  * such-and-such) fails with `412` when the ETag has moved on, checked
  * atomically with the delete. Only single objects are deletable here —
  * `DELETE` on a calendar or the home is `405`, on anything deeper `404`.
+ *
+ * **Scheduling hook** (M7, RFC 6638 §3.2.1.3/§3.2.2.4, "CANCEL-Workflow"):
+ * `detectSchedulingRole` decides which side of the event the deleter is
+ * on. An `ORGANIZER` deleting their own event has
+ * `deliverOrganizerCancellation` send `CANCEL` to every locally
+ * resolvable `ATTENDEE` and remove their auto-filed copies, run *after*
+ * the delete succeeds. An `ATTENDEE` deleting their own copy without
+ * having explicitly declined first is treated as an implicit `DECLINED`
+ * (`deliverAttendeeDecline`) and merged into the organizer's own copy
+ * *before* the copy itself is actually gone. An ordinary event is
+ * completely unaffected.
  */
 export function registerCaldavDeleteRoute(
   app: Express,
@@ -141,6 +159,38 @@ export function registerCaldavDeleteRoute(
         return;
       }
 
+      // Scheduling hook (RFC 6638 §3.2.1.3/§3.2.2.4, M7
+      // "CANCEL-Workflow"): only engages for an actual scheduling object
+      // resource whose ORGANIZER or one of its ATTENDEEs matches the
+      // deleter — an ordinary event is unaffected.
+      const targetContent = await dataSource
+        .getRepository(CalendarObjectContent)
+        .findOneBy({ calendarObjectId: target.id });
+      const ics = targetContent?.icsData ?? null;
+      let schedulingRole: SchedulingRole = 'none';
+      let writerAddresses: string[] = [];
+      if (ics !== null) {
+        const writer = await dataSource
+          .getRepository(User)
+          .findOneBy({ principalId: principal.id });
+        writerAddresses = writer
+          ? calendarUserAddressesFor(writer, tenant)
+          : [];
+        schedulingRole = detectSchedulingRole(ics, writerAddresses);
+      }
+
+      if (schedulingRole === 'attendee' && ics !== null) {
+        // An Attendee deleting their own copy without first declining is
+        // treated as an implicit DECLINED — delivered and merged into
+        // the organizer's copy before the copy itself is actually gone.
+        await deliverAttendeeDecline(dataSource, {
+          tenant,
+          uid: target.uid,
+          ics,
+          writerAddresses,
+        });
+      }
+
       const deleted = await deleteCalendarObject(dataSource, {
         calendarId: calendar.id,
         object: target,
@@ -150,6 +200,15 @@ export function registerCaldavDeleteRoute(
         // Gone or changed between the lookup and the delete.
         res.sendStatus(ifMatch === undefined ? 404 : 412);
         return;
+      }
+
+      if (schedulingRole === 'organizer' && ics !== null) {
+        await deliverOrganizerCancellation(dataSource, {
+          tenant,
+          uid: target.uid,
+          ics,
+          organizerPrincipalId: principal.id,
+        });
       }
 
       res.sendStatus(204);

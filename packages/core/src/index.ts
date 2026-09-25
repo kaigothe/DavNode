@@ -447,11 +447,17 @@ export {
 export {
   deliverAttendeeReply,
   type DeliverAttendeeReplyInput,
+  deliverAttendeeDecline,
+  type DeliverAttendeeDeclineInput,
 } from './scheduling/deliver-attendee-reply.js';
 export {
   mergeReplyIntoOrganizerCopy,
   type MergeReplyIntoOrganizerCopyInput,
 } from './scheduling/merge-reply-into-organizer-copy.js';
+export {
+  deliverOrganizerCancellation,
+  type DeliverOrganizerCancellationInput,
+} from './scheduling/deliver-organizer-cancellation.js';
 export {
   RESERVED_CALENDAR_NAMES,
   MAX_CALENDAR_NAME_LENGTH,

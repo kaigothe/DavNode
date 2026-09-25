@@ -6,6 +6,7 @@ import { mergeReplyIntoOrganizerCopy } from './merge-reply-into-organizer-copy.j
 import {
   insertInboxItem,
   resolveLocalUser,
+  setAttendeePartstat,
 } from './scheduling-write-helpers.js';
 
 /** What {@link deliverAttendeeReply} needs. */
@@ -89,5 +90,52 @@ export async function deliverAttendeeReply(
     organizerPrincipalId: organizer.principalId,
     attendeeAddress: newAttendee.address,
     partstat: newAttendee.partstat ?? 'NEEDS-ACTION',
+  });
+}
+
+/** What {@link deliverAttendeeDecline} needs. */
+export interface DeliverAttendeeDeclineInput {
+  tenant: Tenant;
+  /** The event's `UID`. */
+  uid: string;
+  /** The attendee's own event text, as it was immediately before the delete. */
+  ics: string;
+  /** The writing (deleting) attendee's own calendar user addresses. */
+  writerAddresses: readonly string[];
+}
+
+/**
+ * Treats an "Attendee" deleting their own copy of a scheduling object
+ * resource, without having explicitly changed `PARTSTAT` first, as an
+ * implicit `DECLINED` (RFC 6638 §3.2.2.4, M7 "CANCEL-Workflow"): builds
+ * a version of `ics` with the writer's own `ATTENDEE` set to `DECLINED`
+ * and runs it through the exact same {@link deliverAttendeeReply} a real
+ * `PARTSTAT` change would — so if they'd already explicitly declined
+ * before deleting, this correctly finds no *further* change and
+ * delivers nothing a second time.
+ *
+ * Called **before** the delete itself actually happens (the caller still
+ * has `ics` either way, but the merge into the organizer's own copy
+ * should not risk racing the deletion of an unrelated row).
+ */
+export async function deliverAttendeeDecline(
+  dataSource: DataSource,
+  input: DeliverAttendeeDeclineInput,
+): Promise<void> {
+  const { tenant, uid, ics, writerAddresses } = input;
+  const own = new Set(writerAddresses.map((address) => address.toLowerCase()));
+  const ownAttendee = extractSchedulingParticipants(ics).attendees.find(
+    (attendee) => own.has(attendee.address.toLowerCase()),
+  );
+  if (!ownAttendee) {
+    return;
+  }
+  const declinedIcs = setAttendeePartstat(ics, ownAttendee.address, 'DECLINED');
+  await deliverAttendeeReply(dataSource, {
+    tenant,
+    uid,
+    oldIcs: ics,
+    newIcs: declinedIcs,
+    writerAddresses,
   });
 }
