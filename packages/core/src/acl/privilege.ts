@@ -21,7 +21,8 @@ export type Privilege =
   | 'read-acl'
   | 'write-acl'
   | 'read-current-user-privilege-set'
-  | 'all';
+  | 'all'
+  | SchedulingPrivilege;
 
 /** All valid {@link Privilege} values. */
 export const ALL_PRIVILEGES: readonly Privilege[] = [
@@ -37,6 +38,40 @@ export const ALL_PRIVILEGES: readonly Privilege[] = [
   'read-current-user-privilege-set',
   'all',
 ];
+
+/**
+ * The RFC 6638 §6.2 scheduling privilege vocabulary
+ * (planning/05-data-model.md, "Scheduling-Privileges", Runde 22): who
+ * may deliver/send scheduling messages, split the same way `write`
+ * splits into `write-properties`/`write-content` — `schedule-deliver`
+ * aggregates `schedule-deliver-invite` and `schedule-deliver-reply`;
+ * `schedule-send` aggregates `schedule-send-invite`,
+ * `schedule-send-reply` and `schedule-send-freebusy`
+ * (`expandPrivilege`).
+ *
+ * Deliberately **not** in {@link ALL_PRIVILEGES} — like
+ * {@link CalendarPrivilege}'s `read-free-busy`, adding these to that
+ * array would widen the `simple-enum` column every other domain's ACE
+ * table (`collection_aces`, `file_aces`, `addressbook_aces`, ...)
+ * already uses it for, forcing a migration on tables that will never
+ * actually store one of these values. Scheduling Inbox/Outbox
+ * collections have no ACE table at all in v1 (`SchedulingInboxItem`'s
+ * own doc comment) — access is a fixed "only `owner_principal_id`"
+ * rule (`inbox.route.ts`/`outbox.route.ts`), not an ACL evaluation —
+ * so these values exist purely so `Privilege`-typed code (starting
+ * with `expandPrivilege` itself) can represent and expand them, ready
+ * for `supported-privilege-set`/`current-user-privilege-set` (M3) to
+ * report them correctly on Inbox/Outbox if a later milestone adds
+ * that, without another type-level change.
+ */
+export type SchedulingPrivilege =
+  | 'schedule-deliver'
+  | 'schedule-deliver-invite'
+  | 'schedule-deliver-reply'
+  | 'schedule-send'
+  | 'schedule-send-invite'
+  | 'schedule-send-reply'
+  | 'schedule-send-freebusy';
 
 /**
  * A privilege in the calendar domain: the shared {@link Privilege}

@@ -46,7 +46,9 @@ import { registerPropfindRoute } from './http/routes/propfind.route.js';
 import { registerProppatchRoute } from './http/routes/proppatch.route.js';
 import { registerPutRoute } from './http/routes/put.route.js';
 import { registerReportRoute } from './http/routes/report.route.js';
+import { registerInboxRoute } from './http/routes/scheduling/inbox.route.js';
 import { registerOutboxPostRoute } from './http/routes/scheduling/outbox-post.route.js';
+import { registerOutboxRoute } from './http/routes/scheduling/outbox.route.js';
 import { registerUnlockRoute } from './http/routes/unlock.route.js';
 import { createTenantResolutionMiddleware } from './http/tenant-resolution.middleware.js';
 
@@ -100,6 +102,15 @@ export function createApp(dataSource: DataSource): express.Express {
   registerPrincipalsRoute(app, dataSource);
   registerAddressbookHomeRoute(app, dataSource);
   registerAddressbookMkcolRoute(app, dataSource);
+  // Registered before registerCalendarHomeRoute/registerCaldavGetRoute/
+  // registerCaldavDeleteRoute: those match the same broad
+  // /calendars/:userId{/*splat} path per method, and since "inbox"/
+  // "outbox" are reserved calendar names, would otherwise resolve them
+  // as "no such calendar" and answer first. Express tries same-method
+  // routes in registration order, so the more specific pattern has to
+  // come first.
+  registerInboxRoute(app, dataSource);
+  registerOutboxRoute(app, dataSource);
   registerCalendarHomeRoute(app, dataSource);
   registerMkcalendarRoute(app, dataSource);
   registerCaldavGetRoute(app, dataSource);

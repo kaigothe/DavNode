@@ -11,6 +11,7 @@ export {
   CALENDAR_PRIVILEGES,
   type CalendarPrivilege,
   type Privilege,
+  type SchedulingPrivilege,
 } from './acl/privilege.js';
 export {
   calendarPrivilegeSatisfies,
@@ -474,6 +475,11 @@ export {
   handleFreeBusyRequest,
   type HandleFreeBusyRequestInput,
 } from './scheduling/handle-freebusy-request.js';
+export {
+  SchedulingInboxCollection,
+  type SchedulingInboxTreeResource,
+} from './scheduling/scheduling-inbox-tree-resource.js';
+export { SchedulingInboxLiveProperties } from './scheduling/scheduling-inbox-live-properties.js';
 export {
   RESERVED_CALENDAR_NAMES,
   MAX_CALENDAR_NAME_LENGTH,

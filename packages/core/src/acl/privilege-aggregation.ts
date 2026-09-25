@@ -17,6 +17,15 @@ import {
  * Resolved at evaluation time rather than stored expanded in the
  * database — see the ACE entities (`CollectionAce`/`FileAce`).
  *
+ * `schedule-deliver`/`schedule-send` (RFC 6638 §6.2, planning/
+ * 05-data-model.md Runde 22) split the same way: `schedule-deliver`
+ * expands to `schedule-deliver-invite` and `schedule-deliver-reply`;
+ * `schedule-send` to `schedule-send-invite`, `schedule-send-reply` and
+ * `schedule-send-freebusy`. Neither is reachable from `all`, which only
+ * ever expands to {@link ALL_PRIVILEGES} — the scheduling vocabulary
+ * stays independent of the shared one, like `CALDAV:read-free-busy`
+ * already does for the calendar domain (`expandCalendarPrivilege`).
+ *
  * @param privilege - The privilege to expand.
  * @returns The privilege's constituent, elementary or aggregated,
  * privileges — never empty.
@@ -27,6 +36,14 @@ export function expandPrivilege(privilege: Privilege): Privilege[] {
       return [...ALL_PRIVILEGES];
     case 'write':
       return ['write-properties', 'write-content'];
+    case 'schedule-deliver':
+      return ['schedule-deliver-invite', 'schedule-deliver-reply'];
+    case 'schedule-send':
+      return [
+        'schedule-send-invite',
+        'schedule-send-reply',
+        'schedule-send-freebusy',
+      ];
     default:
       return [privilege];
   }

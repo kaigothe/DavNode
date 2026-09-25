@@ -9,7 +9,18 @@ import {
   ALL_PRIVILEGES,
   CALENDAR_PRIVILEGES,
   type Privilege,
+  type SchedulingPrivilege,
 } from './privilege.js';
+
+const SCHEDULING_PRIVILEGES: readonly SchedulingPrivilege[] = [
+  'schedule-deliver',
+  'schedule-deliver-invite',
+  'schedule-deliver-reply',
+  'schedule-send',
+  'schedule-send-invite',
+  'schedule-send-reply',
+  'schedule-send-freebusy',
+];
 
 const ELEMENTARY_PRIVILEGES: readonly Privilege[] = [
   'read',
@@ -43,6 +54,54 @@ describe('expandPrivilege', () => {
       expect(expandPrivilege(privilege)).toEqual([privilege]);
     },
   );
+
+  it("'schedule-deliver' expands to exactly schedule-deliver-invite and schedule-deliver-reply", () => {
+    expect(expandPrivilege('schedule-deliver')).toEqual([
+      'schedule-deliver-invite',
+      'schedule-deliver-reply',
+    ]);
+  });
+
+  it("'schedule-send' expands to exactly schedule-send-invite, schedule-send-reply and schedule-send-freebusy", () => {
+    expect(expandPrivilege('schedule-send')).toEqual([
+      'schedule-send-invite',
+      'schedule-send-reply',
+      'schedule-send-freebusy',
+    ]);
+  });
+
+  it.each([
+    'schedule-deliver-invite',
+    'schedule-deliver-reply',
+    'schedule-send-invite',
+    'schedule-send-reply',
+    'schedule-send-freebusy',
+  ] as const)(
+    'elementary scheduling privilege %s expands to only itself',
+    (privilege) => {
+      expect(expandPrivilege(privilege)).toEqual([privilege]);
+    },
+  );
+
+  it("'all' does not aggregate any of the scheduling privileges", () => {
+    const expanded = expandPrivilege('all');
+    for (const scheduling of SCHEDULING_PRIVILEGES) {
+      expect(expanded).not.toContain(scheduling);
+    }
+  });
+});
+
+describe('SchedulingPrivilege vocabulary', () => {
+  it('has exactly the seven RFC 6638 §6.2 values', () => {
+    expect(SCHEDULING_PRIVILEGES).toHaveLength(7);
+    expect(new Set(SCHEDULING_PRIVILEGES).size).toBe(7);
+  });
+
+  it('is disjoint from ALL_PRIVILEGES', () => {
+    for (const scheduling of SCHEDULING_PRIVILEGES) {
+      expect(ALL_PRIVILEGES).not.toContain(scheduling);
+    }
+  });
 });
 
 describe('privilegeSatisfies', () => {
