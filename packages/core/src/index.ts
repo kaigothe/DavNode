@@ -169,6 +169,13 @@ export {
 export { GroupMembershipService } from './services/group-membership.service.js';
 
 export {
+  applyQuotaDelta,
+  QuotaExceededError,
+  type ApplyQuotaDeltaInput,
+  type QuotaLevel,
+} from './quota/apply-quota-delta.js';
+
+export {
   type MultistatusPropertyResult,
   type MultistatusResourceResult,
   buildMultistatusResponse,
