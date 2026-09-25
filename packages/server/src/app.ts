@@ -46,6 +46,7 @@ import { registerPropfindRoute } from './http/routes/propfind.route.js';
 import { registerProppatchRoute } from './http/routes/proppatch.route.js';
 import { registerPutRoute } from './http/routes/put.route.js';
 import { registerReportRoute } from './http/routes/report.route.js';
+import { registerOutboxPostRoute } from './http/routes/scheduling/outbox-post.route.js';
 import { registerUnlockRoute } from './http/routes/unlock.route.js';
 import { createTenantResolutionMiddleware } from './http/tenant-resolution.middleware.js';
 
@@ -107,6 +108,7 @@ export function createApp(dataSource: DataSource): express.Express {
   registerCaldavLockRoute(app, dataSource);
   registerCaldavUnlockRoute(app, dataSource);
   registerFeedTokenRoute(app, dataSource);
+  registerOutboxPostRoute(app, dataSource);
   registerCarddavGetRoute(app, dataSource);
   registerCarddavPutRoute(app, dataSource);
   registerCarddavDeleteRoute(app, dataSource);

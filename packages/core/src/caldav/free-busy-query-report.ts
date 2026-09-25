@@ -1,4 +1,4 @@
-import { In } from 'typeorm';
+import { In, type EntityManager } from 'typeorm';
 import {
   hasCalendarPrivilege,
   selectCalendarObjectsWithPrivilege,
@@ -6,6 +6,7 @@ import {
 import type { CalendarCollection } from '../entities/calendar-collection.entity.js';
 import { CalendarObjectContent } from '../entities/calendar-object-content.entity.js';
 import { CalendarObject } from '../entities/calendar-object.entity.js';
+import type { Principal } from '../entities/principal.entity.js';
 import type {
   ReportContext,
   ReportHandler,
@@ -30,7 +31,7 @@ import { resolveReportCalendar } from './calendar-report-support.js';
 const PAGE_SIZE = 200;
 
 /** One coalesced busy interval, already typed by `FBTYPE`. */
-interface BusyInterval {
+export interface BusyInterval {
   start: number;
   end: number;
   fbtype: 'BUSY' | 'BUSY-TENTATIVE';
@@ -103,7 +104,7 @@ function busyIntervalsOf(
  * Different `FBTYPE`s are never merged into each other (they "MAY
  * overlap").
  */
-function coalesce(intervals: readonly BusyInterval[]): BusyInterval[] {
+export function coalesce(intervals: readonly BusyInterval[]): BusyInterval[] {
   const byType = new Map<'BUSY' | 'BUSY-TENTATIVE', BusyInterval[]>();
   for (const interval of intervals) {
     const list = byType.get(interval.fbtype) ?? [];
@@ -131,7 +132,7 @@ function coalesce(intervals: readonly BusyInterval[]): BusyInterval[] {
 }
 
 /** `date`, formatted as an iCalendar UTC "date with UTC time" value (`YYYYMMDDTHHMMSSZ`). */
-function formatUtc(date: Date): string {
+export function formatUtc(date: Date): string {
   const pad = (n: number): string => String(n).padStart(2, '0');
   return (
     `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}` +
@@ -260,8 +261,9 @@ export class FreeBusyQueryReportHandler implements ReportHandler {
       floatingTimeZone = null;
     }
 
-    const intervals = await this.collectBusyIntervals(
-      context,
+    const intervals = await collectCalendarBusyIntervals(
+      context.manager,
+      context.principal,
       calendar,
       rangeStart,
       rangeEnd,
@@ -274,80 +276,92 @@ export class FreeBusyQueryReportHandler implements ReportHandler {
       contentType: 'text/calendar',
     };
   }
+}
 
-  private async collectBusyIntervals(
-    context: ReportContext,
-    calendar: CalendarCollection,
-    rangeStart: Date,
-    rangeEnd: Date,
-    floatingTimeZone: string | null,
-  ): Promise<BusyInterval[]> {
-    const query = context.manager
-      .getRepository(CalendarObject)
-      .createQueryBuilder('co')
-      .where('co.calendarId = :calendarId', { calendarId: calendar.id })
-      .andWhere('co.dtstart < :rangeEnd', {
-        rangeEnd: rangeEnd.getTime() + FLOATING_TIME_OFFSET_BOUNDS_MS.latest,
-      })
-      .andWhere(
-        '(co.recurrenceSpanEnd IS NULL OR co.recurrenceSpanEnd >= :rangeStart)',
-        {
-          rangeStart:
-            rangeStart.getTime() + FLOATING_TIME_OFFSET_BOUNDS_MS.earliest,
-        },
-      )
-      .orderBy('co.id', 'ASC');
+/**
+ * Every busy interval `requestingPrincipal` may see in `calendar` within
+ * `[rangeStart, rangeEnd)`: the same Phase-1 database prefilter and
+ * Phase-2 `expandOccurrences`/`busyIntervalsOf` `calendar-query` and
+ * `free-busy-query` (this file) both use, with the same per-object
+ * `read-free-busy` ACL check (`selectCalendarObjectsWithPrivilege`) — a
+ * denied object contributes nothing, silently, rather than failing the
+ * whole calculation.
+ *
+ * Extracted as its own function (not just `FreeBusyQueryReportHandler`'s
+ * private method) so the scheduling Outbox's `freebusy-request` handler
+ * (RFC 6638 §5, M7) can reuse it per calendar while aggregating busy
+ * time across *all* of an attendee's calendars, not just the one a
+ * `free-busy-query` REPORT targets.
+ */
+export async function collectCalendarBusyIntervals(
+  manager: EntityManager,
+  requestingPrincipal: Principal,
+  calendar: CalendarCollection,
+  rangeStart: Date,
+  rangeEnd: Date,
+  floatingTimeZone: string | null,
+): Promise<BusyInterval[]> {
+  const query = manager
+    .getRepository(CalendarObject)
+    .createQueryBuilder('co')
+    .where('co.calendarId = :calendarId', { calendarId: calendar.id })
+    .andWhere('co.dtstart < :rangeEnd', {
+      rangeEnd: rangeEnd.getTime() + FLOATING_TIME_OFFSET_BOUNDS_MS.latest,
+    })
+    .andWhere(
+      '(co.recurrenceSpanEnd IS NULL OR co.recurrenceSpanEnd >= :rangeStart)',
+      {
+        rangeStart:
+          rangeStart.getTime() + FLOATING_TIME_OFFSET_BOUNDS_MS.earliest,
+      },
+    )
+    .orderBy('co.id', 'ASC');
 
-    const intervals: BusyInterval[] = [];
-    let offset = 0;
-    for (;;) {
-      const page = await query
-        .clone()
-        .offset(offset)
-        .limit(PAGE_SIZE)
-        .getMany();
-      offset += page.length;
-      if (page.length === 0) {
-        break;
-      }
-
-      const contents = await context.manager
-        .getRepository(CalendarObjectContent)
-        .findBy({ calendarObjectId: In(page.map((object) => object.id)) });
-      const icsByObjectId = new Map(
-        contents.map((content) => [content.calendarObjectId, content.icsData]),
-      );
-      const readable = await selectCalendarObjectsWithPrivilege(
-        context.manager,
-        context.principal,
-        calendar,
-        page,
-        'read-free-busy',
-      );
-
-      for (const object of page) {
-        if (!readable.has(object.id)) {
-          continue;
-        }
-        const ics = icsByObjectId.get(object.id);
-        if (ics === undefined) {
-          continue;
-        }
-        let parsed: ParsedCalendarObject;
-        try {
-          parsed = parseCalendarObject(ics);
-        } catch {
-          continue;
-        }
-        intervals.push(
-          ...busyIntervalsOf(parsed, rangeStart, rangeEnd, floatingTimeZone),
-        );
-      }
-
-      if (page.length < PAGE_SIZE) {
-        break;
-      }
+  const intervals: BusyInterval[] = [];
+  let offset = 0;
+  for (;;) {
+    const page = await query.clone().offset(offset).limit(PAGE_SIZE).getMany();
+    offset += page.length;
+    if (page.length === 0) {
+      break;
     }
-    return intervals;
+
+    const contents = await manager
+      .getRepository(CalendarObjectContent)
+      .findBy({ calendarObjectId: In(page.map((object) => object.id)) });
+    const icsByObjectId = new Map(
+      contents.map((content) => [content.calendarObjectId, content.icsData]),
+    );
+    const readable = await selectCalendarObjectsWithPrivilege(
+      manager,
+      requestingPrincipal,
+      calendar,
+      page,
+      'read-free-busy',
+    );
+
+    for (const object of page) {
+      if (!readable.has(object.id)) {
+        continue;
+      }
+      const ics = icsByObjectId.get(object.id);
+      if (ics === undefined) {
+        continue;
+      }
+      let parsed: ParsedCalendarObject;
+      try {
+        parsed = parseCalendarObject(ics);
+      } catch {
+        continue;
+      }
+      intervals.push(
+        ...busyIntervalsOf(parsed, rangeStart, rangeEnd, floatingTimeZone),
+      );
+    }
+
+    if (page.length < PAGE_SIZE) {
+      break;
+    }
   }
+  return intervals;
 }

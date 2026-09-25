@@ -408,7 +408,13 @@ export {
   matchesTimeRange,
   matchesPropFilters,
 } from './caldav/calendar-query-report.js';
-export { FreeBusyQueryReportHandler } from './caldav/free-busy-query-report.js';
+export {
+  FreeBusyQueryReportHandler,
+  collectCalendarBusyIntervals,
+  coalesce as coalesceBusyIntervals,
+  formatUtc as formatUtcCalendarTime,
+  type BusyInterval,
+} from './caldav/free-busy-query-report.js';
 export type { CalendarAclResource } from './caldav/calendar-acl-resource.js';
 export {
   toCalendarHomeUrl,
@@ -458,6 +464,16 @@ export {
   deliverOrganizerCancellation,
   type DeliverOrganizerCancellationInput,
 } from './scheduling/deliver-organizer-cancellation.js';
+export {
+  FreeBusyRequestParseError,
+  parseFreeBusyRequestMessage,
+  buildFreeBusyReplyForAttendee,
+  type FreeBusyRequestMessage,
+} from './scheduling/free-busy-request-message.js';
+export {
+  handleFreeBusyRequest,
+  type HandleFreeBusyRequestInput,
+} from './scheduling/handle-freebusy-request.js';
 export {
   RESERVED_CALENDAR_NAMES,
   MAX_CALENDAR_NAME_LENGTH,
