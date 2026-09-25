@@ -1,3 +1,13 @@
+# [1.20.0](https://github.com/kaigothe/DavNode/compare/v1.19.0...v1.20.0) (2026-09-25)
+
+
+### Features
+
+* **core:** add M7 scheduling role detection and iTIP message builders ([d9dc8ee](https://github.com/kaigothe/DavNode/commit/d9dc8ee5a3b8c2e4557e3ddb15ec4ea669be3f9e))
+* **server:** deliver attendee replies on CalDAV PUT (M7 scheduling) ([5b34f26](https://github.com/kaigothe/DavNode/commit/5b34f269dbc08072ebb1603121356821c5997ad4))
+* **server:** deliver CANCEL notices on CalDAV DELETE (M7 scheduling) ([f3bc600](https://github.com/kaigothe/DavNode/commit/f3bc6000488133f28ebfa8d776fe57ae9128ccdb))
+* **server:** deliver organizer invites on CalDAV PUT (M7 scheduling) ([c072587](https://github.com/kaigothe/DavNode/commit/c072587b317b1fa20c0bdc2fdad603c02399c9d5))
+
 # [1.19.0](https://github.com/kaigothe/DavNode/compare/v1.18.0...v1.19.0) (2026-09-25)
 
 
