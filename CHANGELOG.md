@@ -1,3 +1,10 @@
+# [1.17.0](https://github.com/kaigothe/DavNode/compare/v1.16.0...v1.17.0) (2026-09-25)
+
+
+### Features
+
+* **server:** add CalDAV REPORT handlers (calendar-multiget, calendar-query, free-busy-query) ([29b35ec](https://github.com/kaigothe/DavNode/commit/29b35ec1d0897a87098d6425229b97cbbedebf6b))
+
 # [1.16.0](https://github.com/kaigothe/DavNode/compare/v1.15.0...v1.16.0) (2026-09-24)
 
 
