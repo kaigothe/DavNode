@@ -23,6 +23,7 @@ import { registerAddressbookHomeRoute } from './http/routes/addressbook-home.rou
 import { registerAddressbookMkcolRoute } from './http/routes/addressbook-mkcol.route.js';
 import { registerCalendarHomeRoute } from './http/routes/calendar-home.route.js';
 import { registerCaldavDeleteRoute } from './http/routes/caldav/delete.route.js';
+import { registerFeedTokenRoute } from './http/routes/caldav/feed-token.route.js';
 import { registerCaldavGetRoute } from './http/routes/caldav/get.route.js';
 import { registerCaldavLockRoute } from './http/routes/caldav/lock.route.js';
 import { registerCaldavPutRoute } from './http/routes/caldav/put.route.js';
@@ -35,6 +36,7 @@ import { registerCarddavUnlockRoute } from './http/routes/carddav/unlock.route.j
 import { registerCopyRoute } from './http/routes/copy.route.js';
 import { registerDeleteRoute } from './http/routes/delete.route.js';
 import { registerGetRoute } from './http/routes/get.route.js';
+import { registerIcsFeedRoute } from './http/routes/ics-feed.route.js';
 import { registerLockRoute } from './http/routes/lock.route.js';
 import { registerMkcalendarRoute } from './http/routes/mkcalendar.route.js';
 import { registerMkcolRoute } from './http/routes/mkcol.route.js';
@@ -58,6 +60,14 @@ import { createTenantResolutionMiddleware } from './http/tenant-resolution.middl
  */
 export function createApp(dataSource: DataSource): express.Express {
   const app = express();
+
+  // The ICS feed route is deliberately registered before tenant
+  // resolution and Basic-Auth: it must never prompt for credentials
+  // (planning/01-decisions.md, Runde 14) — its token path segment is the
+  // only authentication, checked by ics-feed.route.ts itself. Since it
+  // matches this and only this route, requests to it never reach either
+  // middleware below.
+  registerIcsFeedRoute(app, dataSource);
 
   // Every DAV route lives under /dav/{tenantSlug}/... (path-prefix
   // tenancy) and needs the resolved Tenant before anything else runs —
@@ -96,6 +106,7 @@ export function createApp(dataSource: DataSource): express.Express {
   registerCaldavDeleteRoute(app, dataSource);
   registerCaldavLockRoute(app, dataSource);
   registerCaldavUnlockRoute(app, dataSource);
+  registerFeedTokenRoute(app, dataSource);
   registerCarddavGetRoute(app, dataSource);
   registerCarddavPutRoute(app, dataSource);
   registerCarddavDeleteRoute(app, dataSource);

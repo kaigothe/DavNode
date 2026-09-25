@@ -74,6 +74,8 @@ export interface CalendarWorld {
   event: CalendarObject;
   /** The stored text of `event.ics`. */
   eventIcs: string;
+  /** The running server's origin, for a raw `fetch` with no `Authorization` header (e.g. the ICS feed, which must accept none). */
+  baseUrl: string;
   /** Alice's home URL. */
   home: string;
   /** URL of the calendar `work`. */
@@ -187,6 +189,7 @@ export async function createCalendarWorld(): Promise<CalendarWorld> {
     calendar,
     event,
     eventIcs: storedIcs,
+    baseUrl,
     home,
     calendarUrl: `${home}/work`,
     eventUrl: `${home}/work/event.ics`,

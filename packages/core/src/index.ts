@@ -455,6 +455,14 @@ export {
   type SaveCalendarObjectInput,
   type SavedCalendarObject,
 } from './caldav/calendar-object-writes.js';
+export {
+  generateFeedToken,
+  revokeFeedToken,
+} from './caldav/feed-token.service.js';
+export {
+  buildCalendarFeed,
+  loadCalendarFeedIcsData,
+} from './caldav/calendar-feed.js';
 export { requestsAddressbookResourcetype } from './carddav/mkcol-addressbook-request.js';
 export { AddressbookChangeService } from './carddav/addressbook-change.service.js';
 export type { AddressbookAclResource } from './carddav/addressbook-acl-resource.js';
