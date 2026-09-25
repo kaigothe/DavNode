@@ -38,6 +38,40 @@ function findAttendeeProperty(
   );
 }
 
+/** `ics`'s own `SEQUENCE` (its {@link schedulingComponentOf}'s), or `0` if absent. */
+function sequenceOf(ics: string): number {
+  const component = schedulingComponentOf(parseSchedulingIcs(ics));
+  const property = component?.getFirstProperty('sequence');
+  return property ? Number(property.getFirstValue()) : 0;
+}
+
+/**
+ * Sets `SEQUENCE` on every `VEVENT` of `newIcs` to what RFC 6638 §3.2.5
+ * requires whenever an "Organizer" re-announces a scheduling object
+ * resource to its `ATTENDEE`s: `oldIcs`'s own `SEQUENCE` (its last
+ * *server-known* value — the authoritative one, since a naive client may
+ * not track `SEQUENCE` at all) plus one, or `newIcs`'s own submitted
+ * value, whichever is larger — a well-behaved client that already
+ * incremented it itself is never overridden downward. Applied to the
+ * organizer's *own* event, before {@link buildRequestMessage} is called
+ * on it — see that function's own doc comment for why
+ * `buildRequestMessage` itself never touches `SEQUENCE`.
+ *
+ * Deliberately **not** "increment whatever `newIcs` already has": that
+ * would trust the client's own value as the baseline, which a client
+ * that doesn't manage `SEQUENCE` itself never advances — repeated
+ * updates would each independently bump from the same stale value
+ * instead of moving the sequence forward.
+ */
+export function applyNextSequence(newIcs: string, oldIcs: string): string {
+  const nextSequence = Math.max(sequenceOf(oldIcs) + 1, sequenceOf(newIcs));
+  const root = parseSchedulingIcs(newIcs);
+  for (const component of root.getAllSubcomponents('vevent')) {
+    component.updatePropertyWithValue('sequence', nextSequence);
+  }
+  return root.toString();
+}
+
 /**
  * Builds the `METHOD:REQUEST` iTIP message an "Organizer" creating or
  * updating a scheduling object resource sends to its `ATTENDEE`s (RFC

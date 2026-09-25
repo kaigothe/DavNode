@@ -435,10 +435,15 @@ export {
   type SchedulingRole,
 } from './scheduling/detect-scheduling-role.js';
 export {
+  applyNextSequence,
   buildCancelMessage,
   buildReplyMessage,
   buildRequestMessage,
 } from './scheduling/build-itip-message.js';
+export {
+  deliverOrganizerInvites,
+  type DeliverOrganizerInvitesInput,
+} from './scheduling/deliver-organizer-invites.js';
 export {
   RESERVED_CALENDAR_NAMES,
   MAX_CALENDAR_NAME_LENGTH,

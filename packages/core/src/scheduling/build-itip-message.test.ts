@@ -1,6 +1,7 @@
 import ICAL from 'ical.js';
 import { describe, expect, it } from 'vitest';
 import {
+  applyNextSequence,
   buildCancelMessage,
   buildReplyMessage,
   buildRequestMessage,
@@ -175,5 +176,48 @@ describe('buildCancelMessage', () => {
     expect(() =>
       reparse(buildCancelMessage(SINGLE_EVENT, [BOB])),
     ).not.toThrow();
+  });
+});
+
+describe('applyNextSequence', () => {
+  it("sets SEQUENCE to the old (server-known) value plus one, ignoring the client's own (stale, unchanged) value", () => {
+    // SINGLE_EVENT has SEQUENCE:2; a naive client PUTs it back unchanged.
+    const root = reparse(applyNextSequence(SINGLE_EVENT, SINGLE_EVENT));
+
+    expect(
+      root.getFirstSubcomponent('vevent')?.getFirstPropertyValue('sequence'),
+    ).toBe(3);
+  });
+
+  it('treats an absent old SEQUENCE as 0, setting it to 1', () => {
+    const withoutSequence = SINGLE_EVENT.replace('SEQUENCE:2\r\n', '');
+
+    const root = reparse(applyNextSequence(withoutSequence, withoutSequence));
+
+    expect(
+      root.getFirstSubcomponent('vevent')?.getFirstPropertyValue('sequence'),
+    ).toBe(1);
+  });
+
+  it("does not override a well-behaved client's own, already-higher SEQUENCE", () => {
+    const clientBumped = SINGLE_EVENT.replace('SEQUENCE:2', 'SEQUENCE:5');
+
+    const root = reparse(applyNextSequence(clientBumped, SINGLE_EVENT));
+
+    expect(
+      root.getFirstSubcomponent('vevent')?.getFirstPropertyValue('sequence'),
+    ).toBe(5);
+  });
+
+  it('sets the same next value on every component of a recurring series', () => {
+    const root = reparse(
+      applyNextSequence(SERIES_WITH_OVERRIDE, SERIES_WITH_OVERRIDE),
+    );
+
+    const vevents = root.getAllSubcomponents('vevent');
+    expect(vevents).toHaveLength(2);
+    for (const vevent of vevents) {
+      expect(vevent.getFirstPropertyValue('sequence')).toBe(1);
+    }
   });
 });

@@ -1,9 +1,14 @@
 import { createHash } from 'node:crypto';
 import {
+  applyNextSequence,
+  calendarUserAddressesFor,
   CalendarObjectChangedError,
+  CalendarObjectContent,
   CalendarParseError,
   CalendarUidConflictError,
   DAV_NAMESPACE,
+  deliverOrganizerInvites,
+  detectSchedulingRole,
   getEffectiveCalendarLocks,
   hasCalendarPrivilege,
   isValidCalendarObjectName,
@@ -11,6 +16,7 @@ import {
   parseCalendarObject,
   saveCalendarObject,
   toCalendarObjectUrl,
+  User,
   type CalendarAclResource,
   type DataSource,
   type ParsedCalendarObject,
@@ -155,6 +161,17 @@ function sendParseFailure(res: Response, error: CalendarParseError): void {
  *
  * PUT on the home or on a calendar itself is `405`; a path deeper than an
  * object is `409`. No quota yet (M8).
+ *
+ * **Scheduling hook** (M7, RFC 6638 §3.2.1, "Organizer-Workflow"): after
+ * a successful save, if the writer is the `ORGANIZER` of a scheduling
+ * object resource (`detectSchedulingRole`), `SEQUENCE` was set to the
+ * previously stored value plus one (`applyNextSequence`, RFC 6638
+ * §3.2.5) before the object was even stored, and
+ * `deliverOrganizerInvites` diffs the previous `ATTENDEE` list against
+ * the new one to send `REQUEST`/`CANCEL` and auto-file/update/remove
+ * each locally resolvable attendee's own calendar copy. An ordinary
+ * event (no `ORGANIZER`/`ATTENDEE`, "die meisten Termine") is completely
+ * unaffected.
  */
 export function registerCaldavPutRoute(
   app: Express,
@@ -257,7 +274,7 @@ export function registerCaldavPutRoute(
         sendCalDavPrecondition(res, 'supported-calendar-data');
         return;
       }
-      const ics = typeof req.body === 'string' ? req.body : '';
+      let ics = typeof req.body === 'string' ? req.body : '';
       let parsed: ParsedCalendarObject;
       try {
         parsed = parseCalendarObject(ics);
@@ -278,6 +295,32 @@ export function registerCaldavPutRoute(
         calendar.id,
         objectName,
       );
+
+      // Scheduling hook (RFC 6638 §3.2.1, M7 "Organizer-Workflow"): only
+      // engages for an actual scheduling object resource (ORGANIZER +
+      // ATTENDEE) whose ORGANIZER matches the writer — everything else
+      // (most events) proceeds exactly as before M7 existed.
+      const writer = await dataSource
+        .getRepository(User)
+        .findOneBy({ principalId: principal.id });
+      const writerAddresses = writer
+        ? calendarUserAddressesFor(writer, tenant)
+        : [];
+      const schedulingRole = detectSchedulingRole(ics, writerAddresses);
+      let oldIcs: string | null = null;
+      if (schedulingRole === 'organizer' && existing) {
+        const existingContent = await dataSource
+          .getRepository(CalendarObjectContent)
+          .findOneBy({ calendarObjectId: existing.id });
+        oldIcs = existingContent?.icsData ?? null;
+        if (oldIcs !== null) {
+          // RFC 6638 §3.2.5: the server MUST ensure SEQUENCE is updated
+          // whenever a scheduling object resource is re-announced.
+          ics = applyNextSequence(ics, oldIcs);
+          parsed = parseCalendarObject(ics);
+        }
+      }
+
       const ifMatch = req.header('If-Match');
       if (
         ifMatch !== undefined &&
@@ -334,6 +377,16 @@ export function registerCaldavPutRoute(
           return;
         }
         throw error;
+      }
+
+      if (schedulingRole === 'organizer') {
+        await deliverOrganizerInvites(dataSource, {
+          tenant,
+          uid: parsed.uid,
+          newIcs: ics,
+          oldIcs,
+          organizerPrincipalId: principal.id,
+        });
       }
 
       res.set('ETag', etag).sendStatus(created ? 201 : 204);
