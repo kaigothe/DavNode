@@ -6,6 +6,7 @@ import {
   parsePropfindRequestBody,
   PrincipalLiveProperties,
   PropertyProviderRegistry,
+  SchedulingPrincipalProperties,
   User,
   VirtualPrincipalCollection,
   type DataSource,
@@ -94,10 +95,7 @@ function resourceName(resource: PrincipalTreeResource): string {
 }
 
 /** The `<D:href>` for `child`, given its already-resolved parent's own href. */
-function childHref(
-  parentHref: string,
-  child: PrincipalTreeResource,
-): string {
+function childHref(parentHref: string, child: PrincipalTreeResource): string {
   return `${parentHref.replace(/\/$/, '')}/${encodeURIComponent(resourceName(child))}`;
 }
 
@@ -166,6 +164,7 @@ export function registerPrincipalsRoute(
   registry.register(new PrincipalLiveProperties());
   registry.register(new AddressbookHomeSetProperty());
   registry.register(new CalendarHomeSetProperty());
+  registry.register(new SchedulingPrincipalProperties());
 
   app.propfind(
     '/dav/:tenantSlug/principals{/*splat}',

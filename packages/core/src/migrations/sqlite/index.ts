@@ -23,6 +23,8 @@ import { CreateCalendarObjects1790247079650 } from './1790247079650-CreateCalend
 import { CreateCalendarDeadProperties1790247315148 } from './1790247315148-CreateCalendarDeadProperties.js';
 import { CreateCalendarAcesLocksChanges1790247515906 } from './1790247515906-CreateCalendarAcesLocksChanges.js';
 import { AddCalendarName1790257151802 } from './1790257151802-AddCalendarName.js';
+import { CreateSchedulingInboxItems1790317024315 } from './1790317024315-CreateSchedulingInboxItems.js';
+import { AddUserDefaultCalendar1790317314341 } from './1790317314341-AddUserDefaultCalendar.js';
 
 /**
  * Every SQLite migration in `@davnode/core`, in chronological order. Used
@@ -60,4 +62,6 @@ export const ALL_MIGRATIONS: Array<new () => MigrationInterface> = [
   CreateCalendarDeadProperties1790247315148,
   CreateCalendarAcesLocksChanges1790247515906,
   AddCalendarName1790257151802,
+  CreateSchedulingInboxItems1790317024315,
+  AddUserDefaultCalendar1790317314341,
 ];

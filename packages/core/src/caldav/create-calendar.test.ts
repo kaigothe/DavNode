@@ -8,9 +8,11 @@ import {
   CalendarProperty,
   Principal,
   Tenant,
+  User,
 } from '../entities/index.js';
 import { ALL_MIGRATIONS } from '../migrations/sqlite/index.js';
 import { isUniqueConstraintViolationError } from '../services/unique-constraint.util.js';
+import { UserService } from '../services/user.service.js';
 import { createCalendarCollection } from './create-calendar.js';
 import type { CalendarInitialization } from './mkcalendar-properties.js';
 
@@ -151,6 +153,62 @@ describe('createCalendarCollection', () => {
     expect(await dataSource.getRepository(CalendarCollection).count()).toBe(1);
     expect(await dataSource.getRepository(CalendarAce).count()).toBe(1);
     expect(await dataSource.getRepository(CalendarProperty).count()).toBe(0);
+  });
+
+  describe('User.defaultCalendarId', () => {
+    it("sets the owner's first calendar as their default calendar", async () => {
+      const user = await new UserService(dataSource).createUser({
+        tenantId: tenant.id,
+        username: 'alice',
+        email: 'alice@example.com',
+        password: 'correct horse battery staple',
+      });
+
+      const calendar = await createCalendarCollection(dataSource, {
+        tenantId: tenant.id,
+        ownerPrincipalId: user.principalId,
+        name: 'work',
+        initialization: DEFAULTS,
+      });
+
+      const reloaded = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: user.id });
+      expect(reloaded.defaultCalendarId).toBe(calendar.id);
+    });
+
+    it('does not change the default calendar for a second, later calendar', async () => {
+      const user = await new UserService(dataSource).createUser({
+        tenantId: tenant.id,
+        username: 'alice',
+        email: 'alice@example.com',
+        password: 'correct horse battery staple',
+      });
+      const first = await createCalendarCollection(dataSource, {
+        tenantId: tenant.id,
+        ownerPrincipalId: user.principalId,
+        name: 'work',
+        initialization: DEFAULTS,
+      });
+
+      await createCalendarCollection(dataSource, {
+        tenantId: tenant.id,
+        ownerPrincipalId: user.principalId,
+        name: 'personal',
+        initialization: DEFAULTS,
+      });
+
+      const reloaded = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: user.id });
+      expect(reloaded.defaultCalendarId).toBe(first.id);
+    });
+
+    it('leaves no User row untouched when the owner principal has none (e.g. a group)', async () => {
+      // Should not throw even though createCalendarCollection's UPDATE
+      // matches no User row for a bare Principal like `owner`.
+      await expect(create('work')).resolves.toBeDefined();
+    });
   });
 
   it('rolls the whole creation back when a later step fails', async () => {

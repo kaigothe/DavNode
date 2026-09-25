@@ -9,6 +9,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { bigintColumnTransformer } from './bigint-column.transformer.js';
+import { CalendarCollection } from './calendar-collection.entity.js';
 import { Principal } from './principal.entity.js';
 import { Tenant } from './tenant.entity.js';
 
@@ -95,6 +96,22 @@ export class User {
   /** Server-/tenant-admin capability level. */
   @Column({ type: 'simple-enum', enum: USER_ROLES, default: 'member' })
   role!: UserRole;
+
+  /**
+   * Id of the `CalendarCollection` incoming scheduling invites are
+   * auto-filed into (RFC 6638, M7, planning/01-decisions.md Runde 22).
+   * `null` until the user creates their first calendar — MKCALENDAR sets
+   * this automatically the first time (never again afterwards, see
+   * `mkcalendar.route.ts`), so it is always either unset or the user's
+   * oldest calendar.
+   */
+  @Column({ type: 'uuid', nullable: true })
+  defaultCalendarId!: string | null;
+
+  /** The calendar {@link User.defaultCalendarId} points to, if set. */
+  @ManyToOne(() => CalendarCollection)
+  @JoinColumn({ name: 'default_calendar_id' })
+  defaultCalendar!: CalendarCollection | null;
 
   /** Timestamp of user creation. */
   @CreateDateColumn()

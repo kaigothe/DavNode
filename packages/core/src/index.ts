@@ -119,6 +119,9 @@ export {
   PRINCIPAL_SPECIAL_KINDS,
   type PrincipalKind,
   type PrincipalSpecialKind,
+  SchedulingInboxItem,
+  SCHEDULING_METHODS,
+  type SchedulingMethod,
   Tenant,
   User,
   USER_ROLES,
@@ -418,6 +421,7 @@ export {
 } from './caldav/calendar-home-tree-resource.js';
 export { CalendarLiveProperties } from './caldav/calendar-live-properties.js';
 export { CalendarHomeSetProperty } from './caldav/calendar-home-set-property.js';
+export { SchedulingPrincipalProperties } from './caldav/scheduling-principal-properties.js';
 export {
   RESERVED_CALENDAR_NAMES,
   MAX_CALENDAR_NAME_LENGTH,
