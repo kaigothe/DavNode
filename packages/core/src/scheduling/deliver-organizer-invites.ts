@@ -1,13 +1,9 @@
-import { createHash } from 'node:crypto';
 import type { DataSource } from 'typeorm';
-import { parseCalendarObject } from '../caldav/icalendar-parser.js';
 import {
   deleteCalendarObject,
   saveCalendarObject,
 } from '../caldav/calendar-object-writes.js';
-import { CalendarObjectContent } from '../entities/calendar-object-content.entity.js';
-import { CalendarObject } from '../entities/calendar-object.entity.js';
-import { SchedulingInboxItem } from '../entities/scheduling-inbox-item.entity.js';
+import { parseCalendarObject } from '../caldav/icalendar-parser.js';
 import type { Tenant } from '../entities/tenant.entity.js';
 import { User } from '../entities/user.entity.js';
 import {
@@ -16,89 +12,16 @@ import {
 } from './build-itip-message.js';
 import {
   extractSchedulingParticipants,
-  parseSchedulingIcs,
-  resolveLocalPrincipalForAddress,
   type SchedulingAttendee,
 } from './detect-scheduling-role.js';
-
-/** SHA-256 of `text`, hex-encoded — the same scheme every write path in this server derives an ETag by. */
-function sha256(text: string): string {
-  return createHash('sha256').update(text, 'utf8').digest('hex');
-}
-
-/** Sets `address`'s `PARTSTAT` parameter to `partstat` on every `VEVENT` of `ics` that has an `ATTENDEE` matching it (case-insensitively); components without a matching `ATTENDEE` are left alone. */
-function setAttendeePartstat(
-  ics: string,
-  address: string,
-  partstat: string,
-): string {
-  const root = parseSchedulingIcs(ics);
-  const target = address.toLowerCase();
-  for (const component of root.getAllSubcomponents('vevent')) {
-    const attendee = component
-      .getAllProperties('attendee')
-      .find(
-        (property) => String(property.getFirstValue()).toLowerCase() === target,
-      );
-    attendee?.setParameter('partstat', partstat);
-  }
-  return root.toString();
-}
-
-/** Resolves `address` to the local `User` it names (not just its `Principal`), or `null` if external or unresolvable. */
-async function resolveLocalAttendeeUser(
-  dataSource: DataSource,
-  address: string,
-  tenant: Tenant,
-): Promise<User | null> {
-  const principal = await resolveLocalPrincipalForAddress(
-    dataSource.manager,
-    address,
-    tenant,
-  );
-  if (!principal) {
-    return null;
-  }
-  return dataSource
-    .getRepository(User)
-    .findOneBy({ principalId: principal.id });
-}
-
-/** Inserts one delivered iTIP message into `recipient`'s scheduling inbox. */
-async function insertInboxItem(
-  dataSource: DataSource,
-  tenant: Tenant,
-  recipient: User,
-  method: 'REQUEST' | 'CANCEL',
-  uid: string,
-  icsData: string,
-): Promise<void> {
-  const items = dataSource.getRepository(SchedulingInboxItem);
-  await items.save(
-    items.create({
-      tenantId: tenant.id,
-      ownerPrincipalId: recipient.principalId,
-      icsData,
-      method,
-      uid,
-      etag: sha256(icsData),
-    }),
-  );
-}
-
-/** The `CalendarObject` an attendee already auto-filed for `uid` in their default calendar, or `null` if they have no default calendar yet or never got one filed. */
-async function findAttendeeCopy(
-  dataSource: DataSource,
-  attendee: User,
-  uid: string,
-): Promise<CalendarObject | null> {
-  if (!attendee.defaultCalendarId) {
-    return null;
-  }
-  return dataSource
-    .getRepository(CalendarObject)
-    .findOneBy({ calendarId: attendee.defaultCalendarId, uid });
-}
+import {
+  findOwnCalendarObjectCopy,
+  icsDataOf,
+  insertInboxItem,
+  resolveLocalUser,
+  setAttendeePartstat,
+  sha256,
+} from './scheduling-write-helpers.js';
 
 /**
  * Delivers a `REQUEST` to `attendee` — a new invite or an update to one
@@ -134,15 +57,18 @@ async function deliverRequest(
   if (!attendee.defaultCalendarId) {
     return;
   }
-  const existingCopy = await findAttendeeCopy(dataSource, attendee, uid);
+  const existingCopy = await findOwnCalendarObjectCopy(
+    dataSource,
+    attendee,
+    uid,
+    attendee.defaultCalendarId,
+  );
 
   let partstat = 'NEEDS-ACTION';
   if (preserveOwnPartstat && existingCopy) {
-    const existingContent = await dataSource
-      .getRepository(CalendarObjectContent)
-      .findOneBy({ calendarObjectId: existingCopy.id });
-    const ownAttendee: SchedulingAttendee | undefined = existingContent
-      ? extractSchedulingParticipants(existingContent.icsData).attendees.find(
+    const existingIcs = await icsDataOf(dataSource, existingCopy);
+    const ownAttendee: SchedulingAttendee | undefined = existingIcs
+      ? extractSchedulingParticipants(existingIcs).attendees.find(
           (candidate) =>
             candidate.address.toLowerCase() === attendeeAddress.toLowerCase(),
         )
@@ -187,8 +113,16 @@ async function deliverCancel(
     buildCancelMessage(organizerOldIcs, [attendeeAddress]),
   );
 
-  const existingCopy = await findAttendeeCopy(dataSource, attendee, uid);
-  if (existingCopy && attendee.defaultCalendarId) {
+  if (!attendee.defaultCalendarId) {
+    return;
+  }
+  const existingCopy = await findOwnCalendarObjectCopy(
+    dataSource,
+    attendee,
+    uid,
+    attendee.defaultCalendarId,
+  );
+  if (existingCopy) {
     await deleteCalendarObject(dataSource, {
       calendarId: attendee.defaultCalendarId,
       object: existingCopy,
@@ -210,7 +144,7 @@ export interface DeliverOrganizerInvitesInput {
   tenant: Tenant;
   /** The event's `UID`, shared by the organizer's object and every attendee's auto-filed copy. */
   uid: string;
-  /** The organizer's own event text as just stored (`SEQUENCE` already bumped for an update, see `bumpSequence`). */
+  /** The organizer's own event text as just stored (`SEQUENCE` already applied for an update, see `applyNextSequence`). */
   newIcs: string;
   /** The organizer's event text before this write, or `null` for a brand-new object. */
   oldIcs: string | null;
@@ -251,11 +185,7 @@ export async function deliverOrganizerInvites(
     : new Map<string, SchedulingAttendee>();
 
   for (const [key, attendee] of newByAddress) {
-    const user = await resolveLocalAttendeeUser(
-      dataSource,
-      attendee.address,
-      tenant,
-    );
+    const user = await resolveLocalUser(dataSource, attendee.address, tenant);
     if (!user || user.principalId === organizerPrincipalId) {
       continue;
     }
@@ -277,11 +207,7 @@ export async function deliverOrganizerInvites(
     if (newByAddress.has(key)) {
       continue;
     }
-    const user = await resolveLocalAttendeeUser(
-      dataSource,
-      attendee.address,
-      tenant,
-    );
+    const user = await resolveLocalUser(dataSource, attendee.address, tenant);
     if (!user || user.principalId === organizerPrincipalId) {
       continue;
     }

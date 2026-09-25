@@ -445,6 +445,14 @@ export {
   type DeliverOrganizerInvitesInput,
 } from './scheduling/deliver-organizer-invites.js';
 export {
+  deliverAttendeeReply,
+  type DeliverAttendeeReplyInput,
+} from './scheduling/deliver-attendee-reply.js';
+export {
+  mergeReplyIntoOrganizerCopy,
+  type MergeReplyIntoOrganizerCopyInput,
+} from './scheduling/merge-reply-into-organizer-copy.js';
+export {
   RESERVED_CALENDAR_NAMES,
   MAX_CALENDAR_NAME_LENGTH,
   isValidCalendarName,

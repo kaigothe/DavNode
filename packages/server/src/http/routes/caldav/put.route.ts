@@ -7,6 +7,7 @@ import {
   CalendarParseError,
   CalendarUidConflictError,
   DAV_NAMESPACE,
+  deliverAttendeeReply,
   deliverOrganizerInvites,
   detectSchedulingRole,
   getEffectiveCalendarLocks,
@@ -162,16 +163,23 @@ function sendParseFailure(res: Response, error: CalendarParseError): void {
  * PUT on the home or on a calendar itself is `405`; a path deeper than an
  * object is `409`. No quota yet (M8).
  *
- * **Scheduling hook** (M7, RFC 6638 §3.2.1, "Organizer-Workflow"): after
- * a successful save, if the writer is the `ORGANIZER` of a scheduling
- * object resource (`detectSchedulingRole`), `SEQUENCE` was set to the
- * previously stored value plus one (`applyNextSequence`, RFC 6638
- * §3.2.5) before the object was even stored, and
- * `deliverOrganizerInvites` diffs the previous `ATTENDEE` list against
- * the new one to send `REQUEST`/`CANCEL` and auto-file/update/remove
- * each locally resolvable attendee's own calendar copy. An ordinary
- * event (no `ORGANIZER`/`ATTENDEE`, "die meisten Termine") is completely
- * unaffected.
+ * **Scheduling hook** (M7, RFC 6638 §3.2.1/§3.2.2, "Organizer-"/
+ * "Attendee-Workflow"): after a successful save, `detectSchedulingRole`
+ * decides which side of the event the writer is on:
+ *
+ * - `ORGANIZER` — `SEQUENCE` was set to the previously stored value plus
+ *   one (`applyNextSequence`, RFC 6638 §3.2.5) before the object was
+ *   even stored, and `deliverOrganizerInvites` diffs the previous
+ *   `ATTENDEE` list against the new one to send `REQUEST`/`CANCEL` and
+ *   auto-file/update/remove each locally resolvable attendee's own
+ *   calendar copy;
+ * - `ATTENDEE` — `deliverAttendeeReply` compares the writer's own
+ *   `PARTSTAT` before and after; only an actual change sends a `REPLY`
+ *   to a locally resolvable `ORGANIZER` and merges it into their own
+ *   copy (a private-note-only edit, say, delivers nothing).
+ *
+ * An ordinary event (no `ORGANIZER`/`ATTENDEE`, "die meisten Termine")
+ * is completely unaffected.
  */
 export function registerCaldavPutRoute(
   app: Express,
@@ -296,10 +304,11 @@ export function registerCaldavPutRoute(
         objectName,
       );
 
-      // Scheduling hook (RFC 6638 §3.2.1, M7 "Organizer-Workflow"): only
-      // engages for an actual scheduling object resource (ORGANIZER +
-      // ATTENDEE) whose ORGANIZER matches the writer — everything else
-      // (most events) proceeds exactly as before M7 existed.
+      // Scheduling hook (RFC 6638 §3.2.1/§3.2.2, M7 "Organizer-"/
+      // "Attendee-Workflow"): only engages for an actual scheduling
+      // object resource (ORGANIZER + ATTENDEE) whose ORGANIZER or one of
+      // its ATTENDEEs matches the writer — everything else (most events)
+      // proceeds exactly as before M7 existed.
       const writer = await dataSource
         .getRepository(User)
         .findOneBy({ principalId: principal.id });
@@ -308,12 +317,15 @@ export function registerCaldavPutRoute(
         : [];
       const schedulingRole = detectSchedulingRole(ics, writerAddresses);
       let oldIcs: string | null = null;
-      if (schedulingRole === 'organizer' && existing) {
+      if (
+        (schedulingRole === 'organizer' || schedulingRole === 'attendee') &&
+        existing
+      ) {
         const existingContent = await dataSource
           .getRepository(CalendarObjectContent)
           .findOneBy({ calendarObjectId: existing.id });
         oldIcs = existingContent?.icsData ?? null;
-        if (oldIcs !== null) {
+        if (schedulingRole === 'organizer' && oldIcs !== null) {
           // RFC 6638 §3.2.5: the server MUST ensure SEQUENCE is updated
           // whenever a scheduling object resource is re-announced.
           ics = applyNextSequence(ics, oldIcs);
@@ -386,6 +398,14 @@ export function registerCaldavPutRoute(
           newIcs: ics,
           oldIcs,
           organizerPrincipalId: principal.id,
+        });
+      } else if (schedulingRole === 'attendee' && oldIcs !== null) {
+        await deliverAttendeeReply(dataSource, {
+          tenant,
+          uid: parsed.uid,
+          newIcs: ics,
+          oldIcs,
+          writerAddresses,
         });
       }
 
