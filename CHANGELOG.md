@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/kaigothe/DavNode/compare/v1.18.0...v1.19.0) (2026-09-25)
+
+
+### Features
+
+* **core:** add M7 scheduling data model (inbox items, default calendar, principal properties) ([c6994a6](https://github.com/kaigothe/DavNode/commit/c6994a6b982243a283f5a28b4698edcf66cb5756))
+
 # [1.18.0](https://github.com/kaigothe/DavNode/compare/v1.17.0...v1.18.0) (2026-09-25)
 
 
