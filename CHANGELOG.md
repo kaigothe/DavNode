@@ -1,3 +1,10 @@
+# [1.18.0](https://github.com/kaigothe/DavNode/compare/v1.17.0...v1.18.0) (2026-09-25)
+
+
+### Features
+
+* **server:** add read-only ICS feed export per calendar ([44809e4](https://github.com/kaigothe/DavNode/commit/44809e478a910c199420db36256993389f50d09d))
+
 # [1.17.0](https://github.com/kaigothe/DavNode/compare/v1.16.0...v1.17.0) (2026-09-25)
 
 
