@@ -421,7 +421,24 @@ export {
 } from './caldav/calendar-home-tree-resource.js';
 export { CalendarLiveProperties } from './caldav/calendar-live-properties.js';
 export { CalendarHomeSetProperty } from './caldav/calendar-home-set-property.js';
-export { SchedulingPrincipalProperties } from './caldav/scheduling-principal-properties.js';
+export {
+  calendarUserAddressesFor,
+  SchedulingPrincipalProperties,
+} from './scheduling/scheduling-principal-properties.js';
+export {
+  detectSchedulingRole,
+  extractSchedulingParticipants,
+  resolveLocalPrincipalForAddress,
+  schedulingComponentOf,
+  type SchedulingAttendee,
+  type SchedulingParticipants,
+  type SchedulingRole,
+} from './scheduling/detect-scheduling-role.js';
+export {
+  buildCancelMessage,
+  buildReplyMessage,
+  buildRequestMessage,
+} from './scheduling/build-itip-message.js';
 export {
   RESERVED_CALENDAR_NAMES,
   MAX_CALENDAR_NAME_LENGTH,

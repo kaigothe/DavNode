@@ -10,7 +10,10 @@ import {
 } from '../entities/index.js';
 import { ALL_MIGRATIONS } from '../migrations/sqlite/index.js';
 import type { PropertyProviderContext } from '../webdav/properties/property-provider.interface.js';
-import { SchedulingPrincipalProperties } from './scheduling-principal-properties.js';
+import {
+  calendarUserAddressesFor,
+  SchedulingPrincipalProperties,
+} from './scheduling-principal-properties.js';
 
 describe('SchedulingPrincipalProperties', () => {
   let dataSource: DataSource;
@@ -124,5 +127,16 @@ describe('SchedulingPrincipalProperties', () => {
         'calendar-home-set',
       ),
     ).toBe(false);
+  });
+});
+
+describe('calendarUserAddressesFor', () => {
+  it("returns the user's principal URL and mailto: address", () => {
+    expect(
+      calendarUserAddressesFor(
+        { principalId: 'u1', email: 'alice@example.com' },
+        { slug: 'acme' },
+      ),
+    ).toEqual(['/dav/acme/principals/users/u1', 'mailto:alice@example.com']);
   });
 });

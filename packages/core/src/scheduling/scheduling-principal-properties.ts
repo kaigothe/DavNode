@@ -1,4 +1,6 @@
 import { fragment } from 'xmlbuilder2';
+import { CALDAV_NAMESPACE } from '../caldav/caldav-namespace.js';
+import { toCalendarHomeUrl } from '../caldav/calendar-home-url.js';
 import { User } from '../entities/user.entity.js';
 import type { PrincipalTreeResource } from '../principals/principal-tree-resource.js';
 import { DAV_NAMESPACE } from '../webdav/xml/request-parser.js';
@@ -7,8 +9,6 @@ import type {
   PropertyProviderContext,
   PropertyValue,
 } from '../webdav/properties/property-provider.interface.js';
-import { CALDAV_NAMESPACE } from './caldav-namespace.js';
-import { toCalendarHomeUrl } from './calendar-home-url.js';
 
 const LIVE_PROPERTY_NAMES = new Set([
   'schedule-inbox-URL',
@@ -22,6 +22,24 @@ function hrefValue(url: string): string {
 
 function property(name: string, value: string): PropertyValue {
   return { namespace: CALDAV_NAMESPACE, name, value };
+}
+
+/**
+ * The calendar user addresses (RFC 6638 §2.4.1) that identify `user` in
+ * `ORGANIZER`/`ATTENDEE` property values: their own principal URL and
+ * their `mailto:` address — the same pair
+ * `CALDAV:calendar-user-address-set` (below) reports over PROPFIND.
+ * Shared with `detect-scheduling-role.ts`, so a change to how these are
+ * built (e.g. a future secondary email) can't make the two drift apart.
+ */
+export function calendarUserAddressesFor(
+  user: { principalId: string; email: string },
+  tenant: { slug: string },
+): [principalUrl: string, mailtoAddress: string] {
+  return [
+    `/dav/${tenant.slug}/principals/users/${user.principalId}`,
+    `mailto:${user.email}`,
+  ];
 }
 
 /**
@@ -51,13 +69,16 @@ export class SchedulingPrincipalProperties implements PropertyProvider<Principal
       return [];
     }
     const homeUrl = toCalendarHomeUrl(resource.principalId, context.tenant);
-    const principalUrl = `/dav/${context.tenant.slug}/principals/users/${resource.principalId}`;
+    const [principalUrl, mailtoAddress] = calendarUserAddressesFor(
+      resource,
+      context.tenant,
+    );
     return [
       property('schedule-inbox-URL', hrefValue(`${homeUrl}/inbox/`)),
       property('schedule-outbox-URL', hrefValue(`${homeUrl}/outbox/`)),
       property(
         'calendar-user-address-set',
-        hrefValue(principalUrl) + hrefValue(`mailto:${resource.email}`),
+        hrefValue(principalUrl) + hrefValue(mailtoAddress),
       ),
     ];
   }
