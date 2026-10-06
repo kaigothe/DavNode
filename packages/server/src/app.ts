@@ -1,3 +1,4 @@
+import { createAdminRouter } from '@davnode/admin-api';
 import {
   AddressbookMultigetReportHandler,
   AddressbookQueryReportHandler,
@@ -76,9 +77,20 @@ export function createApp(dataSource: DataSource): express.Express {
   // Every DAV route lives under /dav/{tenantSlug}/... (path-prefix
   // tenancy) and needs the resolved Tenant before anything else runs —
   // including the auth middleware mounted right after, since usernames
-  // are only unique per tenant.
-  app.use('/dav/:tenantSlug', createTenantResolutionMiddleware(dataSource));
-  app.use('/dav/:tenantSlug', createBasicAuthMiddleware(dataSource));
+  // are only unique per tenant. The Admin API (M9) reuses these same
+  // two middleware *instances* on /admin/{tenantSlug}/... rather than
+  // creating its own — planning/04-architecture.md's own mounting
+  // instruction, and @davnode/admin-api's router.ts never resolves a
+  // tenant or authenticates a request itself.
+  const tenantResolution = createTenantResolutionMiddleware(dataSource);
+  const basicAuth = createBasicAuthMiddleware(dataSource);
+
+  app.use('/dav/:tenantSlug', tenantResolution);
+  app.use('/dav/:tenantSlug', basicAuth);
+
+  app.use('/admin/:tenantSlug', tenantResolution);
+  app.use('/admin/:tenantSlug', basicAuth);
+  app.use('/admin/:tenantSlug', createAdminRouter(dataSource));
 
   // ACL authorization (the real RFC 3744 evaluation engine, replacing
   // M2's owner-only placeholder — milestones/M3-webdav-acl/

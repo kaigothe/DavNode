@@ -11,6 +11,10 @@
     "test": "vitest run --root ../.. --project \"$npm_package_name\""
   },
   "dependencies": {
-    "@davnode/core": "*"
+    "@davnode/core": "*",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6"
   }
 }
