@@ -1,6 +1,11 @@
 import type { Server } from 'node:http';
 import { pathToFileURL } from 'node:url';
-import { createDataSource, type DataSource } from '@davnode/core';
+import {
+  createDataSource,
+  startQuotaReconciliationCron,
+  type DataSource,
+  type ScheduledTask,
+} from '@davnode/core';
 import { createApp } from './app.js';
 
 /** Default HTTP port, used when `DAVNODE_HTTP_PORT` isn't set. */
@@ -15,10 +20,11 @@ export interface StartServerOptions {
   env?: NodeJS.ProcessEnv;
 }
 
-/** A started server and the DataSource backing it, so both can be closed together. */
+/** A started server, the DataSource backing it, and its in-process quota reconciliation job, so all three can be closed together. */
 export interface RunningServer {
   server: Server;
   dataSource: DataSource;
+  quotaReconciliationTask: ScheduledTask;
 }
 
 /**
@@ -29,8 +35,15 @@ export interface RunningServer {
  * sequence and its failure mode are directly testable, without spawning
  * a real process.
  *
+ * Also starts the quota reconciliation cron job (M8, planning/01-
+ * decisions.md Runde 16 — in-process, no separate cron container),
+ * against the same `DataSource` the HTTP server uses:
+ * `DAVNODE_QUOTA_RECONCILE_CRON` overrides its schedule (default daily),
+ * read as a plain cron expression rather than parsed any further here.
+ *
  * @param options - See {@link StartServerOptions}.
- * @returns The running HTTP server and its DataSource, once both are up.
+ * @returns The running HTTP server, its DataSource, and its quota
+ * reconciliation task, once all are up.
  * @throws Whatever `DataSource.initialize()` throws if the database
  * connection fails; the server is never started in that case.
  */
@@ -55,20 +68,28 @@ export async function startServer(
     httpServer.once('error', reject);
   });
 
-  return { server, dataSource };
+  const quotaReconciliationTask = startQuotaReconciliationCron(
+    dataSource,
+    env.DAVNODE_QUOTA_RECONCILE_CRON,
+  );
+
+  return { server, dataSource, quotaReconciliationTask };
 }
 
 /**
- * Shuts a {@link RunningServer} down: stops the HTTP server from
- * accepting new connections and waits for in-flight requests to finish,
- * then closes the database connection — the reverse of `startServer`'s
- * startup order. Exported separately so it's directly testable without
- * sending a real OS signal to a real process.
+ * Shuts a {@link RunningServer} down: stops the quota reconciliation
+ * cron job, stops the HTTP server from accepting new connections and
+ * waits for in-flight requests to finish, then closes the database
+ * connection — the reverse of `startServer`'s startup order. Exported
+ * separately so it's directly testable without sending a real OS signal
+ * to a real process.
  */
 export async function shutdown({
   server,
   dataSource,
+  quotaReconciliationTask,
 }: RunningServer): Promise<void> {
+  await quotaReconciliationTask.stop();
   await new Promise<void>((resolve, reject) => {
     server.close((error) => {
       if (error) {

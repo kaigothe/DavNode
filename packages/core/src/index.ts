@@ -175,6 +175,12 @@ export {
   type QuotaLevel,
 } from './quota/apply-quota-delta.js';
 export { QuotaPropertiesProvider } from './quota/quota-properties-provider.js';
+export { recomputeQuotaForTenant } from './quota/recompute-quota.js';
+export {
+  reconcileAllTenants,
+  startQuotaReconciliationCron,
+} from './cli/quota-reconciliation-cron.js';
+export type { ScheduledTask } from 'node-cron';
 
 export {
   type MultistatusPropertyResult,

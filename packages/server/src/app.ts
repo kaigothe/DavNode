@@ -45,6 +45,7 @@ import { registerPrincipalsRoute } from './http/routes/principals.route.js';
 import { registerPropfindRoute } from './http/routes/propfind.route.js';
 import { registerProppatchRoute } from './http/routes/proppatch.route.js';
 import { registerPutRoute } from './http/routes/put.route.js';
+import { registerQuotaRecomputeRoute } from './http/routes/quota-recompute.route.js';
 import { registerReportRoute } from './http/routes/report.route.js';
 import { registerInboxRoute } from './http/routes/scheduling/inbox.route.js';
 import { registerOutboxPostRoute } from './http/routes/scheduling/outbox-post.route.js';
@@ -125,6 +126,7 @@ export function createApp(dataSource: DataSource): express.Express {
   registerCarddavDeleteRoute(app, dataSource);
   registerCarddavLockRoute(app, dataSource);
   registerCarddavUnlockRoute(app, dataSource);
+  registerQuotaRecomputeRoute(app, dataSource);
 
   // REPORT handlers register themselves into this registry — see
   // report.route.ts.
