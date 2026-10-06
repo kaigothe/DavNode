@@ -167,6 +167,7 @@ export {
   GroupService,
 } from './services/group.service.js';
 export { GroupMembershipService } from './services/group-membership.service.js';
+export { requireRole } from './services/authorization/require-role.js';
 
 export {
   applyQuotaDelta,

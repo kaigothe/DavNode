@@ -1,5 +1,6 @@
 import {
   recomputeQuotaForTenant,
+  requireRole,
   Tenant,
   User,
   type DataSource,
@@ -16,25 +17,29 @@ import { requirePrincipal, requireTenant } from './dav-request.util.js';
  * every updated counter.
  *
  * **Authorization**: requires the requesting principal's own `User.role`
- * to be `'tenant_admin'` or `'server_admin'`, else `403`. The sub-task's
- * own doc describes this as a brand-new `User.isAdmin` placeholder
- * boolean (Runde 23) — but by the time this Große Aufgabe was actually
- * built, `User.role` already carried Runde 24's real
+ * to rank at least `'tenant_admin'` (`requireRole`), else `403`. M8's
+ * own sub-task doc describes this as a brand-new `User.isAdmin`
+ * placeholder boolean (Runde 23) — but by the time this Große Aufgabe
+ * was actually built, `User.role` already carried Runde 24's real
  * `'member' | 'tenant_admin' | 'server_admin'` values (see
  * `cli/bootstrap.ts`, which has set `role: 'server_admin'` on a tenant's
  * first user since M1). Per that sub-task's own Nachtrag — "wird die
  * Roadmap linear umgesetzt, kann dieser Übergangs-Endpunkt übersprungen
- * und direkt der M9-Endpunkt gebaut werden" — the real `role` check is
- * used directly instead, with no `isAdmin` column ever added and no
- * `// TODO(M9)` needed: there is nothing left for M9 to replace here.
+ * und direkt der M9-Endpunkt gebaut werden" — the real `role` check was
+ * used directly from the start, with no `isAdmin` column ever added.
+ * `requireRole` itself only exists as of M9 Große Aufgabe 1 (Rollenmodell,
+ * `services/authorization/require-role.ts`) — this route's own role
+ * check was retrofitted onto it per that same Große Aufgabe's own
+ * instruction, rather than kept as a locally-duplicated comparison.
  *
- * Still a pragmatic placeholder in the sense the sub-task intends: a
- * plain Basic-Auth-protected DAV-adjacent route, not a real Admin API
- * (M9) with its own permission model — `{tenantSlug}` in the URL is the
- * requester's own tenant (resolved by the same tenant-resolution
- * middleware every other route uses), so a `tenant_admin` can only ever
- * reconcile their own tenant through this endpoint regardless of what a
- * `server_admin`'s role might allow elsewhere.
+ * Still a pragmatic placeholder in the sense the M8 sub-task intends: a
+ * plain Basic-Auth-protected DAV-adjacent route, not the real Admin API
+ * (M9 Große Aufgabe 6, Quota-Management) that will eventually replace
+ * it — `{tenantSlug}` in the URL is the requester's own tenant (resolved
+ * by the same tenant-resolution middleware every other route uses), so
+ * a `tenant_admin` can only ever reconcile their own tenant through
+ * this endpoint regardless of what a `server_admin`'s role might allow
+ * elsewhere.
  *
  * Responds `200` with the tenant's own new `quotaUsedBytes` and every
  * one of its users' new `quotaUsedBytes`, read back after
@@ -53,10 +58,7 @@ export function registerQuotaRecomputeRoute(
       const requester = await dataSource
         .getRepository(User)
         .findOneBy({ principalId: principal.id });
-      if (
-        !requester ||
-        (requester.role !== 'tenant_admin' && requester.role !== 'server_admin')
-      ) {
+      if (!requester || !requireRole(requester, 'tenant_admin')) {
         res.sendStatus(403);
         return;
       }
