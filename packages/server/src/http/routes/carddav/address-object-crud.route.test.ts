@@ -12,11 +12,11 @@ import {
   AddressObjectProperty,
   createDataSource,
   createOwnerAllAce,
+  Tenant,
   TenantService,
+  User,
   UserService,
   type DataSource,
-  type Tenant,
-  type User,
 } from '@davnode/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../../app.js';
@@ -385,5 +385,116 @@ describe('CardDAV AddressObject CRUD routes', () => {
       username: 'bob',
     });
     expect(stillDeniedForWrite.status).toBe(403);
+  });
+
+  describe('quota (M8)', () => {
+    it('rejects a new contact that would exceed the limit with 507, creating nothing', async () => {
+      await new UserService(dataSource).updateUserQuota(alice.id, {
+        quotaLimitBytes: 3,
+      });
+      const body = vcard('uid-1');
+
+      const response = await put('forrest.vcf', { body });
+
+      expect(response.status).toBe(507);
+      expect(
+        await dataSource
+          .getRepository(AddressObject)
+          .findOneBy({ addressbookId: addressbook.id, name: 'forrest.vcf' }),
+      ).toBeNull();
+      const reloaded = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      expect(reloaded.quotaUsedBytes).toBe(0);
+    });
+
+    it('increments both User and Tenant counters by the UTF-8 byte length on creation', async () => {
+      const body = vcard('uid-1');
+
+      const response = await put('forrest.vcf', { body });
+
+      expect(response.status).toBe(201);
+      const reloadedUser = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      const reloadedTenant = await dataSource
+        .getRepository(Tenant)
+        .findOneByOrFail({ id: tenant.id });
+      expect(reloadedUser.quotaUsedBytes).toBe(Buffer.byteLength(body, 'utf8'));
+      expect(reloadedTenant.quotaUsedBytes).toBe(
+        Buffer.byteLength(body, 'utf8'),
+      );
+    });
+
+    it('reduces quota_used_bytes by the exact byte length on deletion', async () => {
+      const body = vcard('uid-1');
+      await put('forrest.vcf', { body });
+
+      const response = await del('forrest.vcf');
+
+      expect(response.status).toBe(204);
+      const reloaded = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      expect(reloaded.quotaUsedBytes).toBe(0);
+    });
+
+    it('counts a multi-byte UTF-8 vCard by its byte length, not its character count', async () => {
+      // 'ü' is 1 UTF-16 code unit (JS string .length) but 2 UTF-8 bytes.
+      const body = vcard('uid-1', 'Jürgen Müller');
+      expect(Buffer.byteLength(body, 'utf8')).toBeGreaterThan(body.length);
+
+      const response = await put('forrest.vcf', { body });
+
+      expect(response.status).toBe(201);
+      const reloaded = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      expect(reloaded.quotaUsedBytes).toBe(Buffer.byteLength(body, 'utf8'));
+      expect(reloaded.quotaUsedBytes).not.toBe(body.length);
+    });
+
+    it('charges an overwrite to the existing contact’s owner, not a different writer granted write-content', async () => {
+      const bob = await new UserService(dataSource).createUser({
+        tenantId: tenant.id,
+        username: 'bob',
+        email: 'bob@example.com',
+        password: PASSWORD,
+      });
+      const original = vcard('uid-1');
+      await put('forrest.vcf', { body: original });
+      await dataSource.getRepository(AddressObjectAce).save(
+        dataSource.getRepository(AddressObjectAce).create({
+          addressObjectId: (
+            await dataSource.getRepository(AddressObject).findOneByOrFail({
+              addressbookId: addressbook.id,
+              name: 'forrest.vcf',
+            })
+          ).id,
+          principalId: bob.principalId,
+          privilege: 'write-content',
+          grantDeny: 'grant',
+          position: 1,
+        }),
+      );
+
+      const replacement = vcard('uid-1', 'Someone Else');
+      const response = await put('forrest.vcf', {
+        body: replacement,
+        username: 'bob',
+      });
+
+      expect(response.status).toBe(204);
+      const reloadedAlice = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      const reloadedBob = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: bob.id });
+      expect(reloadedAlice.quotaUsedBytes).toBe(
+        Buffer.byteLength(replacement, 'utf8'),
+      );
+      expect(reloadedBob.quotaUsedBytes).toBe(0);
+    });
   });
 });

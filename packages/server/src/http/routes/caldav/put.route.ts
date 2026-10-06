@@ -15,6 +15,7 @@ import {
   isValidCalendarObjectName,
   MAX_CALENDAR_OBJECT_BYTES,
   parseCalendarObject,
+  QuotaExceededError,
   saveCalendarObject,
   toCalendarObjectUrl,
   User,
@@ -40,6 +41,7 @@ import {
   requirePrincipal,
   requireTenant,
 } from '../dav-request.util.js';
+import { sendQuotaExceededResponse } from '../quota-error.util.js';
 import {
   resolveCalendar,
   resolveCalendarObject,
@@ -161,7 +163,13 @@ function sendParseFailure(res: Response, error: CalendarParseError): void {
  * not `423`.
  *
  * PUT on the home or on a calendar itself is `405`; a path deeper than an
- * object is `409`. No quota yet (M8).
+ * object is `409`.
+ *
+ * **Quota** (M8): `saveCalendarObject` itself runs `applyQuotaDelta`
+ * inside its own transaction — a `QuotaExceededError` here means `507`.
+ * Since M7's own auto-filing/reply-merge code calls that same function
+ * directly (never through this route), an attendee's auto-filed invite
+ * copy is already covered without a separate case.
  *
  * **Scheduling hook** (M7, RFC 6638 §3.2.1/§3.2.2, "Organizer-"/
  * "Attendee-Workflow"): after a successful save, `detectSchedulingRole`
@@ -386,6 +394,10 @@ export function registerCaldavPutRoute(
         }
         if (error instanceof CalendarObjectChangedError) {
           res.sendStatus(412);
+          return;
+        }
+        if (error instanceof QuotaExceededError) {
+          sendQuotaExceededResponse(res, error);
           return;
         }
         throw error;

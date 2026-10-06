@@ -11,10 +11,11 @@ import {
   CalendarObjectContent,
   CalendarObjectLock,
   CalendarObjectProperty,
-  Principal,
   Tenant,
+  User,
 } from '../entities/index.js';
 import { ALL_MIGRATIONS } from '../migrations/sqlite/index.js';
+import { UserService } from '../services/user.service.js';
 import {
   CalendarObjectChangedError,
   CalendarUidConflictError,
@@ -72,7 +73,7 @@ const SERIES = [
 describe('calendar object writes', () => {
   let dataSource: DataSource;
   let tenant: Tenant;
-  let owner: Principal;
+  let owner: User;
   let calendar: CalendarCollection;
 
   beforeEach(async () => {
@@ -90,13 +91,12 @@ describe('calendar object writes', () => {
           .getRepository(Tenant)
           .create({ slug: 'acme', name: 'Acme Inc.' }),
       );
-    owner = await dataSource
-      .getRepository(Principal)
-      .save(
-        dataSource
-          .getRepository(Principal)
-          .create({ tenantId: tenant.id, kind: 'user', specialKind: null }),
-      );
+    owner = await new UserService(dataSource).createUser({
+      tenantId: tenant.id,
+      username: 'alice',
+      email: 'alice@example.com',
+      password: 'correct horse battery staple',
+    });
     calendar = await newCalendar('work');
   });
 
@@ -108,7 +108,7 @@ describe('calendar object writes', () => {
     return dataSource.getRepository(CalendarCollection).save(
       dataSource.getRepository(CalendarCollection).create({
         tenantId: tenant.id,
-        ownerPrincipalId: owner.id,
+        ownerPrincipalId: owner.principalId,
         name,
         displayName: name,
       }),
@@ -128,7 +128,7 @@ describe('calendar object writes', () => {
       tenantId: tenant.id,
       calendarId: options.calendarId ?? calendar.id,
       name,
-      ownerPrincipalId: owner.id,
+      ownerPrincipalId: owner.principalId,
       ics,
       parsed: parseCalendarObject(ics),
       etag: etagOf(ics),
@@ -158,7 +158,7 @@ describe('calendar object writes', () => {
         uid: 'uid-1',
         etag: etagOf(ics),
         componentType: 'VEVENT',
-        ownerPrincipalId: owner.id,
+        ownerPrincipalId: owner.principalId,
         isAllDay: false,
       });
       expect(stored.dtstart.toISOString()).toBe('2026-09-24T10:00:00.000Z');
@@ -178,7 +178,7 @@ describe('calendar object writes', () => {
           .findBy({ calendarObjectId: object.id }),
       ).toEqual([
         expect.objectContaining({
-          principalId: owner.id,
+          principalId: owner.principalId,
           privilege: 'all',
           grantDeny: 'grant',
           protected: true,
@@ -411,7 +411,7 @@ describe('calendar object writes', () => {
       await dataSource.getRepository(CalendarObjectLock).save(
         dataSource.getRepository(CalendarObjectLock).create({
           calendarObjectId: object.id,
-          principalId: owner.id,
+          principalId: owner.principalId,
           token: 'urn:uuid:11111111-1111-1111-1111-111111111111',
           scope: 'exclusive',
           timeoutSeconds: null,

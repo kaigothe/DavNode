@@ -9,14 +9,15 @@ import {
   CalendarObjectAce,
   CalendarObjectContent,
   CalendarObjectProperty,
+  createCalendarCollection,
   createDataSource,
   createOwnerAllAce,
   MAX_CALENDAR_OBJECT_BYTES,
+  Tenant,
   TenantService,
+  User,
   UserService,
   type DataSource,
-  type Tenant,
-  type User,
 } from '@davnode/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { create } from 'xmlbuilder2';
@@ -868,6 +869,140 @@ describe('calendar object CRUD routes', () => {
 
       expect(response.status).toBe(404);
       expect(await objects().count()).toBe(1);
+    });
+  });
+
+  describe('quota (M8)', () => {
+    it('rejects a new event that would exceed the limit with 507, creating nothing', async () => {
+      await new UserService(dataSource).updateUserQuota(alice.id, {
+        quotaLimitBytes: 3,
+      });
+      const ics = event('uid-1');
+
+      const response = await put(url('event.ics'), ics);
+
+      expect(response.status).toBe(507);
+      expect(await objects().count()).toBe(0);
+      const reloaded = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      expect(reloaded.quotaUsedBytes).toBe(0);
+    });
+
+    it('increments both User and Tenant counters by the whole VCALENDAR wrapper on creation', async () => {
+      const ics = event('uid-1');
+
+      const response = await put(url('event.ics'), ics);
+
+      expect(response.status).toBe(201);
+      const reloadedUser = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      const reloadedTenant = await dataSource
+        .getRepository(Tenant)
+        .findOneByOrFail({ id: tenant.id });
+      expect(reloadedUser.quotaUsedBytes).toBe(Buffer.byteLength(ics, 'utf8'));
+      expect(reloadedTenant.quotaUsedBytes).toBe(
+        Buffer.byteLength(ics, 'utf8'),
+      );
+    });
+
+    it('reduces quota_used_bytes by the whole object, including every RECURRENCE-ID override, on deletion', async () => {
+      await put(url('series.ics'), SERIES);
+
+      const response = await request('DELETE', url('series.ics'));
+
+      expect(response.status).toBe(204);
+      const reloaded = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      expect(reloaded.quotaUsedBytes).toBe(0);
+    });
+
+    it('charges an overwrite to the existing event’s owner, not a different writer granted write-content', async () => {
+      const bob = await createUser('bob');
+      await createCalendar(bob, 'private');
+      const original = event('uid-b');
+      await put(url('event.ics', bob, 'private'), original, {}, 'bob');
+      const bobsEvent = await objects().findOneByOrFail({
+        ownerPrincipalId: bob.principalId,
+        name: 'event.ics',
+      });
+      await dataSource.getRepository(CalendarObjectAce).save(
+        dataSource.getRepository(CalendarObjectAce).create({
+          calendarObjectId: bobsEvent.id,
+          principalId: alice.principalId,
+          privilege: 'write-content',
+          grantDeny: 'grant',
+          position: 1,
+        }),
+      );
+
+      const replacement = event('uid-b', { summary: 'Rescheduled' });
+      const response = await put(
+        url('event.ics', bob, 'private'),
+        replacement,
+        {},
+        'alice',
+      );
+
+      expect(response.status).toBe(204);
+      const reloadedAlice = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      const reloadedBob = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: bob.id });
+      expect(reloadedAlice.quotaUsedBytes).toBe(0);
+      expect(reloadedBob.quotaUsedBytes).toBe(
+        Buffer.byteLength(replacement, 'utf8'),
+      );
+    });
+
+    it("an organizer invite auto-filed into the attendee's calendar (M7) visibly increases the attendee's own quota_used_bytes", async () => {
+      const bob = await createUser('bob');
+      await new UserService(dataSource).updateUserQuota(bob.id, {
+        quotaLimitBytes: null,
+      });
+      // M7 auto-files the invite into the attendee's defaultCalendarId —
+      // only createCalendarCollection (not a raw repository insert) sets
+      // that side effect, so bob needs a calendar created through it.
+      await createCalendarCollection(dataSource, {
+        tenantId: tenant.id,
+        ownerPrincipalId: bob.principalId,
+        name: 'home',
+        initialization: {
+          displayName: null,
+          description: null,
+          timezone: null,
+          supportedComponentSet: ['VEVENT'],
+          deadProperties: [],
+        },
+      });
+
+      const invite = event('uid-invite', {
+        extra: [
+          `ORGANIZER:mailto:${alice.email}`,
+          `ATTENDEE:mailto:${bob.email}`,
+        ],
+      });
+      const response = await put(url('invite.ics'), invite);
+      expect(response.status).toBe(201);
+
+      const reloadedBob = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: bob.id });
+      expect(reloadedBob.quotaUsedBytes).toBeGreaterThan(0);
+      const bobsCopy = await objects().findOneByOrFail({
+        ownerPrincipalId: bob.principalId,
+        uid: 'uid-invite',
+      });
+      const bobsContent = await dataSource
+        .getRepository(CalendarObjectContent)
+        .findOneByOrFail({ calendarObjectId: bobsCopy.id });
+      expect(reloadedBob.quotaUsedBytes).toBe(
+        Buffer.byteLength(bobsContent.icsData, 'utf8'),
+      );
     });
   });
 });

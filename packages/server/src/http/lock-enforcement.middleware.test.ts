@@ -4,6 +4,7 @@ import {
   ALL_SQLITE_MIGRATIONS,
   AddressbookCollection,
   AddressObject,
+  AddressObjectContent,
   Collection,
   CollectionAce,
   createDataSource,
@@ -464,6 +465,13 @@ describe('CardDAV lock-enforcement middleware', () => {
           uid: 'uid-1',
           etag: 'etag-1',
           ownerPrincipalId: alice.principalId,
+        }),
+      );
+      await manager.getRepository(AddressObjectContent).save(
+        manager.getRepository(AddressObjectContent).create({
+          addressObjectId: contact.id,
+          vcardData:
+            'BEGIN:VCARD\r\nVERSION:4.0\r\nUID:uid-1\r\nFN:Forrest\r\nEND:VCARD\r\n',
         }),
       );
       await createOwnerAllAce(

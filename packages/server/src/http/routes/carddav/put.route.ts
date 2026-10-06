@@ -3,11 +3,14 @@ import {
   AddressbookChangeService,
   AddressObject,
   AddressObjectContent,
+  applyQuotaDelta,
   createOwnerAllAce,
   getEffectiveAddressbookLocks,
   hasAddressbookPrivilege,
   indexVCard,
   parseVCard,
+  QuotaExceededError,
+  User,
   VCardParseError,
   type AddressbookAclResource,
   type DataSource,
@@ -21,10 +24,16 @@ import {
   requirePrincipal,
   requireTenant,
 } from '../dav-request.util.js';
+import { sendQuotaExceededResponse } from '../quota-error.util.js';
 import {
   resolveAddressbook,
   resolveAddressObject,
 } from './address-object-resolver.js';
+
+/** UTF-8 byte length of `text` — quota is measured in bytes, not characters (umlauts/emoji in a name/note are multi-byte). */
+function byteLength(text: string): number {
+  return Buffer.byteLength(text, 'utf8');
+}
 
 /** SHA-256 of `content`, hex-encoded — the same deterministic scheme the WebDAV PUT route uses for `FileResource.etag`. */
 function computeEtag(content: string): string {
@@ -71,8 +80,12 @@ function computeEtag(content: string): string {
  * `syncSeq`, and (re)populates that contact's `AddressObjectIndex` rows
  * (`indexVCard`) — all in the same transaction as the content write.
  *
- * No quota check yet (M8, see the sub-task's own "Nachtrag" note) — this
- * is where `applyQuotaDelta` will be called once M8 exists.
+ * **Quota** (M8): `applyQuotaDelta` runs first inside the same
+ * transaction, UTF-8 byte length of the vCard text — `+raw.length` for a
+ * new contact, charged to the requester; `new - old` for an overwrite
+ * (can be negative), charged to the *existing* contact's owner, not the
+ * writer. A `QuotaExceededError` rolls back and answers
+ * `507 Insufficient Storage`.
  */
 export function registerCarddavPutRoute(
   app: Express,
@@ -200,68 +213,105 @@ export function registerCarddavPutRoute(
           return;
         }
 
-        await dataSource.transaction(async (manager) => {
-          const addressObjects = manager.getRepository(AddressObject);
-          target.uid = parsed.uid;
-          target.etag = etag;
-          await addressObjects.save(target);
+        try {
+          await dataSource.transaction(async (manager) => {
+            const oldContent = await manager
+              .getRepository(AddressObjectContent)
+              .findOneByOrFail({ addressObjectId: target.id });
+            const owner = await manager
+              .getRepository(User)
+              .findOneByOrFail({ principalId: target.ownerPrincipalId });
+            await applyQuotaDelta(manager, {
+              userId: owner.id,
+              tenantId: tenant.id,
+              deltaBytes: byteLength(raw) - byteLength(oldContent.vcardData),
+            });
 
-          await manager
-            .getRepository(AddressObjectContent)
-            .update({ addressObjectId: target.id }, { vcardData: raw });
+            const addressObjects = manager.getRepository(AddressObject);
+            target.uid = parsed.uid;
+            target.etag = etag;
+            await addressObjects.save(target);
 
-          await indexVCard(manager, target.id, parsed);
+            await manager
+              .getRepository(AddressObjectContent)
+              .update({ addressObjectId: target.id }, { vcardData: raw });
 
-          await addressbookChanges.recordChange(
-            manager,
-            addressbook.id,
-            objectName,
-            'modified',
-          );
-        });
+            await indexVCard(manager, target.id, parsed);
+
+            await addressbookChanges.recordChange(
+              manager,
+              addressbook.id,
+              objectName,
+              'modified',
+            );
+          });
+        } catch (error) {
+          if (error instanceof QuotaExceededError) {
+            sendQuotaExceededResponse(res, error);
+            return;
+          }
+          throw error;
+        }
 
         res.set('ETag', etag).sendStatus(204);
         return;
       }
 
-      await dataSource.transaction(async (manager) => {
-        const addressObjects = manager.getRepository(AddressObject);
-        const created = await addressObjects.save(
-          addressObjects.create({
+      try {
+        await dataSource.transaction(async (manager) => {
+          const owner = await manager
+            .getRepository(User)
+            .findOneByOrFail({ principalId: principal.id });
+          await applyQuotaDelta(manager, {
+            userId: owner.id,
             tenantId: tenant.id,
-            addressbookId: addressbook.id,
-            name: objectName,
-            uid: parsed.uid,
-            etag,
-            ownerPrincipalId: principal.id,
-          }),
-        );
+            deltaBytes: byteLength(raw),
+          });
 
-        const addressObjectContents =
-          manager.getRepository(AddressObjectContent);
-        await addressObjectContents.save(
-          addressObjectContents.create({
-            addressObjectId: created.id,
-            vcardData: raw,
-          }),
-        );
+          const addressObjects = manager.getRepository(AddressObject);
+          const created = await addressObjects.save(
+            addressObjects.create({
+              tenantId: tenant.id,
+              addressbookId: addressbook.id,
+              name: objectName,
+              uid: parsed.uid,
+              etag,
+              ownerPrincipalId: principal.id,
+            }),
+          );
 
-        await createOwnerAllAce(
-          manager,
-          'address-object',
-          created.id,
-          principal.id,
-        );
+          const addressObjectContents =
+            manager.getRepository(AddressObjectContent);
+          await addressObjectContents.save(
+            addressObjectContents.create({
+              addressObjectId: created.id,
+              vcardData: raw,
+            }),
+          );
 
-        await indexVCard(manager, created.id, parsed);
+          await createOwnerAllAce(
+            manager,
+            'address-object',
+            created.id,
+            principal.id,
+          );
 
-        await addressbookChanges.recordChange(
-          manager,
-          addressbook.id,
-          objectName,
-          'added',
-        );
-      });
+          await indexVCard(manager, created.id, parsed);
+
+          await addressbookChanges.recordChange(
+            manager,
+            addressbook.id,
+            objectName,
+            'added',
+          );
+        });
+      } catch (error) {
+        if (error instanceof QuotaExceededError) {
+          sendQuotaExceededResponse(res, error);
+          return;
+        }
+        throw error;
+      }
 
       res.set('ETag', etag).sendStatus(201);
     },

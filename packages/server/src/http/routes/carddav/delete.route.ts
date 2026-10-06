@@ -2,9 +2,12 @@ import {
   AddressbookChangeService,
   AddressObject,
   AddressObjectAce,
+  AddressObjectContent,
   AddressObjectProperty,
+  applyQuotaDelta,
   getEffectiveAddressbookLocks,
   hasAddressbookPrivilege,
+  User,
   type AddressbookAclResource,
   type DataSource,
 } from '@davnode/core';
@@ -21,6 +24,11 @@ import {
   resolveAddressObject,
 } from './address-object-resolver.js';
 
+/** UTF-8 byte length of `text` — quota is measured in bytes, not characters. */
+function byteLength(text: string): number {
+  return Buffer.byteLength(text, 'utf8');
+}
+
 /**
  * Registers the DELETE route for a single CardDAV contact:
  * `/dav/{tenantSlug}/addressbooks/{userId}/{addressbookName}/{objectName}`.
@@ -33,6 +41,10 @@ import {
  * (both declared `ON DELETE CASCADE` — Große Aufgabe 1/2). Records an
  * `AddressbookChange` (`deleted`) and bumps the addressbook's `syncSeq`
  * in the same transaction.
+ *
+ * **Quota** (M8): the removed `AddressObjectContent`'s UTF-8 byte
+ * length is credited back to the contact's owner via `applyQuotaDelta`,
+ * read before the delete cascades it away.
  *
  * **Real RFC 3744 ACL, not an owner-only placeholder** (M5 Große
  * Aufgabe 5): deletion needs `unbind` on the addressbook — the parent
@@ -145,6 +157,21 @@ export function registerCarddavDeleteRoute(
       }
 
       await dataSource.transaction(async (manager) => {
+        // Quota (M8): read before AddressObject's delete cascades
+        // AddressObjectContent away; never blocked (a negative delta
+        // can't exceed a limit).
+        const content = await manager
+          .getRepository(AddressObjectContent)
+          .findOneByOrFail({ addressObjectId: target.id });
+        const owner = await manager
+          .getRepository(User)
+          .findOneByOrFail({ principalId: target.ownerPrincipalId });
+        await applyQuotaDelta(manager, {
+          userId: owner.id,
+          tenantId: tenant.id,
+          deltaBytes: -byteLength(content.vcardData),
+        });
+
         await manager
           .getRepository(AddressObjectProperty)
           .delete({ addressObjectId: target.id });

@@ -4,10 +4,11 @@ import { createDataSource } from '../db/data-source.js';
 import {
   ALL_ENTITIES,
   CalendarCollection,
-  Principal,
   Tenant,
+  User,
 } from '../entities/index.js';
 import { ALL_MIGRATIONS } from '../migrations/sqlite/index.js';
+import { UserService } from '../services/user.service.js';
 import { saveCalendarObject } from './calendar-object-writes.js';
 import { buildCalendarFeed, loadCalendarFeedIcsData } from './calendar-feed.js';
 import { parseCalendarObject } from './icalendar-parser.js';
@@ -145,7 +146,7 @@ describe('buildCalendarFeed', () => {
 describe('loadCalendarFeedIcsData', () => {
   let dataSource: DataSource;
   let tenant: Tenant;
-  let owner: Principal;
+  let owner: User;
 
   beforeEach(async () => {
     dataSource = createDataSource(
@@ -162,13 +163,12 @@ describe('loadCalendarFeedIcsData', () => {
           .getRepository(Tenant)
           .create({ slug: 'acme', name: 'Acme Inc.' }),
       );
-    owner = await dataSource
-      .getRepository(Principal)
-      .save(
-        dataSource
-          .getRepository(Principal)
-          .create({ tenantId: tenant.id, kind: 'user', specialKind: null }),
-      );
+    owner = await new UserService(dataSource).createUser({
+      tenantId: tenant.id,
+      username: 'alice',
+      email: 'alice@example.com',
+      password: 'correct horse battery staple',
+    });
   });
 
   afterEach(async () => {
@@ -179,7 +179,7 @@ describe('loadCalendarFeedIcsData', () => {
     return dataSource.getRepository(CalendarCollection).save(
       dataSource.getRepository(CalendarCollection).create({
         tenantId: tenant.id,
-        ownerPrincipalId: owner.id,
+        ownerPrincipalId: owner.principalId,
         name,
         displayName: name,
       }),
@@ -191,7 +191,7 @@ describe('loadCalendarFeedIcsData', () => {
       tenantId: tenant.id,
       calendarId,
       name,
-      ownerPrincipalId: owner.id,
+      ownerPrincipalId: owner.principalId,
       ics,
       parsed: parseCalendarObject(ics),
       etag: 'etag-' + name,

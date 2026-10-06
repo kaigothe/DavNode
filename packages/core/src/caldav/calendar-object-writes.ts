@@ -5,6 +5,8 @@ import { CalendarObjectContent } from '../entities/calendar-object-content.entit
 import { CalendarObjectLock } from '../entities/calendar-object-lock.entity.js';
 import { CalendarObjectProperty } from '../entities/calendar-object-property.entity.js';
 import { CalendarObject } from '../entities/calendar-object.entity.js';
+import { User } from '../entities/user.entity.js';
+import { applyQuotaDelta } from '../quota/apply-quota-delta.js';
 import { isUniqueConstraintViolationError } from '../services/unique-constraint.util.js';
 import { CalendarChangeService } from './calendar-change.service.js';
 import type { ParsedCalendarObject } from './icalendar-parser.js';
@@ -12,6 +14,11 @@ import {
   computeTimeRangeIndex,
   indexCalendarObject,
 } from './index-calendar-object.js';
+
+/** UTF-8 byte length of `text` — quota is measured in bytes, not characters (umlauts/emoji in a SUMMARY/DESCRIPTION are multi-byte). */
+function byteLength(text: string): number {
+  return Buffer.byteLength(text, 'utf8');
+}
 
 /**
  * Thrown by {@link saveCalendarObject} when the object's `UID` would not
@@ -137,6 +144,24 @@ async function write(
     if (!result.affected) {
       throw new CalendarObjectChangedError(input.name);
     }
+
+    // Quota (M8): charged to the existing object's owner, not whoever is
+    // writing — an ACL-granted write-content overwrite, or M7's own
+    // reply-merge into the organizer's copy, must never move bytes onto
+    // someone else's counter. The old content has to be read before it's
+    // overwritten below.
+    const oldContent = await manager
+      .getRepository(CalendarObjectContent)
+      .findOneByOrFail({ calendarObjectId: existing.id });
+    const owner = await manager
+      .getRepository(User)
+      .findOneByOrFail({ principalId: existing.ownerPrincipalId });
+    await applyQuotaDelta(manager, {
+      userId: owner.id,
+      tenantId: input.tenantId,
+      deltaBytes: byteLength(input.ics) - byteLength(oldContent.icsData),
+    });
+
     await manager
       .getRepository(CalendarObjectContent)
       .update({ calendarObjectId: existing.id }, { icsData: input.ics });
@@ -146,6 +171,19 @@ async function write(
       object: await objects.findOneByOrFail({ id: existing.id }),
     };
   }
+
+  // Quota (M8): the whole VCALENDAR wrapper (master + every override)
+  // charged to the new object's owner — covers a regular PUT and M7's
+  // own auto-filed invite copy identically, since both go through this
+  // same function.
+  const owner = await manager
+    .getRepository(User)
+    .findOneByOrFail({ principalId: input.ownerPrincipalId });
+  await applyQuotaDelta(manager, {
+    userId: owner.id,
+    tenantId: input.tenantId,
+    deltaBytes: byteLength(input.ics),
+  });
 
   const created = await objects.save(
     objects.create({
@@ -184,6 +222,19 @@ async function write(
  * existing object keeps its `UID`. Two requests racing for the same `UID`
  * or URL are settled by the unique indexes, which surface as the same
  * errors as the checks above — never as a raw constraint failure.
+ *
+ * **Quota** (M8): `applyQuotaDelta` runs inside the same transaction,
+ * charging the *existing* object's owner on an overwrite (never the
+ * writer) and the new object's owner on a create — the whole `ics` text,
+ * UTF-8 byte length. Since this function is also what M7's own
+ * auto-filing/reply-merge/organizer-cancellation code calls directly
+ * (never through the HTTP route), an attendee's auto-filed invite copy
+ * is charged to *their* quota the same way, with no separate case
+ * needed. A `QuotaExceededError` here propagates like any other write
+ * failure — `507` for a direct PUT, or (per M7's own "a delivery error
+ * already propagates" rule) an uncaught error surfacing as `500` for
+ * the organizer's PUT if an attendee's own quota is what's exceeded
+ * during delivery.
  *
  * @throws {@link CalendarUidConflictError} If the `UID` isn't unique.
  * @throws {@link CalendarObjectChangedError} If the object changed under
@@ -232,6 +283,12 @@ export interface DeleteCalendarObjectInput {
  * {@link saveCalendarObject}, the change is recorded first, so the
  * calendar row is locked before any object row (see there for why).
  *
+ * **Quota** (M8): the removed `CalendarObjectContent`'s byte length is
+ * credited back to `object.ownerPrincipalId` via `applyQuotaDelta`,
+ * read before the delete cascades it away. Shared by the DELETE route
+ * and M7's own organizer-cancellation copy cleanup, same as
+ * {@link saveCalendarObject}.
+ *
  * @returns `false`, with nothing changed, if the object is already gone
  * or (with `expectedEtag`) has a different ETag now; `true` otherwise.
  */
@@ -248,6 +305,26 @@ export async function deleteCalendarObject(
         object.name,
         'deleted',
       );
+
+      // Quota (M8): read before the delete cascades CalendarObjectContent
+      // away; never blocked (a negative delta can't exceed a limit). A
+      // `null` content means `object` is already gone (a stale
+      // reference) — nothing to credit back, and the delete below will
+      // correctly resolve to `false` on its own.
+      const content = await manager
+        .getRepository(CalendarObjectContent)
+        .findOneBy({ calendarObjectId: object.id });
+      if (content) {
+        const owner = await manager
+          .getRepository(User)
+          .findOneByOrFail({ principalId: object.ownerPrincipalId });
+        await applyQuotaDelta(manager, {
+          userId: owner.id,
+          tenantId: object.tenantId,
+          deltaBytes: -byteLength(content.icsData),
+        });
+      }
+
       const calendarObjectId = object.id;
       await manager
         .getRepository(CalendarObjectProperty)
