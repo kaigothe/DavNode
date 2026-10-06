@@ -208,4 +208,59 @@ export class ResourceTreeService {
 
     return copy;
   }
+
+  /**
+   * Sums `FileResource.sizeBytes` under `resource`, grouped by
+   * `ownerPrincipalId` — the quota bookkeeping DELETE and COPY's
+   * `Overwrite: T` replacement step need (M8,
+   * `milestones/M8-quota/02-webdav-quota-integration/01-put-delete-retrofit.md`):
+   * a `Collection` can hold files owned by different principals (via
+   * ACL-granted `bind`), so a single flat total isn't enough to credit
+   * each owner's `applyQuotaDelta` call correctly. Dead properties and
+   * collection metadata never count, matching RFC 4331's definition of
+   * `quota-used-bytes` as actual resource content, not bookkeeping.
+   *
+   * `options.recursive` (default `true`) mirrors COPY's own `Depth: 0`
+   * vs `infinity` distinction: `false` on a `Collection` returns an
+   * empty map (an empty collection, or a `Depth: 0` copy, holds no file
+   * content at all) without touching its descendants; a `FileResource`
+   * ignores it, same as {@link copyRecursively}.
+   */
+  async sumFileSizesByOwner(
+    manager: EntityManager,
+    resource: WebDavTreeResource,
+    options: { recursive?: boolean } = {},
+  ): Promise<Map<string, number>> {
+    const totals = new Map<string, number>();
+    const add = (ownerPrincipalId: string, bytes: number): void => {
+      totals.set(ownerPrincipalId, (totals.get(ownerPrincipalId) ?? 0) + bytes);
+    };
+
+    if (!(resource instanceof Collection)) {
+      add(resource.ownerPrincipalId, resource.sizeBytes);
+      return totals;
+    }
+    if (options.recursive === false) {
+      return totals;
+    }
+
+    const files = await manager
+      .getRepository(FileResource)
+      .findBy({ collectionId: resource.id });
+    for (const file of files) {
+      add(file.ownerPrincipalId, file.sizeBytes);
+    }
+
+    const children = await manager
+      .getRepository(Collection)
+      .findBy({ parentCollectionId: resource.id });
+    for (const child of children) {
+      const childTotals = await this.sumFileSizesByOwner(manager, child);
+      for (const [ownerPrincipalId, bytes] of childTotals) {
+        add(ownerPrincipalId, bytes);
+      }
+    }
+
+    return totals;
+  }
 }

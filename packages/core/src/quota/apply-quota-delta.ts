@@ -57,13 +57,18 @@ export interface ApplyQuotaDeltaInput {
  * commits first serializes the second behind it, and by the time the
  * second runs, `quota_used_bytes` already reflects the first's delta.
  *
- * The `WHERE` guard only ever blocks a delta that would push the counter
- * *above* the limit, so a negative `deltaBytes` (a delete or shrink) is
- * never blocked by it. The stored value is still floored at `0`
- * (`GREATEST`/`MAX`, cross-driver — SQLite has no `GREATEST`) as a
- * separate safeguard against counter drift compounding negative over
- * time; this floor never affects the guard itself, which always compares
- * against the unclamped `quota_used_bytes + :delta`.
+ * The `WHERE` guard's limit comparison is skipped outright for a
+ * non-positive `deltaBytes`, so a delete or shrink is **never** blocked —
+ * not even if `quota_used_bytes` already exceeds `quota_limit_bytes`
+ * (e.g. an admin lowered the limit after the fact, without itself
+ * checking current usage — see `UserService.updateUserQuota`/
+ * `TenantService.updateTenantQuota`). Comparing the *unclamped* new value
+ * against the limit even for a decrease would otherwise wrongly reject
+ * exactly the write that would bring a user back under a tightened
+ * limit, permanently trapping them over it. The stored value is still
+ * floored at `0` (`GREATEST`/`MAX`, cross-driver — SQLite has no
+ * `GREATEST`) as a separate safeguard against counter drift compounding
+ * negative over time.
  *
  * `quota_limit_bytes IS NULL` means "no limit": the guard's first
  * disjunct is then always true, so the `UPDATE` always goes through
@@ -84,14 +89,14 @@ export async function applyQuotaDelta(
       ? 'MAX(quota_used_bytes + :delta, 0)'
       : 'GREATEST(quota_used_bytes + :delta, 0)';
 
+  const guard =
+    'id = :id AND (:delta <= 0 OR quota_limit_bytes IS NULL OR quota_used_bytes + :delta <= quota_limit_bytes)';
+
   const userResult = await manager
     .createQueryBuilder()
     .update(User)
     .set({ quotaUsedBytes: () => clamp })
-    .where(
-      'id = :userId AND (quota_limit_bytes IS NULL OR quota_used_bytes + :delta <= quota_limit_bytes)',
-      { userId, delta: deltaBytes },
-    )
+    .where(guard, { id: userId, delta: deltaBytes })
     .execute();
   if (!userResult.affected) {
     throw new QuotaExceededError('user');
@@ -101,10 +106,7 @@ export async function applyQuotaDelta(
     .createQueryBuilder()
     .update(Tenant)
     .set({ quotaUsedBytes: () => clamp })
-    .where(
-      'id = :tenantId AND (quota_limit_bytes IS NULL OR quota_used_bytes + :delta <= quota_limit_bytes)',
-      { tenantId, delta: deltaBytes },
-    )
+    .where(guard, { id: tenantId, delta: deltaBytes })
     .execute();
   if (!tenantResult.affected) {
     throw new QuotaExceededError('tenant');

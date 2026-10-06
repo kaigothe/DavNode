@@ -8,12 +8,13 @@ import {
   createDataSource,
   createOwnerAllAce,
   FileAce,
+  FileContent,
   FileResource,
+  Tenant,
   TenantService,
+  User,
   UserService,
   type DataSource,
-  type Tenant,
-  type User,
 } from '@davnode/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../app.js';
@@ -176,7 +177,10 @@ describe('COPY route', () => {
 
     const copiedCollection = await dataSource
       .getRepository(Collection)
-      .findOneByOrFail({ parentCollectionId: root.id, displayName: 'sub-full' });
+      .findOneByOrFail({
+        parentCollectionId: root.id,
+        displayName: 'sub-full',
+      });
     const collectionAces = await dataSource
       .getRepository(CollectionAce)
       .findBy({ collectionId: copiedCollection.id });
@@ -321,7 +325,12 @@ describe('COPY route', () => {
         ownerPrincipalId: bob.principalId,
       }),
     );
-    await createOwnerAllAce(dataSource.manager, 'file', bobFile.id, bob.principalId);
+    await createOwnerAllAce(
+      dataSource.manager,
+      'file',
+      bobFile.id,
+      bob.principalId,
+    );
     await dataSource.getRepository(FileAce).save(
       dataSource.getRepository(FileAce).create({
         fileResourceId: bobFile.id,
@@ -395,5 +404,131 @@ describe('COPY route', () => {
       .getRepository(CollectionChange)
       .findBy({ collectionId: root.id, action: 'added' });
     expect(changes.some((c) => c.name === 'copy.txt')).toBe(true);
+  });
+
+  describe('quota (M8)', () => {
+    it('charges the requesting principal for the new copy, not the source owner', async () => {
+      await put('/dav/acme/files/report.txt', 'hello'); // 5 bytes, alice
+
+      const response = await copy(
+        '/dav/acme/files/report.txt',
+        '/dav/acme/files/copy.txt',
+      );
+
+      expect(response.status).toBe(201);
+      const reloaded = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      expect(reloaded.quotaUsedBytes).toBe(10); // original + copy
+    });
+
+    it('sums the whole subtree for a recursive copy, but nothing for Depth: 0', async () => {
+      await mkcol('/dav/acme/files/sub');
+      await put('/dav/acme/files/sub/top.txt', 'aaa'); // 3 bytes
+      await put('/dav/acme/files/sub/nested.txt', 'bb'); // 2 bytes
+      await dataSource
+        .getRepository(User)
+        .update({ id: alice.id }, { quotaUsedBytes: 5 });
+
+      const zeroResponse = await copy(
+        '/dav/acme/files/sub',
+        '/dav/acme/files/sub-empty',
+        { depth: '0' },
+      );
+      expect(zeroResponse.status).toBe(201);
+      const afterZero = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      expect(afterZero.quotaUsedBytes).toBe(5); // unchanged, no files copied
+
+      const infResponse = await copy(
+        '/dav/acme/files/sub',
+        '/dav/acme/files/sub-full',
+        { depth: 'infinity' },
+      );
+      expect(infResponse.status).toBe(201);
+      const afterInf = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      expect(afterInf.quotaUsedBytes).toBe(10); // 5 + (3 + 2)
+    });
+
+    it('rejects a copy that would exceed the Tenant limit with 507, creating nothing', async () => {
+      await put('/dav/acme/files/report.txt', 'hello world'); // 11 bytes
+      await new TenantService(dataSource).updateTenantQuota(tenant.id, {
+        quotaLimitBytes: 15,
+      });
+
+      const response = await copy(
+        '/dav/acme/files/report.txt',
+        '/dav/acme/files/copy.txt',
+      );
+
+      expect(response.status).toBe(507);
+      expect(
+        await dataSource
+          .getRepository(FileResource)
+          .findOneBy({ collectionId: root.id, name: 'copy.txt' }),
+      ).toBeNull();
+      const reloadedTenant = await dataSource
+        .getRepository(Tenant)
+        .findOneByOrFail({ id: tenant.id });
+      expect(reloadedTenant.quotaUsedBytes).toBe(11); // unchanged from the original PUT
+    });
+
+    it('overwriting an existing target credits its owner back before charging the copier', async () => {
+      const bob = await new UserService(dataSource).createUser({
+        tenantId: tenant.id,
+        username: 'bob',
+        email: 'bob@example.com',
+        password: PASSWORD,
+      });
+      const bobFile = await dataSource.getRepository(FileResource).save(
+        dataSource.getRepository(FileResource).create({
+          tenantId: tenant.id,
+          collectionId: root.id,
+          name: 'target.txt',
+          contentType: 'text/plain',
+          etag: '"1"',
+          sizeBytes: 8,
+          ownerPrincipalId: bob.principalId,
+        }),
+      );
+      await createOwnerAllAce(
+        dataSource.manager,
+        'file',
+        bobFile.id,
+        bob.principalId,
+      );
+      // COPY's Overwrite: T replacement checks only `bind` on the
+      // destination's *parent* (root, which alice already owns) — not
+      // any privilege on the existing target itself, so no extra ACE is
+      // needed here for alice to be allowed to replace bob's file.
+      await dataSource.getRepository(FileContent).save(
+        dataSource.getRepository(FileContent).create({
+          fileResourceId: bobFile.id,
+          data: Buffer.from('original'),
+        }),
+      );
+      await dataSource
+        .getRepository(User)
+        .update({ id: bob.id }, { quotaUsedBytes: 8 });
+      await put('/dav/acme/files/report.txt', 'hello'); // 5 bytes, alice
+
+      const response = await copy(
+        '/dav/acme/files/report.txt',
+        '/dav/acme/files/target.txt',
+      );
+
+      expect(response.status).toBe(204);
+      const reloadedAlice = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      const reloadedBob = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: bob.id });
+      expect(reloadedBob.quotaUsedBytes).toBe(0); // credited back
+      expect(reloadedAlice.quotaUsedBytes).toBe(10); // original report.txt + the new copy
+    });
   });
 });

@@ -12,10 +12,10 @@ import {
   FileProperty,
   FileResource,
   TenantService,
+  User,
   UserService,
   type DataSource,
   type Tenant,
-  type User,
 } from '@davnode/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../app.js';
@@ -315,5 +315,96 @@ describe('DELETE route', () => {
     );
 
     expect(response.status).toBe(403);
+  });
+
+  describe('quota (M8)', () => {
+    it('reduces quota_used_bytes by a single file’s size on deletion', async () => {
+      await put('/dav/acme/files/report.txt', 'hello');
+      await dataSource
+        .getRepository(User)
+        .update({ id: alice.id }, { quotaUsedBytes: 5 });
+
+      const response = await del('/dav/acme/files/report.txt');
+
+      expect(response.status).toBe(204);
+      const reloaded = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      expect(reloaded.quotaUsedBytes).toBe(0);
+    });
+
+    it('reduces quota_used_bytes by the sum of every file in a deleted subtree', async () => {
+      await mkcol('/dav/acme/files/sub');
+      await mkcol('/dav/acme/files/sub/nested');
+      await put('/dav/acme/files/sub/top.txt', 'aaa'); // 3 bytes
+      await put('/dav/acme/files/sub/nested/deep.txt', 'bb'); // 2 bytes
+      await dataSource
+        .getRepository(User)
+        .update({ id: alice.id }, { quotaUsedBytes: 5 });
+
+      const response = await del('/dav/acme/files/sub');
+
+      expect(response.status).toBe(204);
+      const reloaded = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      expect(reloaded.quotaUsedBytes).toBe(0);
+    });
+
+    it('credits each owner separately when a deleted subtree holds files from different owners', async () => {
+      const bob = await new UserService(dataSource).createUser({
+        tenantId: tenant.id,
+        username: 'bob',
+        email: 'bob@example.com',
+        password: PASSWORD,
+      });
+      await mkcol('/dav/acme/files/shared');
+      await put('/dav/acme/files/shared/alice.txt', 'aaaaa'); // 5 bytes, alice
+      const bobFile = await dataSource.getRepository(FileResource).save(
+        dataSource.getRepository(FileResource).create({
+          tenantId: tenant.id,
+          collectionId: (
+            await dataSource
+              .getRepository(Collection)
+              .findOneByOrFail({ displayName: 'shared' })
+          ).id,
+          name: 'bob.txt',
+          contentType: 'text/plain',
+          etag: '"1"',
+          sizeBytes: 7,
+          ownerPrincipalId: bob.principalId,
+        }),
+      );
+      await createOwnerAllAce(
+        dataSource.manager,
+        'file',
+        bobFile.id,
+        bob.principalId,
+      );
+      await dataSource.getRepository(FileContent).save(
+        dataSource.getRepository(FileContent).create({
+          fileResourceId: bobFile.id,
+          data: Buffer.from('bbbbbbb'),
+        }),
+      );
+      await dataSource
+        .getRepository(User)
+        .update({ id: alice.id }, { quotaUsedBytes: 5 });
+      await dataSource
+        .getRepository(User)
+        .update({ id: bob.id }, { quotaUsedBytes: 7 });
+
+      const response = await del('/dav/acme/files/shared');
+
+      expect(response.status).toBe(204);
+      const reloadedAlice = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      const reloadedBob = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: bob.id });
+      expect(reloadedAlice.quotaUsedBytes).toBe(0);
+      expect(reloadedBob.quotaUsedBytes).toBe(0);
+    });
   });
 });

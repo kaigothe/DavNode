@@ -142,6 +142,21 @@ describe('applyQuotaDelta', () => {
     expect(reloaded.tenant.quotaUsedBytes).toBe(60);
   });
 
+  it('a negative delta is never blocked even when the limit was lowered below current usage after the fact', async () => {
+    await setLimits(1000, 1000);
+    await apply(500);
+    // The limit is tightened without checking current usage first, the
+    // same way UserService.updateUserQuota/TenantService.updateTenantQuota
+    // already work — quota_used_bytes (500) is now above the new limit.
+    await setLimits(100, 100);
+
+    await apply(-50);
+
+    const reloaded = await reload();
+    expect(reloaded.user.quotaUsedBytes).toBe(450);
+    expect(reloaded.tenant.quotaUsedBytes).toBe(450);
+  });
+
   it('floors quota_used_bytes at 0 for a negative delta larger than the current usage', async () => {
     await setLimits(100, 100);
     await apply(30);

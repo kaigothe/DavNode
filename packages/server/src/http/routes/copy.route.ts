@@ -1,10 +1,13 @@
 import {
+  applyQuotaDelta,
   Collection,
   CollectionChangeService,
   getEffectiveWebDavLocks,
   hasPrivilege,
+  QuotaExceededError,
   ResourcePathResolver,
   ResourceTreeService,
+  User,
   type DataSource,
 } from '@davnode/core';
 import type { Express, Request } from 'express';
@@ -22,6 +25,7 @@ import {
   parseDestinationHeader,
   parseOverwriteHeader,
 } from './copy-move.util.js';
+import { sendQuotaExceededResponse } from './quota-error.util.js';
 
 /**
  * Registers the COPY route for `/dav/{tenantSlug}/files{/*path}` (RFC
@@ -63,6 +67,13 @@ import {
  * recomputed rather than reused (see `ResourceTreeService`). On
  * success, records one `collection_changes` entry on the destination's
  * parent — the source is untouched, so it gets none.
+ *
+ * **Quota** (M8): the new copy's total size (recursive, respecting
+ * `Depth`) is charged to the requesting principal via `applyQuotaDelta`,
+ * exactly like a PUT creation — a `QuotaExceededError` rejects the whole
+ * COPY with `507`, before anything is written. Overwriting an existing
+ * destination credits its owner(s) back first
+ * (`milestones/M8-quota/02-webdav-quota-integration/01-put-delete-retrofit.md`).
  */
 export function registerCopyRoute(app: Express, dataSource: DataSource): void {
   const resourcePathResolver = new ResourcePathResolver(dataSource);
@@ -171,25 +182,74 @@ export function registerCopyRoute(app: Express, dataSource: DataSource): void {
         return;
       }
 
-      await dataSource.transaction(async (manager) => {
-        if (existingTarget) {
-          await resourceTree.deleteRecursively(manager, existingTarget);
+      try {
+        await dataSource.transaction(async (manager) => {
+          // Quota (M8): the existing destination's bytes (if any) are
+          // credited back to each of its owners first — never blocked,
+          // a decrease can't exceed a limit — then the new copy's total
+          // is charged to the requesting principal, exactly like a PUT
+          // creation. Decrement before increment so a same-size
+          // replace nets to zero rather than transiently double-counting.
+          if (existingTarget) {
+            const removedByOwner = await resourceTree.sumFileSizesByOwner(
+              manager,
+              existingTarget,
+            );
+            for (const [ownerPrincipalId, bytes] of removedByOwner) {
+              const owner = await manager
+                .getRepository(User)
+                .findOneByOrFail({ principalId: ownerPrincipalId });
+              await applyQuotaDelta(manager, {
+                userId: owner.id,
+                tenantId: tenant.id,
+                deltaBytes: -bytes,
+              });
+            }
+            await resourceTree.deleteRecursively(manager, existingTarget);
+          }
+
+          const addedByOwner = await resourceTree.sumFileSizesByOwner(
+            manager,
+            source,
+            { recursive },
+          );
+          const addedBytes = [...addedByOwner.values()].reduce(
+            (sum, bytes) => sum + bytes,
+            0,
+          );
+          if (addedBytes > 0) {
+            const requester = await manager
+              .getRepository(User)
+              .findOneByOrFail({ principalId: principal.id });
+            await applyQuotaDelta(manager, {
+              userId: requester.id,
+              tenantId: tenant.id,
+              deltaBytes: addedBytes,
+            });
+          }
+
+          await resourceTree.copyRecursively(
+            manager,
+            source,
+            destParent.id,
+            destName,
+            principal.id,
+            recursive,
+          );
+          await collectionChanges.recordChange(
+            manager,
+            destParent.id,
+            destName,
+            existingTarget ? 'modified' : 'added',
+          );
+        });
+      } catch (error) {
+        if (error instanceof QuotaExceededError) {
+          sendQuotaExceededResponse(res, error);
+          return;
         }
-        await resourceTree.copyRecursively(
-          manager,
-          source,
-          destParent.id,
-          destName,
-          principal.id,
-          recursive,
-        );
-        await collectionChanges.recordChange(
-          manager,
-          destParent.id,
-          destName,
-          existingTarget ? 'modified' : 'added',
-        );
-      });
+        throw error;
+      }
 
       res.sendStatus(existingTarget ? 204 : 201);
     },

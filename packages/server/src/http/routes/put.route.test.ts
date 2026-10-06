@@ -11,11 +11,11 @@ import {
   FileAce,
   FileContent,
   FileResource,
+  Tenant,
   TenantService,
+  User,
   UserService,
   type DataSource,
-  type Tenant,
-  type User,
 } from '@davnode/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../app.js';
@@ -281,7 +281,12 @@ describe('PUT route', () => {
         ownerPrincipalId: bob.principalId,
       }),
     );
-    await createOwnerAllAce(dataSource.manager, 'file', bobFile.id, bob.principalId);
+    await createOwnerAllAce(
+      dataSource.manager,
+      'file',
+      bobFile.id,
+      bob.principalId,
+    );
     await dataSource.getRepository(FileAce).save(
       dataSource.getRepository(FileAce).create({
         fileResourceId: bobFile.id,
@@ -391,5 +396,154 @@ describe('PUT route', () => {
     });
 
     expect(status).toBe(400);
+  });
+
+  describe('quota (M8)', () => {
+    it('rejects a new file that would exceed the User limit with 507, creating nothing', async () => {
+      await new UserService(dataSource).updateUserQuota(alice.id, {
+        quotaLimitBytes: 3,
+      });
+
+      const response = await put('/dav/acme/files/report.txt', {
+        body: 'hello',
+      });
+
+      expect(response.status).toBe(507);
+      expect(
+        await dataSource
+          .getRepository(FileResource)
+          .findOneBy({ collectionId: root.id, name: 'report.txt' }),
+      ).toBeNull();
+      const reloadedUser = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      expect(reloadedUser.quotaUsedBytes).toBe(0);
+    });
+
+    it('increments both User and Tenant counters on creation', async () => {
+      await put('/dav/acme/files/report.txt', { body: 'hello' });
+
+      const reloadedUser = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      const reloadedTenant = await dataSource
+        .getRepository(Tenant)
+        .findOneByOrFail({ id: tenant.id });
+      expect(reloadedUser.quotaUsedBytes).toBe(5);
+      expect(reloadedTenant.quotaUsedBytes).toBe(5);
+    });
+
+    it('a smaller overwrite reduces quota_used_bytes correctly, even right at the limit', async () => {
+      await put('/dav/acme/files/report.txt', { body: 'hello world' }); // 11 bytes
+      await new UserService(dataSource).updateUserQuota(alice.id, {
+        quotaLimitBytes: 11,
+      });
+
+      const response = await put('/dav/acme/files/report.txt', {
+        body: 'hi',
+      }); // 2 bytes, delta -9
+
+      expect(response.status).toBe(204);
+      const reloadedUser = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      expect(reloadedUser.quotaUsedBytes).toBe(2);
+    });
+
+    it('rejects an overwrite that would exceed the limit, leaving the stored content unchanged', async () => {
+      await put('/dav/acme/files/report.txt', { body: 'hello' }); // 5 bytes
+      await new UserService(dataSource).updateUserQuota(alice.id, {
+        quotaLimitBytes: 5,
+      });
+
+      const response = await put('/dav/acme/files/report.txt', {
+        body: 'a much longer replacement body',
+      });
+
+      expect(response.status).toBe(507);
+      const getResponse = await get('/dav/acme/files/report.txt');
+      expect(await getResponse.text()).toBe('hello');
+    });
+
+    it('charges an overwrite to the existing file’s owner, not a different writer granted write-content', async () => {
+      const bob = await new UserService(dataSource).createUser({
+        tenantId: tenant.id,
+        username: 'bob',
+        email: 'bob@example.com',
+        password: PASSWORD,
+      });
+      const bobFile = await dataSource.getRepository(FileResource).save(
+        dataSource.getRepository(FileResource).create({
+          tenantId: tenant.id,
+          collectionId: root.id,
+          name: 'shared.txt',
+          contentType: 'text/plain',
+          etag: '"1"',
+          sizeBytes: 5,
+          ownerPrincipalId: bob.principalId,
+        }),
+      );
+      await createOwnerAllAce(
+        dataSource.manager,
+        'file',
+        bobFile.id,
+        bob.principalId,
+      );
+      await dataSource.getRepository(FileAce).save(
+        dataSource.getRepository(FileAce).create({
+          fileResourceId: bobFile.id,
+          principalId: alice.principalId,
+          privilege: 'write-content',
+          grantDeny: 'grant',
+          position: 1,
+        }),
+      );
+      await dataSource.getRepository(FileContent).save(
+        dataSource.getRepository(FileContent).create({
+          fileResourceId: bobFile.id,
+          data: Buffer.from('hello'),
+        }),
+      );
+      // bobFile was inserted directly (bypassing the PUT route), so
+      // bob's own counter needs to already reflect its 5 bytes for this
+      // test to exercise a realistic "existing usage" starting point.
+      await dataSource
+        .getRepository(User)
+        .update({ id: bob.id }, { quotaUsedBytes: 5 });
+
+      const newBody = 'a longer replacement';
+      const response = await put('/dav/acme/files/shared.txt', {
+        body: newBody,
+        username: 'alice',
+      });
+
+      expect(response.status).toBe(204);
+      const reloadedAlice = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      const reloadedBob = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: bob.id });
+      expect(reloadedAlice.quotaUsedBytes).toBe(0);
+      expect(reloadedBob.quotaUsedBytes).toBe(newBody.length);
+    });
+
+    it('a 507 response body names the exceeded level without a limit number', async () => {
+      await new UserService(dataSource).updateUserQuota(alice.id, {
+        quotaLimitBytes: 42,
+      });
+
+      const response = await put('/dav/acme/files/report.txt', {
+        body: 'a body that is much longer than the forty-two byte limit above',
+      });
+
+      const body = await response.text();
+      expect(response.status).toBe(507);
+      expect(response.headers.get('content-type')).toContain('xml');
+      expect(body).toContain('quota-not-exceeded');
+      expect(body).toContain('quota-level');
+      expect(body).toContain('user');
+      expect(body).not.toContain('42'); // the limit value itself never appears
+    });
   });
 });

@@ -1,10 +1,12 @@
 import {
+  applyQuotaDelta,
   Collection,
   CollectionChangeService,
   getEffectiveWebDavLocks,
   hasPrivilege,
   ResourcePathResolver,
   ResourceTreeService,
+  User,
   type DataSource,
 } from '@davnode/core';
 import type { Express, Request } from 'express';
@@ -32,6 +34,12 @@ import {
  * `milestones/M2-webdav-core/06-resource-crud/04-delete.md`: the
  * descendants no longer exist as independent resources for sync
  * purposes once their own subtree is gone.
+ *
+ * **Quota** (M8): every removed file's `sizeBytes`, summed per owner
+ * (`ResourceTreeService.sumFileSizesByOwner`), is credited back via a
+ * negative `applyQuotaDelta` call before the actual delete — never
+ * blocked by either owner's limit, since a decrease can't exceed one
+ * (`milestones/M8-quota/02-webdav-quota-integration/01-put-delete-retrofit.md`).
  *
  * A lock on the target *or* its parent (M4, e.g. an unlocked file
  * inside a `Depth: infinity`-locked collection) needs a covering
@@ -111,6 +119,26 @@ export function registerDeleteRoute(
         target instanceof Collection ? target.displayName : target.name;
 
       await dataSource.transaction(async (manager) => {
+        // Quota (M8): sizes are summed *before* the recursive delete,
+        // grouped by owner — a collection can hold files owned by
+        // different principals (ACL-granted `bind`). A negative delta
+        // is never blocked by applyQuotaDelta's own limit guard, so
+        // this never throws QuotaExceededError.
+        const sizesByOwner = await resourceTree.sumFileSizesByOwner(
+          manager,
+          target,
+        );
+        for (const [ownerPrincipalId, bytes] of sizesByOwner) {
+          const owner = await manager
+            .getRepository(User)
+            .findOneByOrFail({ principalId: ownerPrincipalId });
+          await applyQuotaDelta(manager, {
+            userId: owner.id,
+            tenantId: tenant.id,
+            deltaBytes: -bytes,
+          });
+        }
+
         await resourceTree.deleteRecursively(manager, target);
         await collectionChanges.recordChange(
           manager,

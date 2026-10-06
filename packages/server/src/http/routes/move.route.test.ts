@@ -8,11 +8,11 @@ import {
   createDataSource,
   createOwnerAllAce,
   FileResource,
+  Tenant,
   TenantService,
+  User,
   UserService,
   type DataSource,
-  type Tenant,
-  type User,
 } from '@davnode/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../app.js';
@@ -376,5 +376,43 @@ describe('MOVE route', () => {
         { name: 'renamed.txt', action: 'added' },
       ]),
     );
+  });
+
+  describe('quota (M8)', () => {
+    it('leaves quota_used_bytes unchanged — MOVE never creates new content, the owner stays the same', async () => {
+      // Covers the case milestones/M8-quota/02-webdav-quota-integration/
+      // 01-put-delete-retrofit.md actually guarantees: a plain
+      // relocate/rename moves the existing row (same owner, same
+      // sizeBytes, no new content) across one or more collections, so
+      // there is nothing for applyQuotaDelta to adjust. This
+      // deliberately does NOT cover Overwrite: T onto an existing
+      // *different* target — that still deletes real content exactly
+      // like COPY's own overwrite case does, but per that same doc
+      // ("MOVE braucht keine Anpassung") this is accepted drift, left
+      // for GA5's recompute job to correct, not retrofitted here.
+      await mkcol('/dav/acme/files/sub');
+      await put('/dav/acme/files/report.txt', 'hello'); // 5 bytes
+      const before = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      const tenantBefore = await dataSource
+        .getRepository(Tenant)
+        .findOneByOrFail({ id: tenant.id });
+
+      await move('/dav/acme/files/report.txt', '/dav/acme/files/sub/moved.txt');
+      await move(
+        '/dav/acme/files/sub/moved.txt',
+        '/dav/acme/files/renamed.txt',
+      );
+
+      const after = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: alice.id });
+      const tenantAfter = await dataSource
+        .getRepository(Tenant)
+        .findOneByOrFail({ id: tenant.id });
+      expect(after.quotaUsedBytes).toBe(before.quotaUsedBytes);
+      expect(tenantAfter.quotaUsedBytes).toBe(tenantBefore.quotaUsedBytes);
+    });
   });
 });

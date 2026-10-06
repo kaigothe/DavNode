@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import {
+  applyQuotaDelta,
   Collection,
   CollectionChangeService,
   createOwnerAllAce,
@@ -7,7 +8,9 @@ import {
   FileResource,
   getEffectiveWebDavLocks,
   hasPrivilege,
+  QuotaExceededError,
   ResourcePathResolver,
+  User,
   type DataSource,
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
@@ -18,6 +21,7 @@ import {
   requirePrincipal,
   requireTenant,
 } from './dav-request.util.js';
+import { sendQuotaExceededResponse } from './quota-error.util.js';
 
 const DEFAULT_CONTENT_TYPE = 'application/octet-stream';
 
@@ -49,10 +53,14 @@ function computeEtag(content: Buffer): string {
  * On success, records a `collection_changes` entry (`added` for a new
  * file, `modified` for an overwrite) and bumps the parent's `syncSeq`.
  *
- * No quota check in M2 (Quota enforcement is M8, see
- * `milestones/M2-webdav-core/00-setting-goal.md`) — this is where
- * `applyQuotaDelta` will be called once M8 exists (see
- * `milestones/M8-quota/02-webdav-quota-integration/01-put-delete-retrofit.md`).
+ * **Quota** (M8): `applyQuotaDelta` runs first inside the same
+ * transaction as the write — `+body.length` for a new file,
+ * `body.length - target.sizeBytes` (can be negative) for an overwrite,
+ * charged to the *existing* resource's owner rather than the writer,
+ * since an overwrite via ACL-granted `write-content` shouldn't move
+ * bytes onto someone else's counter. A `QuotaExceededError` rolls the
+ * transaction back and answers `507 Insufficient Storage`
+ * (`milestones/M8-quota/02-webdav-quota-integration/01-put-delete-retrofit.md`).
  *
  * A locked target (overwrite) or locked parent (create, M4) needs a
  * covering `If`-header token — `createLockEnforcementMiddleware` runs
@@ -146,26 +154,47 @@ export function registerPutRoute(app: Express, dataSource: DataSource): void {
           return;
         }
 
-        await dataSource.transaction(async (manager) => {
-          const fileResources = manager.getRepository(FileResource);
-          target.contentType = contentType;
-          target.etag = etag;
-          target.sizeBytes = body.length;
-          await fileResources.save(target);
+        try {
+          await dataSource.transaction(async (manager) => {
+            // Quota is attributed to the existing resource's owner, not
+            // necessarily the writer — an overwrite by someone else's
+            // ACL-granted write-content doesn't move the bytes onto
+            // their own counter.
+            const owner = await manager
+              .getRepository(User)
+              .findOneByOrFail({ principalId: target.ownerPrincipalId });
+            await applyQuotaDelta(manager, {
+              userId: owner.id,
+              tenantId: tenant.id,
+              deltaBytes: body.length - target.sizeBytes,
+            });
 
-          const fileContents = manager.getRepository(FileContent);
-          await fileContents.update(
-            { fileResourceId: target.id },
-            { data: body },
-          );
+            const fileResources = manager.getRepository(FileResource);
+            target.contentType = contentType;
+            target.etag = etag;
+            target.sizeBytes = body.length;
+            await fileResources.save(target);
 
-          await collectionChanges.recordChange(
-            manager,
-            target.collectionId,
-            newName,
-            'modified',
-          );
-        });
+            const fileContents = manager.getRepository(FileContent);
+            await fileContents.update(
+              { fileResourceId: target.id },
+              { data: body },
+            );
+
+            await collectionChanges.recordChange(
+              manager,
+              target.collectionId,
+              newName,
+              'modified',
+            );
+          });
+        } catch (error) {
+          if (error instanceof QuotaExceededError) {
+            sendQuotaExceededResponse(res, error);
+            return;
+          }
+          throw error;
+        }
 
         res.set('ETag', etag).sendStatus(204);
         return;
@@ -181,34 +210,51 @@ export function registerPutRoute(app: Express, dataSource: DataSource): void {
         return;
       }
 
-      await dataSource.transaction(async (manager) => {
-        const fileResources = manager.getRepository(FileResource);
-        const created = await fileResources.save(
-          fileResources.create({
+      try {
+        await dataSource.transaction(async (manager) => {
+          const owner = await manager
+            .getRepository(User)
+            .findOneByOrFail({ principalId: principal.id });
+          await applyQuotaDelta(manager, {
+            userId: owner.id,
             tenantId: tenant.id,
-            collectionId: parent.id,
-            name: newName,
-            contentType,
-            etag,
-            sizeBytes: body.length,
-            ownerPrincipalId: principal.id,
-          }),
-        );
+            deltaBytes: body.length,
+          });
 
-        const fileContents = manager.getRepository(FileContent);
-        await fileContents.save(
-          fileContents.create({ fileResourceId: created.id, data: body }),
-        );
+          const fileResources = manager.getRepository(FileResource);
+          const created = await fileResources.save(
+            fileResources.create({
+              tenantId: tenant.id,
+              collectionId: parent.id,
+              name: newName,
+              contentType,
+              etag,
+              sizeBytes: body.length,
+              ownerPrincipalId: principal.id,
+            }),
+          );
 
-        await createOwnerAllAce(manager, 'file', created.id, principal.id);
+          const fileContents = manager.getRepository(FileContent);
+          await fileContents.save(
+            fileContents.create({ fileResourceId: created.id, data: body }),
+          );
 
-        await collectionChanges.recordChange(
-          manager,
-          parent.id,
-          newName,
-          'added',
-        );
-      });
+          await createOwnerAllAce(manager, 'file', created.id, principal.id);
+
+          await collectionChanges.recordChange(
+            manager,
+            parent.id,
+            newName,
+            'added',
+          );
+        });
+      } catch (error) {
+        if (error instanceof QuotaExceededError) {
+          sendQuotaExceededResponse(res, error);
+          return;
+        }
+        throw error;
+      }
 
       res.set('ETag', etag).sendStatus(201);
     },
