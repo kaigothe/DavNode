@@ -5,10 +5,10 @@ import {
   AddressbookCollection,
   createDataSource,
   TenantService,
+  User,
   UserService,
   type DataSource,
   type Tenant,
-  type User,
 } from '@davnode/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { create } from 'xmlbuilder2';
@@ -253,5 +253,29 @@ describe('addressbook-home route', () => {
     );
 
     expect(response.status).toBe(403);
+  });
+
+  it("reports the home collection owner's quota-used-bytes and quota-available-bytes (M8)", async () => {
+    await new UserService(dataSource).updateUserQuota(alice.id, {
+      quotaLimitBytes: 1000,
+    });
+    await dataSource
+      .getRepository(User)
+      .update({ id: alice.id }, { quotaUsedBytes: 400 });
+
+    const response = await propfind(
+      `/dav/acme/addressbooks/${alice.principalId}`,
+      {
+        depth: '0',
+        body: '<D:propfind xmlns:D="DAV:"><D:prop><D:quota-used-bytes/><D:quota-available-bytes/></D:prop></D:propfind>',
+      },
+    );
+
+    expect(response.status).toBe(207);
+    const body = await response.text();
+    expect(body).toContain('<D:quota-used-bytes>400</D:quota-used-bytes>');
+    expect(body).toContain(
+      '<D:quota-available-bytes>600</D:quota-available-bytes>',
+    );
   });
 });

@@ -7,6 +7,7 @@ import {
   LockPropertiesProvider,
   parsePropfindRequestBody,
   PropertyProviderRegistry,
+  QuotaPropertiesProvider,
   ResourcePathResolver,
   WebDavLiveProperties,
   type DataSource,
@@ -105,6 +106,7 @@ export function registerPropfindRoute(
   registry.register(new WebDavLiveProperties());
   registry.register(new AclPropertiesProvider());
   registry.register(new LockPropertiesProvider());
+  registry.register(new QuotaPropertiesProvider<WebDavResource>());
 
   app.propfind(
     '/dav/:tenantSlug/files{/*splat}',

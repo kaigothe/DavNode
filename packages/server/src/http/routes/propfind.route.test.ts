@@ -9,12 +9,12 @@ import {
   createOwnerAllAce,
   FileResource,
   Principal,
+  Tenant,
   TenantService,
   toPrincipalUrl,
+  User,
   UserService,
   type DataSource,
-  type Tenant,
-  type User,
 } from '@davnode/core';
 import { create } from 'xmlbuilder2';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -493,6 +493,76 @@ describe('PROPFIND route', () => {
       expect(response.status).toBe(207);
       const body = await response.text();
       expect(body).toContain('HTTP/1.1 403 Forbidden');
+    });
+  });
+
+  describe('quota (M8)', () => {
+    const quotaPropfindBody =
+      '<D:propfind xmlns:D="DAV:"><D:prop><D:quota-used-bytes/><D:quota-available-bytes/></D:prop></D:propfind>';
+
+    function propertyText(xml: string, name: string): string | undefined {
+      return create(xml)
+        .root()
+        .filter((n) => n.node.localName === name, false, true)[0]
+        ?.node.textContent?.trim();
+    }
+
+    it("reports the owner's quota-used-bytes and the remaining headroom under a User limit", async () => {
+      await new UserService(dataSource).updateUserQuota(alice.id, {
+        quotaLimitBytes: 1000,
+      });
+      await dataSource
+        .getRepository(User)
+        .update({ id: alice.id }, { quotaUsedBytes: 100 });
+
+      const response = await propfind('/dav/acme/files', {
+        depth: '0',
+        body: quotaPropfindBody,
+      });
+
+      expect(response.status).toBe(207);
+      const body = await response.text();
+      expect(propertyText(body, 'quota-used-bytes')).toBe('100');
+      expect(propertyText(body, 'quota-available-bytes')).toBe('900');
+    });
+
+    it('reflects the Tenant limit when it is more restrictive than the User limit', async () => {
+      await new UserService(dataSource).updateUserQuota(alice.id, {
+        quotaLimitBytes: 1000,
+      });
+      await new TenantService(dataSource).updateTenantQuota(tenant.id, {
+        quotaLimitBytes: 150,
+      });
+      await dataSource
+        .getRepository(User)
+        .update({ id: alice.id }, { quotaUsedBytes: 100 });
+      await dataSource
+        .getRepository(Tenant)
+        .update({ id: tenant.id }, { quotaUsedBytes: 100 });
+
+      const response = await propfind('/dav/acme/files', {
+        depth: '0',
+        body: quotaPropfindBody,
+      });
+
+      expect(response.status).toBe(207);
+      const body = await response.text();
+      // User's own headroom would be 900 (1000 - 100), but the Tenant's
+      // own is only 50 (150 - 100) — the more restrictive one wins.
+      expect(propertyText(body, 'quota-available-bytes')).toBe('50');
+    });
+
+    it('reports a large placeholder, not an error, when neither limit is set', async () => {
+      const response = await propfind('/dav/acme/files', {
+        depth: '0',
+        body: quotaPropfindBody,
+      });
+
+      expect(response.status).toBe(207);
+      const body = await response.text();
+      expect(propertyText(body, 'quota-used-bytes')).toBe('0');
+      const available = Number(propertyText(body, 'quota-available-bytes'));
+      expect(available).toBeGreaterThan(1_000_000_000_000);
     });
   });
 });

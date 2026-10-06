@@ -6,10 +6,10 @@ import {
   CalendarProperty,
   createDataSource,
   TenantService,
+  User,
   UserService,
   type DataSource,
   type Tenant,
-  type User,
 } from '@davnode/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { create } from 'xmlbuilder2';
@@ -425,5 +425,28 @@ describe('calendar-home route', () => {
 
     expect(homeResponse.status).toBe(207);
     expect(responseHrefs(await homeResponse.text())).toHaveLength(2);
+  });
+
+  it("reports the home collection owner's quota-used-bytes and quota-available-bytes (M8)", async () => {
+    await new UserService(dataSource).updateUserQuota(alice.id, {
+      quotaLimitBytes: 1000,
+    });
+    await dataSource
+      .getRepository(User)
+      .update({ id: alice.id }, { quotaUsedBytes: 400 });
+
+    const response = await propfind(home(), {
+      depth: '0',
+      body: '<D:propfind xmlns:D="DAV:"><D:prop><D:quota-used-bytes/><D:quota-available-bytes/></D:prop></D:propfind>',
+    });
+
+    expect(response.status).toBe(207);
+    const elements = elementsOf(await response.text());
+    expect(elements.find((e) => e.name === 'quota-used-bytes')?.text).toBe(
+      '400',
+    );
+    expect(elements.find((e) => e.name === 'quota-available-bytes')?.text).toBe(
+      '600',
+    );
   });
 });

@@ -6,6 +6,7 @@ import {
   DeadPropertyService,
   parsePropfindRequestBody,
   PropertyProviderRegistry,
+  QuotaPropertiesProvider,
   type CalendarHomeTreeResource,
   type DataSource,
   type MultistatusPropertyResult,
@@ -147,6 +148,7 @@ export function registerCalendarHomeRoute(
 ): void {
   const registry = new PropertyProviderRegistry<CalendarHomeTreeResource>();
   registry.register(new CalendarLiveProperties());
+  registry.register(new QuotaPropertiesProvider<CalendarHomeTreeResource>());
   const deadProperties = new DeadPropertyService(dataSource);
 
   app.propfind(

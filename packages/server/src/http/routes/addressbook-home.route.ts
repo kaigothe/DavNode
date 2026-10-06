@@ -5,6 +5,7 @@ import {
   buildMultistatusResponse,
   parsePropfindRequestBody,
   PropertyProviderRegistry,
+  QuotaPropertiesProvider,
   type AddressbookHomeTreeResource,
   type DataSource,
   type MultistatusPropertyResult,
@@ -148,6 +149,7 @@ export function registerAddressbookHomeRoute(
 ): void {
   const registry = new PropertyProviderRegistry<AddressbookHomeTreeResource>();
   registry.register(new AddressbookLiveProperties());
+  registry.register(new QuotaPropertiesProvider<AddressbookHomeTreeResource>());
 
   app.propfind(
     '/dav/:tenantSlug/addressbooks/:userId{/*splat}',

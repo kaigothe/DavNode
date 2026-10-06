@@ -174,6 +174,7 @@ export {
   type ApplyQuotaDeltaInput,
   type QuotaLevel,
 } from './quota/apply-quota-delta.js';
+export { QuotaPropertiesProvider } from './quota/quota-properties-provider.js';
 
 export {
   type MultistatusPropertyResult,
