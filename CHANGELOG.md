@@ -1,3 +1,10 @@
+# [1.22.0](https://github.com/kaigothe/DavNode/compare/v1.21.0...v1.22.0) (2026-10-06)
+
+
+### Features
+
+* **server:** retrofit WebDAV PUT/DELETE/COPY with quota enforcement (M8) ([e0ba543](https://github.com/kaigothe/DavNode/commit/e0ba5432c2a5fed75f2b15bb123b7ed0267f976c))
+
 # [1.21.0](https://github.com/kaigothe/DavNode/compare/v1.20.0...v1.21.0) (2026-09-25)
 
 
