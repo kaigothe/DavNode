@@ -1,3 +1,14 @@
+# [1.23.0](https://github.com/kaigothe/DavNode/compare/v1.22.0...v1.23.0) (2026-10-06)
+
+
+### Features
+
+* **admin-api:** add the Admin API router scaffold and role authorization (M9) ([c5625f6](https://github.com/kaigothe/DavNode/commit/c5625f69b20e11633814a467e5967d9e080a4641))
+* **core:** add the Admin API role hierarchy check (M9) ([f9a3f0b](https://github.com/kaigothe/DavNode/commit/f9a3f0b435780a63567841484073f7c406f5b09e))
+* **server:** add quota reconciliation job and manual trigger (M8) ([1466c50](https://github.com/kaigothe/DavNode/commit/1466c50c281d0c741a134518ce7beae04463a8cb))
+* **server:** add RFC 4331 quota live properties (M8) ([d8ddd30](https://github.com/kaigothe/DavNode/commit/d8ddd3039333e735285915d1fe86118bb99908a4))
+* **server:** retrofit CardDAV/CalDAV writes with quota enforcement (M8) ([eef34c4](https://github.com/kaigothe/DavNode/commit/eef34c4e1af7ab27abb3866fffa45d8d5f766304))
+
 # [1.22.0](https://github.com/kaigothe/DavNode/compare/v1.21.0...v1.22.0) (2026-10-06)
 
 
