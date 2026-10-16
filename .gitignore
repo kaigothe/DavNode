@@ -39,3 +39,6 @@ npm-debug.log*
 *.swp
 *.swo
 .DS_Store
+
+# Scratch space of scripts/conformance (database, logs, test reports)
+.conformance/

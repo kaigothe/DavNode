@@ -86,8 +86,40 @@ jobs:
       - run: npm run build --workspaces
       - run: npm test --workspaces
 
+  # WebDAV conformance (M11, milestones/M11-client-compatibility/
+  # 06-conformance-suite-ci): the litmus suites run against a real server
+  # started from the build. The result is evaluated differentially by
+  # scripts/conformance/evaluate-litmus.mjs — any failure not listed in
+  # scripts/conformance/litmus-expected-failures.txt fails the job.
+  litmus:
+    needs: lint-and-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspaces
+      - run: sudo apt-get update && sudo apt-get install -y litmus
+      - run: scripts/conformance/start-server.sh
+      - run: scripts/conformance/run-litmus.sh
+      - name: Stop the server
+        if: always()
+        run: scripts/conformance/stop-server.sh
+      - name: Upload the litmus log and the server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: litmus-results
+          path: |
+            .conformance/litmus.log
+            .conformance/server.log
+          if-no-files-found: warn
+
   release:
-    needs: [lint-and-build, test]
+    needs: [lint-and-build, test, litmus]
     # Only push events to main create releases — pull_request runs (and
     # pushes to any other branch) skip this job. .releaserc.json's own
     # `branches: ["main"]` would refuse a release anyway, but gating here

@@ -1,0 +1,8 @@
+# litmus tests that are expected to fail, one "<suite>/<test>" per line,
+# with the reason after "#". Everything else must pass.
+#
+# Currently empty: the litmus 0.13 suites (basic, copymove, props, locks,
+# http) all pass. They do not include a class-3 ordered-collections
+# (RFC 3648) suite, which DavNode deliberately does not implement
+# (planning/06-standards-compliance.md); should a newer litmus add one,
+# list its tests here with that reason.
