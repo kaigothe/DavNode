@@ -37,7 +37,29 @@ export interface ParsedVCard {
 
   /** `NICKNAME` occurrences. */
   nickname: string[];
+
+  /**
+   * Every occurrence of the indexed properties with its `TYPE`
+   * parameter normalized, in document order — the one representation
+   * vCard 3.0's `TYPE=HOME;TYPE=VOICE` and 4.0's `TYPE="home,voice"`
+   * (and the unquoted `TYPE=HOME,VOICE`) all collapse into: `types` is
+   * lowercase, de-duplicated and never contains a comma.
+   */
+  typed: ParsedVCardProperty[];
 }
+
+/** One indexed vCard property occurrence, see {@link ParsedVCard.typed}. */
+export interface ParsedVCardProperty {
+  /** Upper-case property name, e.g. `'TEL'`. */
+  name: string;
+  /** The decoded value (quoted-printable resolved). */
+  value: string;
+  /** Normalized `TYPE` values, e.g. `['home', 'voice']`; empty when the property has no `TYPE`. */
+  types: string[];
+}
+
+/** vCard versions DavNode accepts (RFC 6352 §6.2.2 requires 3.0 and 4.0). */
+const SUPPORTED_VERSIONS = ['3.0', '4.0'];
 
 /**
  * Thrown when vCard text can't be turned into a {@link ParsedVCard} —
@@ -55,21 +77,122 @@ export class VCardParseError extends Error {
 }
 
 /**
- * Normalizes a `vcf` property field into a plain string array. `vcf`
- * represents an absent property as `undefined`, a single occurrence as
- * a bare `Property`, and multiple occurrences as `Property[]` — this
- * collapses all three into one consistent shape.
+ * Joins quoted-printable "soft line breaks": a property line declaring
+ * `ENCODING=QUOTED-PRINTABLE` whose text ends in `=` continues on the
+ * next physical line (older exporters wrap long values this way, without
+ * the leading whitespace of ordinary vCard folding, which `vcf` would
+ * not understand).
  */
-function toStringArray(
+function joinQuotedPrintableSoftBreaks(raw: string): string {
+  const lines = raw.split(/\r?\n/);
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    let line = lines[i] ?? '';
+    const colon = line.indexOf(':');
+    if (colon !== -1 && isQuotedPrintableDeclaration(line.slice(0, colon))) {
+      while (line.endsWith('=') && i + 1 < lines.length) {
+        i += 1;
+        line = line.slice(0, -1) + (lines[i] ?? '');
+      }
+    }
+    out.push(line);
+  }
+  return out.join('\r\n');
+}
+
+/** Whether a property's name-and-parameters part declares quoted-printable (`ENCODING=QUOTED-PRINTABLE`; vCard 2.1's bare token is not supported, 2.1 being rejected as a whole). */
+function isQuotedPrintableDeclaration(header: string): boolean {
+  return /;\s*encoding\s*=\s*(?:quoted-printable|q)\s*(?:;|$)/i.test(header);
+}
+
+/**
+ * Decodes quoted-printable text (RFC 2045 §6.7) in `charset`. Literal
+ * characters are taken as their UTF-8 bytes (the vCard text itself has
+ * already been decoded), `=XX` is one raw byte, and a stray `=` that is
+ * not followed by two hex digits stays as it is. An unknown `charset`
+ * falls back to UTF-8.
+ */
+export function decodeQuotedPrintable(text: string, charset = 'utf-8'): string {
+  const bytes: number[] = [];
+  let i = 0;
+  while (i < text.length) {
+    const hex = text.slice(i + 1, i + 3);
+    if (text[i] === '=' && /^[0-9a-fA-F]{2}$/.test(hex)) {
+      bytes.push(parseInt(hex, 16));
+      i += 3;
+      continue;
+    }
+    const codePoint = text.codePointAt(i) ?? 0;
+    bytes.push(...Buffer.from(String.fromCodePoint(codePoint)));
+    i += codePoint > 0xffff ? 2 : 1;
+  }
+  const data = Uint8Array.from(bytes);
+  try {
+    return new TextDecoder(charset).decode(data);
+  } catch {
+    return new TextDecoder('utf-8').decode(data);
+  }
+}
+
+/**
+ * Splits a structured value (`N`, `ORG`) at unescaped semicolons so each
+ * component can be decoded on its own: an encoded `=3B` is a literal
+ * semicolon inside a component, a bare `;` separates components.
+ */
+function decodeQuotedPrintableValue(value: string, charset: string): string {
+  return value
+    .split(/(?<!\\);/)
+    .map((component) =>
+      decodeQuotedPrintable(component, charset).replace(/;/g, '\\;'),
+    )
+    .join(';');
+}
+
+/** Normalizes a `vcf` property's `TYPE` parameter, whichever syntax it came in. */
+function normalizeTypes(property: vCard.Property): string[] {
+  const raw = (property as unknown as { type?: unknown }).type;
+  const values = Array.isArray(raw) ? raw : raw === undefined ? [] : [raw];
+  const types = values
+    .flatMap((value) => String(value).split(','))
+    .map((value) => value.replace(/^"|"$/g, '').trim().toLowerCase())
+    .filter((value) => value !== '');
+  return [...new Set(types)];
+}
+
+/** The decoded text of one `vcf` property. */
+function propertyText(property: vCard.Property): string {
+  const value = property.valueOf();
+  const params = property as unknown as {
+    encoding?: unknown;
+    charset?: unknown;
+  };
+  const encoding = typeof params.encoding === 'string' ? params.encoding : '';
+  if (!/^(?:quoted-printable|q)$/i.test(encoding)) {
+    return value;
+  }
+  return decodeQuotedPrintableValue(
+    value,
+    typeof params.charset === 'string' ? params.charset : 'utf-8',
+  );
+}
+
+/**
+ * Normalizes a `vcf` property field into its occurrences. `vcf`
+ * represents an absent property as `undefined`, a single occurrence as a
+ * bare `Property`, and multiple occurrences as `Property[]`.
+ */
+function toProperties(
   field: vCard.Property | vCard.Property[] | undefined,
-): string[] {
+): vCard.Property[] {
   if (field === undefined) {
     return [];
   }
-  return Array.isArray(field)
-    ? field.map((property) => property.valueOf())
-    : [field.valueOf()];
+  return Array.isArray(field) ? field : [field];
 }
+
+const toStringArray = (
+  field: vCard.Property | vCard.Property[] | undefined,
+): string[] => toProperties(field).map(propertyText);
 
 /**
  * Parses raw vCard text (vCard 3.0 or 4.0 — RFC 2426 / RFC 6350) into a
@@ -79,10 +202,16 @@ function toStringArray(
  * underlying library's own exception type, or a raw parser crash,
  * escape to the caller.
  *
- * Only rough compatibility across both vCard versions is attempted, per
- * M5's scope (see milestones/M5-carddav/00-setting-goal.md) — full
- * 3.0/4.0 semantic reconciliation (e.g. differing `TYPE` parameter
- * conventions) is M11's job.
+ * Version 3.0 and 4.0 are accepted (RFC 6352 §6.2.2); any other or
+ * missing `VERSION` is rejected rather than half-understood. The
+ * differences that matter in practice are reconciled here (M11):
+ * `ENCODING=QUOTED-PRINTABLE` values — which 4.0 dropped but older
+ * clients still send — are decoded (with their `CHARSET`, and including
+ * soft line breaks) before they reach the search index, and the three
+ * spellings of the `TYPE` parameter collapse into one list, see
+ * {@link ParsedVCard.typed}. Properties DavNode does not index, such as
+ * Apple's `X-ABADR`, are simply not looked at: the stored text is the
+ * client's original, so they survive a GET untouched.
  *
  * @param raw - The raw vCard text (a single `BEGIN:VCARD`…`END:VCARD` block).
  * @returns The parsed, library-independent representation.
@@ -90,10 +219,16 @@ function toStringArray(
 export function parseVCard(raw: string): ParsedVCard {
   let card: vCard;
   try {
-    card = new vCard().parse(raw);
+    card = new vCard().parse(joinQuotedPrintableSoftBreaks(raw));
   } catch (error) {
     throw new VCardParseError(
       `Could not parse vCard: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  if (!SUPPORTED_VERSIONS.includes(card.version)) {
+    throw new VCardParseError(
+      `Unsupported vCard version "${String(card.version)}"; expected 3.0 or 4.0`,
     );
   }
 
@@ -111,5 +246,13 @@ export function parseVCard(raw: string): ParsedVCard {
     tel: toStringArray(card.data.tel),
     org: toStringArray(card.data.org),
     nickname: toStringArray(card.data.nickname),
+    typed: (['fn', 'n', 'email', 'tel', 'org', 'nickname'] as const).flatMap(
+      (field) =>
+        toProperties(card.data[field]).map((property) => ({
+          name: field.toUpperCase(),
+          value: propertyText(property),
+          types: normalizeTypes(property),
+        })),
+    ),
   };
 }

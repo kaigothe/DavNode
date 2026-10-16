@@ -203,4 +203,66 @@ describe('CardDAV addressbook-query REPORT', () => {
     const noFilter = await report(query(''));
     expect(noFilter.status).toBe(400);
   });
+
+  describe('vCard 3.0 clients (M11)', () => {
+    const quotedPrintableCard = [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      'UID:uid-qp',
+      'FN;CHARSET=UTF-8;ENCODING=QUOTED-PRINTABLE:J=C3=BCrgen M=C3=BCller',
+      'N;CHARSET=UTF-8;ENCODING=QUOTED-PRINTABLE:M=C3=BCller;J=C3=BCrgen;;;',
+      'TEL;TYPE=HOME;TYPE=VOICE:+49 30 1234',
+      'EMAIL;TYPE=INTERNET,PREF:juergen@example.com',
+      'X-ABADR:de',
+      'X-ABUID:5C1B6A52-0C22-4C13-9B6A-6D2C7C1A0000:ABPerson',
+      'X-ABRELATEDNAMES;type=Mother;X-ABLabel=_$!<Mother>!$_:Maria',
+      'END:VCARD',
+      '',
+    ].join('\r\n');
+
+    const fnContains = (text: string) =>
+      `<C:filter><C:prop-filter name="FN"><C:text-match match-type="contains">${text}</C:text-match></C:prop-filter></C:filter>`;
+
+    it('finds a contact whose name was sent quoted-printable by its decoded text', async () => {
+      await put('qp.vcf', quotedPrintableCard);
+
+      const response = await report(query(fnContains('müller')));
+
+      expect(response.status).toBe(207);
+      expect(hrefs(await response.text())).toEqual([`${bookUrl()}/qp.vcf`]);
+    });
+
+    it('does not match the encoded form', async () => {
+      await put('qp.vcf', quotedPrintableCard);
+
+      const response = await report(query(fnContains('C3=BC')));
+
+      expect(hrefs(await response.text())).toEqual([]);
+    });
+
+    it('returns the vCard byte for byte on GET, extensions and encoding included', async () => {
+      await put('qp.vcf', quotedPrintableCard);
+
+      const response = await fetch(`${baseUrl}${bookUrl()}/qp.vcf`, {
+        headers: { Authorization: basicAuthHeader('alice', PASSWORD) },
+      });
+
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe(quotedPrintableCard);
+    });
+
+    it('rejects a vCard with an unsupported VERSION with 4xx instead of storing it', async () => {
+      const response = await fetch(`${baseUrl}${bookUrl()}/old.vcf`, {
+        method: 'PUT',
+        headers: {
+          Authorization: basicAuthHeader('alice', PASSWORD),
+          'Content-Type': 'text/vcard',
+        },
+        body: quotedPrintableCard.replace('VERSION:3.0', 'VERSION:2.1'),
+      });
+
+      expect(response.status).toBeGreaterThanOrEqual(400);
+      expect(response.status).toBeLessThan(500);
+    });
+  });
 });

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { parseVCard, VCardParseError } from './vcard-parser.js';
+import {
+  decodeQuotedPrintable,
+  parseVCard,
+  VCardParseError,
+} from './vcard-parser.js';
 
 const VCARD_4_0 = [
   'BEGIN:VCARD',
@@ -83,5 +87,121 @@ describe('parseVCard', () => {
     expect(() => parseVCard('this is not a vcard at all')).toThrow(
       VCardParseError,
     );
+  });
+
+  describe('vCard 3.0 compatibility (M11)', () => {
+    const card = (...lines: string[]) =>
+      ['BEGIN:VCARD', 'VERSION:3.0', 'UID:u1', ...lines, 'END:VCARD', ''].join(
+        '\r\n',
+      );
+
+    it('decodes quoted-printable umlauts using the declared charset', () => {
+      const parsed = parseVCard(
+        card(
+          'FN;CHARSET=UTF-8;ENCODING=QUOTED-PRINTABLE:J=C3=BCrgen M=C3=BCller',
+          'NICKNAME;ENCODING=QUOTED-PRINTABLE;CHARSET=ISO-8859-1:J=FCrgi',
+        ),
+      );
+
+      expect(parsed.fn).toEqual(['Jürgen Müller']);
+      expect(parsed.nickname).toEqual(['Jürgi']);
+    });
+
+    it('decodes per component, so an encoded semicolon stays inside its component', () => {
+      const parsed = parseVCard(
+        card('N;ENCODING=QUOTED-PRINTABLE:M=C3=BCller=3BSr;J=C3=BCrgen;;;'),
+      );
+
+      expect(parsed.n).toEqual(['Müller\\;Sr;Jürgen;;;']);
+    });
+
+    it('joins quoted-printable soft line breaks', () => {
+      const parsed = parseVCard(
+        card('FN;ENCODING=QUOTED-PRINTABLE:Dr. J=C3=BCr=', 'gen M=C3=BCller'),
+      );
+
+      expect(parsed.fn).toEqual(['Dr. Jürgen Müller']);
+    });
+
+    it('leaves a plain value alone, even if it contains an equals sign', () => {
+      const parsed = parseVCard(card('FN:a=C3=BC b'));
+
+      expect(parsed.fn).toEqual(['a=C3=BC b']);
+    });
+
+    it('reduces every spelling of the TYPE parameter to the same list', () => {
+      const parsed = parseVCard(
+        card(
+          'TEL;TYPE=HOME;TYPE=VOICE:1',
+          'TEL;TYPE="HOME,VOICE":2',
+          'TEL;TYPE=home,voice:3',
+          'TEL;TYPE=Voice;TYPE=voice:4',
+          'TEL:5',
+        ),
+      );
+
+      const types = parsed.typed
+        .filter((property) => property.name === 'TEL')
+        .map((property) => [property.value, property.types]);
+      expect(types).toEqual([
+        ['1', ['home', 'voice']],
+        ['2', ['home', 'voice']],
+        ['3', ['home', 'voice']],
+        ['4', ['voice']],
+        ['5', []],
+      ]);
+    });
+
+    it('exposes TYPE for vCard 4.0 documents the same way', () => {
+      const parsed = parseVCard(
+        VCARD_4_0.replace('EMAIL;TYPE=work:', 'EMAIL;TYPE="work,pref":'),
+      );
+
+      expect(
+        parsed.typed.find((property) => property.name === 'EMAIL')?.types,
+      ).toEqual(['work', 'pref']);
+    });
+
+    it('ignores unknown X- properties without failing', () => {
+      const parsed = parseVCard(
+        card(
+          'FN:Ann',
+          'X-ABADR:de',
+          'X-ABUID:ABC:ABPerson',
+          'X-CUSTOM;FOO=bar:baz',
+        ),
+      );
+
+      expect(parsed.fn).toEqual(['Ann']);
+      expect(parsed.typed.map((property) => property.name)).toEqual(['FN']);
+    });
+
+    it.each(['2.1', '5.0', ''])(
+      'rejects unsupported VERSION "%s"',
+      (version) => {
+        const raw = [
+          'BEGIN:VCARD',
+          `VERSION:${version}`,
+          'UID:u1',
+          'FN:x',
+          'END:VCARD',
+          '',
+        ].join('\r\n');
+
+        expect(() => parseVCard(raw)).toThrow(VCardParseError);
+      },
+    );
+  });
+
+  describe('decodeQuotedPrintable', () => {
+    it('decodes bytes, keeps literal text and stray equals signs', () => {
+      expect(decodeQuotedPrintable('a=3Db=C3=A4 c=')).toBe('a=bä c=');
+      expect(decodeQuotedPrintable('=E2=82=AC')).toBe('€');
+      expect(decodeQuotedPrintable('😀=3F')).toBe('😀?');
+    });
+
+    it('falls back to UTF-8 for an unknown charset', () => {
+      expect(decodeQuotedPrintable('=C3=BC', 'no-such-charset')).toBe('ü');
+    });
   });
 });
