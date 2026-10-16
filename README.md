@@ -14,8 +14,8 @@ DavNode is licensed under the [GNU Affero General Public License v3.0](LICENSE)
 
 ## Status
 
-**Current version: v1.23.0** (milestones M0–M9 are complete; see
-[CHANGELOG.md](CHANGELOG.md) for the full history). Implemented:
+**Milestones M0–M10 are complete** (the current version and the full
+history are in [CHANGELOG.md](CHANGELOG.md)). Implemented:
 
 - **WebDAV** Class 1 and 2 (locking), RFC 6578 `sync-collection`, and
   RFC 3744 ACLs with per-user/group access control.
@@ -34,8 +34,36 @@ DavNode is licensed under the [GNU Affero General Public License v3.0](LICENSE)
   the request body. The very first tenant and admin user still come
   from the bootstrap CLI (`npm run bootstrap`).
 
-Still to come: Digest Auth and OAuth2/Bearer (M10), real-world client
-compatibility fixes (M11), and production hardening (M12).
+- **Authentication schemes**: HTTP Basic (default), Digest (RFC 7616,
+  SHA-256 only) and OAuth2 bearer tokens (RFC 6750). DavNode is only an
+  OAuth2 *resource server*: it validates JWTs issued by an external OIDC
+  provider and never creates users from tokens — an administrator links
+  a user to the provider's `(issuer, subject)` through the Admin API.
+  See [Configuring authentication](#configuring-authentication).
+
+Still to come: real-world client compatibility fixes (M11) and
+production hardening (M12).
+
+### Configuring authentication
+
+| Variable | Meaning |
+| --- | --- |
+| `DAVNODE_AUTH_PROVIDERS` | Comma-separated schemes to offer: `basic`, `digest`, `oauth2`. Default `basic`. |
+| `DAVNODE_AUTH_REALM` | Realm used in the challenges. Default `davnode`. Digest credentials embed it, so after changing it each user's password has to be set again. |
+| `DAVNODE_OAUTH2_ISSUERS` | Required with `oauth2`: a JSON array of trusted issuers, e.g. `[{"issuer":"https://idp.example.com","audience":"davnode","jwksUri":"https://idp.example.com/jwks"}]`. The JWKS URL is explicit; there is no OIDC discovery. |
+
+With several schemes enabled, an unauthenticated request receives one
+`WWW-Authenticate` header line per scheme, and a client may use any of
+them. The server refuses to start if the list names an unknown scheme or
+if `oauth2` is enabled without any issuer.
+
+Digest needs a stored `HA1` hash per user (computed from the password
+and realm), which is weaker than the argon2id hash used for Basic. It is
+only stored while `digest` is enabled; users created, or whose password
+is set via `POST /admin/{tenantSlug}/users/{userId}/password`, while
+Digest is off have no Digest credential and cannot use it until their
+password is set again with Digest on. Nonces are kept in memory, so
+Digest suits a single server instance.
 
 ## Roadmap
 
@@ -120,13 +148,13 @@ architecture, and data model live under [planning/](planning/).
 | | User management | CRUD for users within a tenant | ✅ Done |
 | | Group management | CRUD for groups + membership | ✅ Done |
 | | Quota management | Full admin route replacing the M8 stopgap | ✅ Done |
-| **M10 — Extended Auth Providers** | | Digest Auth and OAuth2/Bearer support | ⏳ Planned |
-| | Credential entity retrofit | Add Digest/OAuth2 columns | ⏳ Planned |
-| | Digest Auth core | HA1-based verification | ⏳ Planned |
-| | Digest Auth HTTP | Challenge/response handling | ⏳ Planned |
-| | OAuth2 core | JWT/JWKS validation against an OIDC provider | ⏳ Planned |
-| | OAuth2 HTTP | Bearer token handling (RFC 6750) | ⏳ Planned |
-| | Provider management | Enable/configure auth providers per tenant | ⏳ Planned |
+| **M10 — Extended Auth Providers** | | Digest Auth and OAuth2/Bearer support | ✅ Done |
+| | Credential entity retrofit | Add Digest/OAuth2 columns | ✅ Done |
+| | Digest Auth core | HA1-based verification | ✅ Done |
+| | Digest Auth HTTP | Challenge/response handling | ✅ Done |
+| | OAuth2 core | JWT/JWKS validation against an OIDC provider | ✅ Done |
+| | OAuth2 HTTP | Bearer token handling (RFC 6750) | ✅ Done |
+| | Provider management | Enable/configure auth providers per tenant | ✅ Done |
 | **M11 — Client Compatibility** | | Fixes for real-world Apple/Google/Microsoft client quirks | ⏳ Planned |
 | | Well-known discovery | `/.well-known/caldav` and `/carddav` (RFC 6764) | ⏳ Planned |
 | | Apple compatibility | `getctag` and other Apple client quirks | ⏳ Planned |
