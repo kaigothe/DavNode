@@ -13,6 +13,10 @@ export {
   OAuth2AuthProvider,
   type OAuth2AuthProviderOptions,
 } from './auth/oauth2-auth-provider.js';
+export {
+  CALENDARSERVER_NAMESPACE,
+  GetctagProvider,
+} from './webdav/properties/getctag-provider.js';
 export { DigestAuthProvider } from './auth/digest-auth-provider.js';
 export { computeDigestHa1 } from './auth/digest-ha1.js';
 export {

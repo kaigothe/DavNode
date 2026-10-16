@@ -6,6 +6,7 @@ import {
   DeadPropertyService,
   parsePropfindRequestBody,
   PropertyProviderRegistry,
+  GetctagProvider,
   QuotaPropertiesProvider,
   type CalendarHomeTreeResource,
   type DataSource,
@@ -149,6 +150,7 @@ export function registerCalendarHomeRoute(
   const registry = new PropertyProviderRegistry<CalendarHomeTreeResource>();
   registry.register(new CalendarLiveProperties());
   registry.register(new QuotaPropertiesProvider<CalendarHomeTreeResource>());
+  registry.register(new GetctagProvider<CalendarHomeTreeResource>());
   const deadProperties = new DeadPropertyService(dataSource);
 
   app.propfind(
