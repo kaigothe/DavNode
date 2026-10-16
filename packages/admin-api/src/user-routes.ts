@@ -336,4 +336,72 @@ export function registerUserRoutes(
       res.status(204).end();
     },
   );
+
+  router.post(
+    '/users/:userId/oauth2-link',
+    tenantAdmin,
+    parseJsonBody,
+    async (req, res) => {
+      const { issuer, subject } = (req.body ?? {}) as Record<string, unknown>;
+      if (!isNonEmptyString(issuer) || !isNonEmptyString(subject)) {
+        invalid(
+          res,
+          'invalid_identity',
+          '"issuer" and "subject" must be non-empty strings.',
+        );
+        return;
+      }
+      if (!options.oauth2Issuers?.includes(issuer)) {
+        invalid(
+          res,
+          'unknown_issuer',
+          '"issuer" is not one of the issuers this server trusts.',
+        );
+        return;
+      }
+
+      const target = await loadTarget(req, res);
+      if (!target) {
+        return;
+      }
+      // Linking an identity to a server_admin's account would let whoever
+      // controls that identity act as the admin.
+      if (
+        target.role === 'server_admin' &&
+        (await loadRequester(req)).role !== 'server_admin'
+      ) {
+        forbidEscalation(res);
+        return;
+      }
+
+      // A conflict surfaces as DuplicateEntryError and is mapped to 409
+      // by adminErrorHandler.
+      await users.linkOAuth2Identity(target.id, issuer, subject);
+      res.status(201).json({ issuer, subject });
+    },
+  );
+
+  router.delete('/users/:userId/oauth2-link', tenantAdmin, async (req, res) => {
+    const target = await loadTarget(req, res);
+    if (!target) {
+      return;
+    }
+    if (
+      target.role === 'server_admin' &&
+      (await loadRequester(req)).role !== 'server_admin'
+    ) {
+      forbidEscalation(res);
+      return;
+    }
+    if (!(await users.unlinkOAuth2Identity(target.id))) {
+      sendAdminError(
+        res,
+        404,
+        'not_linked',
+        'The user has no linked identity.',
+      );
+      return;
+    }
+    res.status(204).end();
+  });
 }

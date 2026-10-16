@@ -286,4 +286,62 @@ export class UserService {
       await manager.save(Credential, digest);
     });
   }
+
+  /**
+   * Links the external identity `(issuer, subject)` to a user by
+   * creating its `oauth2` credential, so tokens of that identity
+   * authenticate as the user (M10; there is no automatic provisioning).
+   *
+   * @throws {@link NotFoundError} If no user has `userId`.
+   * @throws {@link DuplicateEntryError} If the user already has an
+   * `oauth2` credential (unlink it first), or the identity is already
+   * linked to a user.
+   */
+  async linkOAuth2Identity(
+    userId: string,
+    issuer: string,
+    subject: string,
+  ): Promise<void> {
+    const credentials = this.dataSource.getRepository(Credential);
+    if (!(await this.dataSource.getRepository(User).existsBy({ id: userId }))) {
+      throw new NotFoundError(`User "${userId}" not found.`);
+    }
+    if (await credentials.existsBy({ userId, type: 'oauth2' })) {
+      throw new DuplicateEntryError(
+        'oauth2',
+        'This user is already linked to an external identity; remove that link first.',
+      );
+    }
+    try {
+      await credentials.save(
+        credentials.create({
+          userId,
+          type: 'oauth2',
+          oauth2Issuer: issuer,
+          oauth2Subject: subject,
+        }),
+      );
+    } catch (error) {
+      if (isUniqueConstraintViolationError(error)) {
+        throw new DuplicateEntryError(
+          'oauth2',
+          'This external identity is already linked to a user.',
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Removes a user's `oauth2` credential; their Basic and Digest
+   * credentials are untouched.
+   *
+   * @returns Whether a link existed.
+   */
+  async unlinkOAuth2Identity(userId: string): Promise<boolean> {
+    const result = await this.dataSource
+      .getRepository(Credential)
+      .delete({ userId, type: 'oauth2' });
+    return (result.affected ?? 0) > 0;
+  }
 }

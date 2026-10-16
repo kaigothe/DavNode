@@ -69,7 +69,7 @@ describe('user routes', () => {
   function mountAs(
     managed: Tenant,
     user: User,
-    routerOptions: { digestRealm?: string } = {},
+    routerOptions: { digestRealm?: string; oauth2Issuers?: string[] } = {},
   ): void {
     const app = express();
     app.use(async (req: Request, _res: Response, next: NextFunction) => {
@@ -543,6 +543,95 @@ describe('user routes', () => {
           password: 'hijacked',
         }),
       ).toBeNull();
+    });
+  });
+
+  describe('OAuth2 identity links', () => {
+    const issuer = 'https://idp.example.com';
+    const link = (userId: string, body: unknown) =>
+      send('POST', `/users/${userId}/oauth2-link`, body);
+    const oauth2Credentials = () =>
+      dataSource.getRepository(Credential).findBy({ type: 'oauth2' });
+
+    it('links an identity of a configured issuer (201) and unlinks it again (204), keeping Basic', async () => {
+      const boss = await createUser(acme, 'boss', 'tenant_admin');
+      const alice = await createUser(acme, 'alice', 'member');
+      mountAs(acme, boss, { oauth2Issuers: [issuer] });
+
+      const linked = await link(alice.id, { issuer, subject: 'sub-1' });
+      expect(linked.status).toBe(201);
+      expect(await linked.json()).toEqual({ issuer, subject: 'sub-1' });
+      expect(await oauth2Credentials()).toHaveLength(1);
+
+      const unlinked = await send('DELETE', `/users/${alice.id}/oauth2-link`);
+      expect(unlinked.status).toBe(204);
+      expect(await oauth2Credentials()).toHaveLength(0);
+      expect(
+        await new BasicAuthProvider(dataSource).verify({
+          tenantSlug: 'acme',
+          username: 'alice',
+          password: 'correct horse battery staple',
+        }),
+      ).not.toBeNull();
+      expect(
+        (await send('DELETE', `/users/${alice.id}/oauth2-link`)).status,
+      ).toBe(404);
+    });
+
+    it('answers 400 for an issuer that is not configured, or when OAuth2 is not enabled at all', async () => {
+      const boss = await createUser(acme, 'boss', 'tenant_admin');
+      const alice = await createUser(acme, 'alice', 'member');
+      mountAs(acme, boss, { oauth2Issuers: [issuer] });
+
+      const other = await link(alice.id, {
+        issuer: 'https://evil.example.com',
+        subject: 'sub-1',
+      });
+      expect(other.status).toBe(400);
+      expect(await errorCode(other)).toBe('unknown_issuer');
+      expect((await link(alice.id, { issuer })).status).toBe(400);
+      expect(await oauth2Credentials()).toHaveLength(0);
+
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+      mountAs(acme, boss);
+      expect((await link(alice.id, { issuer, subject: 's' })).status).toBe(400);
+    });
+
+    it('answers 409 for an identity already linked to another user and keeps the original link', async () => {
+      const boss = await createUser(acme, 'boss', 'tenant_admin');
+      const alice = await createUser(acme, 'alice', 'member');
+      const bobby = await createUser(acme, 'bobby', 'member');
+      mountAs(acme, boss, { oauth2Issuers: [issuer] });
+      await link(alice.id, { issuer, subject: 'sub-1' });
+
+      const conflict = await link(bobby.id, { issuer, subject: 'sub-1' });
+
+      expect(conflict.status).toBe(409);
+      expect(await errorCode(conflict)).toBe('duplicate_entry');
+      const remaining = await oauth2Credentials();
+      expect(remaining).toHaveLength(1);
+      expect(remaining[0]!.userId).toBe(alice.id);
+    });
+
+    it('a tenant_admin cannot link or unlink an identity of a server_admin; a member cannot link at all', async () => {
+      const boss = await createUser(acme, 'boss', 'tenant_admin');
+      const root = await createUser(acme, 'root', 'server_admin');
+      mountAs(acme, boss, { oauth2Issuers: [issuer] });
+
+      const linked = await link(root.id, { issuer, subject: 'sub-1' });
+      expect(linked.status).toBe(403);
+      expect(await errorCode(linked)).toBe('role_escalation');
+      expect(
+        (await send('DELETE', `/users/${root.id}/oauth2-link`)).status,
+      ).toBe(403);
+
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+      const member = await createUser(acme, 'plain', 'member');
+      mountAs(acme, member, { oauth2Issuers: [issuer] });
+      expect((await link(member.id, { issuer, subject: 's' })).status).toBe(
+        403,
+      );
+      expect(await oauth2Credentials()).toHaveLength(0);
     });
   });
 });

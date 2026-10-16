@@ -379,4 +379,67 @@ describe('UserService', () => {
       );
     });
   });
+
+  describe('OAuth2 identity links', () => {
+    const issuer = 'https://idp.example.com';
+    const credentialsOf = (userId: string) =>
+      dataSource.getRepository(Credential).findBy({ userId });
+
+    it('linkOAuth2Identity adds an oauth2 credential and leaves the others alone', async () => {
+      const user = await newUser('alice');
+
+      await service.linkOAuth2Identity(user.id, issuer, 'sub-1');
+
+      const credentials = await credentialsOf(user.id);
+      expect(credentials.map((c) => c.type).sort()).toEqual([
+        'basic',
+        'oauth2',
+      ]);
+      expect(credentials.find((c) => c.type === 'oauth2')).toMatchObject({
+        oauth2Issuer: issuer,
+        oauth2Subject: 'sub-1',
+        passwordHash: null,
+      });
+    });
+
+    it('refuses an identity already linked to another user and keeps the original link', async () => {
+      const alice = await newUser('alice');
+      const bob = await newUser('bob');
+      await service.linkOAuth2Identity(alice.id, issuer, 'sub-1');
+
+      await expect(
+        service.linkOAuth2Identity(bob.id, issuer, 'sub-1'),
+      ).rejects.toThrow(DuplicateEntryError);
+
+      expect(await credentialsOf(bob.id)).toHaveLength(1);
+      expect(
+        (await credentialsOf(alice.id)).find((c) => c.type === 'oauth2'),
+      ).toMatchObject({ oauth2Subject: 'sub-1' });
+    });
+
+    it('refuses a second link for the same user, and an unknown user', async () => {
+      const alice = await newUser('alice');
+      await service.linkOAuth2Identity(alice.id, issuer, 'sub-1');
+
+      await expect(
+        service.linkOAuth2Identity(alice.id, issuer, 'sub-2'),
+      ).rejects.toThrow(DuplicateEntryError);
+      await expect(
+        service.linkOAuth2Identity('nope', issuer, 'sub-3'),
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    it('unlinkOAuth2Identity removes only the oauth2 credential', async () => {
+      const alice = await newUser('alice');
+      await service.linkOAuth2Identity(alice.id, issuer, 'sub-1');
+
+      expect(await service.unlinkOAuth2Identity(alice.id)).toBe(true);
+      expect(await service.unlinkOAuth2Identity(alice.id)).toBe(false);
+
+      expect((await credentialsOf(alice.id)).map((c) => c.type)).toEqual([
+        'basic',
+      ]);
+      await service.linkOAuth2Identity(alice.id, issuer, 'sub-1');
+    });
+  });
 });

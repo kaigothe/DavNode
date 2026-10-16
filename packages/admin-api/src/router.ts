@@ -14,6 +14,12 @@ export interface AdminRouterOptions {
    * the `digest` credential; leave unset when Digest is disabled.
    */
   digestRealm?: string;
+  /**
+   * The `iss` values of the OIDC issuers the server trusts (M10). An
+   * OAuth2 identity can only be linked to a user for one of these; empty
+   * or unset means OAuth2 is not enabled and linking is refused.
+   */
+  oauth2Issuers?: readonly string[];
 }
 
 /**
