@@ -159,6 +159,7 @@ export {
 } from './services/tenant.service.js';
 export {
   type CreateUserInput,
+  type UpdateUserInput,
   type UpdateUserQuotaInput,
   UserService,
 } from './services/user.service.js';

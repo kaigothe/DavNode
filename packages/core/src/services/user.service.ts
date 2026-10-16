@@ -1,5 +1,6 @@
-import type { DataSource } from 'typeorm';
+import { IsNull, type DataSource } from 'typeorm';
 import { hashPassword } from '../auth/password-hashing.js';
+import { Collection } from '../entities/collection.entity.js';
 import { Credential } from '../entities/credential.entity.js';
 import { Principal } from '../entities/principal.entity.js';
 import { User, type UserRole } from '../entities/user.entity.js';
@@ -19,6 +20,13 @@ export interface CreateUserInput {
 /** Input for {@link UserService.updateUserQuota}. */
 export interface UpdateUserQuotaInput {
   quotaLimitBytes: number | null;
+}
+
+/** Input for {@link UserService.updateUser}; omitted fields stay unchanged. */
+export interface UpdateUserInput {
+  email?: string;
+  quotaLimitBytes?: number | null;
+  role?: UserRole;
 }
 
 /**
@@ -120,5 +128,88 @@ export class UserService {
     }
     user.quotaLimitBytes = input.quotaLimitBytes;
     return repository.save(user);
+  }
+
+  /** Lists every user of a tenant, ordered by username. */
+  async listUsers(tenantId: string): Promise<User[]> {
+    return this.dataSource
+      .getRepository(User)
+      .find({ where: { tenantId }, order: { username: 'ASC' } });
+  }
+
+  /**
+   * Looks up a user by id within a tenant.
+   *
+   * @returns The user, or `null` if the tenant has no user with that id.
+   */
+  async findUserById(tenantId: string, userId: string): Promise<User | null> {
+    return this.dataSource
+      .getRepository(User)
+      .findOneBy({ tenantId, id: userId });
+  }
+
+  /**
+   * Whether `user` owns its tenant's WebDAV root collection — i.e. the
+   * user who created it (the bootstrap admin). Deleting such a user
+   * cascades away the whole tenant's file tree, so callers should
+   * refuse to.
+   */
+  async ownsRootCollection(user: User): Promise<boolean> {
+    return this.dataSource.getRepository(Collection).existsBy({
+      tenantId: user.tenantId,
+      parentCollectionId: IsNull(),
+      ownerPrincipalId: user.principalId,
+    });
+  }
+
+  /** Counts the users holding `role` across all tenants. */
+  async countUsersWithRole(role: UserRole): Promise<number> {
+    return this.dataSource.getRepository(User).countBy({ role });
+  }
+
+  /**
+   * Updates a user's email, quota limit and/or role; fields left
+   * `undefined` stay unchanged (a `null` `quotaLimitBytes` removes the
+   * limit).
+   *
+   * @throws {@link NotFoundError} If no user has `userId`.
+   */
+  async updateUser(userId: string, input: UpdateUserInput): Promise<User> {
+    const repository = this.dataSource.getRepository(User);
+    const user = await repository.findOneBy({ id: userId });
+    if (!user) {
+      throw new NotFoundError(`User "${userId}" not found.`);
+    }
+    if (input.email !== undefined) {
+      user.email = input.email;
+    }
+    if (input.quotaLimitBytes !== undefined) {
+      user.quotaLimitBytes = input.quotaLimitBytes;
+    }
+    if (input.role !== undefined) {
+      user.role = input.role;
+    }
+    return repository.save(user);
+  }
+
+  /**
+   * Deletes a user by deleting its `Principal`: the database's
+   * `ON DELETE CASCADE` foreign keys then remove the `User`, its
+   * credentials, group memberships, ACEs and every resource it owns.
+   * Quota counters are **not** adjusted by that cascade — callers must
+   * run `recomputeQuotaForTenant` afterwards.
+   *
+   * @throws {@link NotFoundError} If no user has `userId`.
+   */
+  async deleteUser(userId: string): Promise<void> {
+    const user = await this.dataSource
+      .getRepository(User)
+      .findOneBy({ id: userId });
+    if (!user) {
+      throw new NotFoundError(`User "${userId}" not found.`);
+    }
+    await this.dataSource
+      .getRepository(Principal)
+      .delete({ id: user.principalId });
   }
 }

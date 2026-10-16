@@ -4,7 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { verifyPassword } from '../auth/password-hashing.js';
 import { createDataSource } from '../db/data-source.js';
 import { Credential } from '../entities/credential.entity.js';
-import { ALL_ENTITIES, Principal, Tenant, User } from '../entities/index.js';
+import {
+  ALL_ENTITIES,
+  Collection,
+  Principal,
+  Tenant,
+  User,
+} from '../entities/index.js';
 import { ALL_MIGRATIONS } from '../migrations/sqlite/index.js';
 import { DuplicateEntryError, NotFoundError } from './errors.js';
 import { UserService } from './user.service.js';
@@ -179,5 +185,86 @@ describe('UserService', () => {
     await expect(
       service.updateUserQuota('no-such-id', { quotaLimitBytes: 1 }),
     ).rejects.toThrow(NotFoundError);
+  });
+
+  const newUser = (username: string, role?: 'member' | 'server_admin') =>
+    service.createUser({
+      tenantId: tenant.id,
+      username,
+      email: `${username}@example.com`,
+      password: 'pw',
+      role,
+    });
+
+  it("lists a tenant's users ordered by username and finds one by id", async () => {
+    const bob = await newUser('bob');
+    await newUser('alice');
+
+    expect((await service.listUsers(tenant.id)).map((u) => u.username)).toEqual(
+      ['alice', 'bob'],
+    );
+    expect((await service.findUserById(tenant.id, bob.id))?.username).toBe(
+      'bob',
+    );
+    expect(await service.findUserById('other-tenant', bob.id)).toBeNull();
+  });
+
+  it('updateUser changes only the supplied fields and throws NotFoundError for an unknown user', async () => {
+    const user = await newUser('alice');
+
+    const updated = await service.updateUser(user.id, {
+      email: 'new@example.com',
+      role: 'server_admin',
+    });
+
+    expect(updated).toMatchObject({
+      email: 'new@example.com',
+      role: 'server_admin',
+      quotaLimitBytes: null,
+    });
+    await expect(
+      service.updateUser('nope', { email: 'x@y.z' }),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it('countUsersWithRole counts by role', async () => {
+    await newUser('a');
+    await newUser('b', 'server_admin');
+
+    expect(await service.countUsersWithRole('server_admin')).toBe(1);
+    expect(await service.countUsersWithRole('member')).toBe(1);
+  });
+
+  it('deleteUser removes the principal, user and credentials by cascade', async () => {
+    const user = await newUser('alice');
+
+    await service.deleteUser(user.id);
+
+    expect(await dataSource.getRepository(User).countBy({ id: user.id })).toBe(
+      0,
+    );
+    expect(
+      await dataSource
+        .getRepository(Principal)
+        .countBy({ id: user.principalId }),
+    ).toBe(0);
+    expect(
+      await dataSource.getRepository(Credential).countBy({ userId: user.id }),
+    ).toBe(0);
+    await expect(service.deleteUser(user.id)).rejects.toThrow(NotFoundError);
+  });
+
+  it('ownsRootCollection is true only for the owner of the tenant root collection', async () => {
+    const owner = await newUser('owner');
+    const other = await newUser('other');
+    await dataSource.getRepository(Collection).save({
+      tenantId: tenant.id,
+      parentCollectionId: null,
+      ownerPrincipalId: owner.principalId,
+      displayName: 'root',
+    });
+
+    expect(await service.ownsRootCollection(owner)).toBe(true);
+    expect(await service.ownsRootCollection(other)).toBe(false);
   });
 });
