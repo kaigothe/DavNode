@@ -14,19 +14,28 @@ DavNode is licensed under the [GNU Affero General Public License v3.0](LICENSE)
 
 ## Status
 
-**Current version: v1.11.0.** WebDAV Class 1, WebDAV Class 2 (locking),
-RFC 6578 sync, and RFC 3744 ACLs are implemented and working — see
-[CHANGELOG.md](CHANGELOG.md) for the full history. DavNode can already
-be mounted by standard WebDAV clients for file storage with per-user/
-group access control and locking.
+**Current version: v1.23.0** (milestones M0–M9 are complete; see
+[CHANGELOG.md](CHANGELOG.md) for the full history). Implemented:
 
-CardDAV (RFC 6352) is partially implemented (milestone M5 in progress):
-addressbooks can be created via Extended MKCOL, and contacts can be
-managed with GET/PUT/DELETE, with vCard content indexed for search.
-Addressbooks reuse the same ACL evaluation, locking (LOCK/UNLOCK), and
-`sync-collection` infrastructure as the file tree. The
-`addressbook-query`/`addressbook-multiget` REPORTs are still missing.
-CalDAV is not yet implemented.
+- **WebDAV** Class 1 and 2 (locking), RFC 6578 `sync-collection`, and
+  RFC 3744 ACLs with per-user/group access control.
+- **CardDAV** (RFC 6352): addressbooks, contacts, and the
+  `addressbook-query`/`addressbook-multiget` REPORTs.
+- **CalDAV** (RFC 4791) with scheduling (RFC 6638, iTIP invitations,
+  replies, cancellations, free/busy) and read-only ICS feeds.
+- **Quota** enforcement per user and tenant, RFC 4331 quota properties,
+  and a periodic reconciliation job.
+- **Admin API** (`/admin/{tenantSlug}/...`, REST + JSON, HTTP Basic
+  auth): management of tenants, users, groups and group membership, and
+  quota, with a `member`/`tenant_admin`/`server_admin` role model. A
+  `tenant_admin` manages their own tenant only; creating, listing,
+  changing quota limits of and deleting tenants is reserved to
+  `server_admin`. Destructive deletions require a confirmation field in
+  the request body. The very first tenant and admin user still come
+  from the bootstrap CLI (`npm run bootstrap`).
+
+Still to come: Digest Auth and OAuth2/Bearer (M10), real-world client
+compatibility fixes (M11), and production hardening (M12).
 
 ## Roadmap
 
@@ -75,42 +84,42 @@ architecture, and data model live under [planning/](planning/).
 | | Lock enforcement middleware | Mutating methods honor lock tokens | ✅ Done |
 | | Lock properties | `supportedlock`/`lockdiscovery` | ✅ Done |
 | | sync-collection REPORT | Incremental client sync (RFC 6578) | ✅ Done |
-| **M5 — CardDAV (RFC 6352)** | | Contact/addressbook synchronization | 🚧 In progress |
+| **M5 — CardDAV (RFC 6352)** | | Contact/addressbook synchronization | ✅ Done |
 | | Addressbook domain entities | Addressbook/AddressObject entities | ✅ Done |
 | | vCard parsing & index | Parse vCards into a searchable index | ✅ Done |
 | | Addressbook home & extended MKCOL | Per-user addressbook home collection | ✅ Done |
 | | AddressObject CRUD | GET/PUT/DELETE for individual contacts | ✅ Done |
 | | ACL/lock/sync reuse | Wire addressbooks into M3/M4 infrastructure | ✅ Done |
-| | CardDAV REPORTs | `addressbook-query`/`-multiget` | 🔜 Next |
-| **M6 — CalDAV (RFC 4791)** | | Calendar synchronization (excluding scheduling) | ⏳ Planned |
-| | Calendar domain entities | Calendar/CalendarObject entities | ⏳ Planned |
-| | iCalendar parsing & time-range index | Parse events incl. recurrence | ⏳ Planned |
-| | Calendar home & MKCALENDAR | Per-user calendar home collection | ⏳ Planned |
-| | CalendarObject CRUD | GET/PUT/DELETE for individual events | ⏳ Planned |
-| | ACL/lock/sync reuse | Wire calendars into M3/M4 infrastructure | ⏳ Planned |
-| | CalDAV REPORTs | `calendar-query`/`-multiget`, free-busy-query | ⏳ Planned |
-| | ICS feed export | Read-only `.ics` subscription feed per calendar | ⏳ Planned |
-| **M7 — CalDAV Scheduling (RFC 6638)** | | Meeting invitations and free/busy via iTIP | ⏳ Planned |
-| | Scheduling data model | Scheduling inbox/outbox entities | ⏳ Planned |
-| | iTIP message generation | Build REQUEST/REPLY/CANCEL messages | ⏳ Planned |
-| | Organizer invite workflow | Deliver invites to attendees | ⏳ Planned |
-| | Attendee reply workflow | Deliver PARTSTAT replies to organizer | ⏳ Planned |
-| | Cancel workflow | Deliver cancellations, clean up copies | ⏳ Planned |
-| | Scheduling outbox / free-busy | Bulk free/busy queries via POST | ⏳ Planned |
-| | Scheduling privileges & routes | Inbox/outbox collections + privileges | ⏳ Planned |
-| **M8 — Quota Enforcement** | | Per-user/tenant storage limits | ⏳ Planned |
-| | Quota counter utility | Atomic, race-free user/tenant counters | ⏳ Planned |
-| | WebDAV quota integration | Enforce limits on PUT/DELETE | ⏳ Planned |
-| | CardDAV/CalDAV quota integration | Same enforcement for contacts/events | ⏳ Planned |
-| | Quota properties | `quota-available-bytes`/`quota-used-bytes` | ⏳ Planned |
-| | Quota recompute | Periodic reconciliation job | ⏳ Planned |
-| **M9 — Admin/Management API** | | REST API for managing tenants, users, groups, and quota | ⏳ Planned |
-| | Role model | Real `server_admin`/`tenant_admin`/user roles | ⏳ Planned |
-| | Admin API scaffold | Express router mounted in `@davnode/server` | ⏳ Planned |
-| | Tenant management | CRUD for tenants + quota limits | ⏳ Planned |
-| | User management | CRUD for users within a tenant | ⏳ Planned |
-| | Group management | CRUD for groups + membership | ⏳ Planned |
-| | Quota management | Full admin route replacing the M8 stopgap | ⏳ Planned |
+| | CardDAV REPORTs | `addressbook-query`/`-multiget` | ✅ Done |
+| **M6 — CalDAV (RFC 4791)** | | Calendar synchronization (excluding scheduling) | ✅ Done |
+| | Calendar domain entities | Calendar/CalendarObject entities | ✅ Done |
+| | iCalendar parsing & time-range index | Parse events incl. recurrence | ✅ Done |
+| | Calendar home & MKCALENDAR | Per-user calendar home collection | ✅ Done |
+| | CalendarObject CRUD | GET/PUT/DELETE for individual events | ✅ Done |
+| | ACL/lock/sync reuse | Wire calendars into M3/M4 infrastructure | ✅ Done |
+| | CalDAV REPORTs | `calendar-query`/`-multiget`, free-busy-query | ✅ Done |
+| | ICS feed export | Read-only `.ics` subscription feed per calendar | ✅ Done |
+| **M7 — CalDAV Scheduling (RFC 6638)** | | Meeting invitations and free/busy via iTIP | ✅ Done |
+| | Scheduling data model | Scheduling inbox/outbox entities | ✅ Done |
+| | iTIP message generation | Build REQUEST/REPLY/CANCEL messages | ✅ Done |
+| | Organizer invite workflow | Deliver invites to attendees | ✅ Done |
+| | Attendee reply workflow | Deliver PARTSTAT replies to organizer | ✅ Done |
+| | Cancel workflow | Deliver cancellations, clean up copies | ✅ Done |
+| | Scheduling outbox / free-busy | Bulk free/busy queries via POST | ✅ Done |
+| | Scheduling privileges & routes | Inbox/outbox collections + privileges | ✅ Done |
+| **M8 — Quota Enforcement** | | Per-user/tenant storage limits | ✅ Done |
+| | Quota counter utility | Atomic, race-free user/tenant counters | ✅ Done |
+| | WebDAV quota integration | Enforce limits on PUT/DELETE | ✅ Done |
+| | CardDAV/CalDAV quota integration | Same enforcement for contacts/events | ✅ Done |
+| | Quota properties | `quota-available-bytes`/`quota-used-bytes` | ✅ Done |
+| | Quota recompute | Periodic reconciliation job | ✅ Done |
+| **M9 — Admin/Management API** | | REST API for managing tenants, users, groups, and quota | ✅ Done |
+| | Role model | Real `server_admin`/`tenant_admin`/user roles | ✅ Done |
+| | Admin API scaffold | Express router mounted in `@davnode/server` | ✅ Done |
+| | Tenant management | CRUD for tenants + quota limits | ✅ Done |
+| | User management | CRUD for users within a tenant | ✅ Done |
+| | Group management | CRUD for groups + membership | ✅ Done |
+| | Quota management | Full admin route replacing the M8 stopgap | ✅ Done |
 | **M10 — Extended Auth Providers** | | Digest Auth and OAuth2/Bearer support | ⏳ Planned |
 | | Credential entity retrofit | Add Digest/OAuth2 columns | ⏳ Planned |
 | | Digest Auth core | HA1-based verification | ⏳ Planned |
