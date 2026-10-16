@@ -4,6 +4,7 @@ export const VERSION = '0.0.1';
 export { AuthProviderRegistry } from './auth/auth-provider-registry.js';
 export type { AuthProvider } from './auth/auth-provider.interface.js';
 export { BasicAuthProvider } from './auth/basic-auth-provider.js';
+export { computeDigestHa1 } from './auth/digest-ha1.js';
 export { hashPassword, verifyPassword } from './auth/password-hashing.js';
 
 export {
@@ -161,6 +162,7 @@ export {
   type CreateUserInput,
   type UpdateUserInput,
   type UpdateUserQuotaInput,
+  type UserServiceOptions,
   UserService,
 } from './services/user.service.js';
 export {

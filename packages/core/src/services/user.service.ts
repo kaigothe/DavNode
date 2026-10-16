@@ -1,4 +1,5 @@
 import { IsNull, type DataSource } from 'typeorm';
+import { computeDigestHa1 } from '../auth/digest-ha1.js';
 import { hashPassword } from '../auth/password-hashing.js';
 import { Collection } from '../entities/collection.entity.js';
 import { Credential } from '../entities/credential.entity.js';
@@ -29,6 +30,17 @@ export interface UpdateUserInput {
   role?: UserRole;
 }
 
+/** Options for {@link UserService}. */
+export interface UserServiceOptions {
+  /**
+   * The Digest realm. When set (i.e. Digest auth is enabled on the
+   * server), `createUser` and `setUserPassword` also maintain a `digest`
+   * credential holding `HA1 = SHA-256(username:realm:password)`; when
+   * unset, no HA1 is ever stored.
+   */
+  digestRealm?: string;
+}
+
 /**
  * User management, backed directly by TypeORM repositories. Assumes the
  * tenant identified by `tenantId` already exists (created via
@@ -37,7 +49,10 @@ export interface UpdateUserInput {
  * user from being persisted.
  */
 export class UserService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly options: UserServiceOptions = {},
+  ) {}
 
   /**
    * Creates a user in a single transaction: a `Principal` (`kind: 'user'`),
@@ -90,6 +105,21 @@ export class UserService {
           passwordHash,
         }),
       );
+      if (this.options.digestRealm !== undefined) {
+        await manager.save(
+          Credential,
+          manager.create(Credential, {
+            userId: user.id,
+            type: 'digest',
+            digestHa1: computeDigestHa1(
+              input.username,
+              this.options.digestRealm,
+              input.password,
+            ),
+            digestRealm: this.options.digestRealm,
+          }),
+        );
+      }
 
       return user;
     });
@@ -211,5 +241,49 @@ export class UserService {
     await this.dataSource
       .getRepository(Principal)
       .delete({ id: user.principalId });
+  }
+
+  /**
+   * Sets a new password for an existing user, keeping every password
+   * based credential consistent in one transaction: the `basic`
+   * credential's argon2id hash is replaced (or created), and — if
+   * Digest is enabled (`digestRealm`) — the `digest` credential's HA1
+   * is recomputed. If Digest is *not* enabled, any `digest` credential
+   * left over from an earlier configuration is deleted instead, since
+   * its HA1 would still accept the old password. `oauth2` credentials
+   * are not password based and stay untouched.
+   *
+   * @throws {@link NotFoundError} If no user has `userId`.
+   */
+  async setUserPassword(userId: string, newPassword: string): Promise<void> {
+    const passwordHash = await hashPassword(newPassword);
+
+    await this.dataSource.transaction(async (manager) => {
+      const user = await manager.findOneBy(User, { id: userId });
+      if (!user) {
+        throw new NotFoundError(`User "${userId}" not found.`);
+      }
+
+      const basic =
+        (await manager.findOneBy(Credential, { userId, type: 'basic' })) ??
+        manager.create(Credential, { userId, type: 'basic' });
+      basic.passwordHash = passwordHash;
+      await manager.save(Credential, basic);
+
+      if (this.options.digestRealm === undefined) {
+        await manager.delete(Credential, { userId, type: 'digest' });
+        return;
+      }
+      const digest =
+        (await manager.findOneBy(Credential, { userId, type: 'digest' })) ??
+        manager.create(Credential, { userId, type: 'digest' });
+      digest.digestRealm = this.options.digestRealm;
+      digest.digestHa1 = computeDigestHa1(
+        user.username,
+        this.options.digestRealm,
+        newPassword,
+      );
+      await manager.save(Credential, digest);
+    });
   }
 }

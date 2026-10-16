@@ -13,6 +13,7 @@ import {
 } from '../entities/index.js';
 import { ALL_MIGRATIONS } from '../migrations/sqlite/index.js';
 import { DuplicateEntryError, NotFoundError } from './errors.js';
+import { computeDigestHa1 } from '../auth/digest-ha1.js';
 import { UserService } from './user.service.js';
 
 describe('UserService', () => {
@@ -266,5 +267,116 @@ describe('UserService', () => {
 
     expect(await service.ownsRootCollection(owner)).toBe(true);
     expect(await service.ownsRootCollection(other)).toBe(false);
+  });
+
+  describe('digest credentials', () => {
+    const credentialsOf = (userId: string) =>
+      dataSource.getRepository(Credential).findBy({ userId });
+
+    it('createUser stores a digest credential next to the basic one when a realm is configured', async () => {
+      const digestService = new UserService(dataSource, {
+        digestRealm: 'davnode',
+      });
+
+      const user = await digestService.createUser({
+        tenantId: tenant.id,
+        username: 'alice',
+        email: 'alice@example.com',
+        password: 'secret-1',
+      });
+
+      const credentials = await credentialsOf(user.id);
+      expect(credentials.map((c) => c.type).sort()).toEqual([
+        'basic',
+        'digest',
+      ]);
+      const digest = credentials.find((c) => c.type === 'digest');
+      expect(digest).toMatchObject({
+        digestRealm: 'davnode',
+        digestHa1: computeDigestHa1('alice', 'davnode', 'secret-1'),
+        passwordHash: null,
+      });
+    });
+
+    it('createUser stores no HA1 when digest is not enabled', async () => {
+      const user = await service.createUser({
+        tenantId: tenant.id,
+        username: 'alice',
+        email: 'alice@example.com',
+        password: 'secret-1',
+      });
+
+      expect((await credentialsOf(user.id)).map((c) => c.type)).toEqual([
+        'basic',
+      ]);
+    });
+
+    it('setUserPassword replaces both the basic hash and the digest HA1', async () => {
+      const digestService = new UserService(dataSource, {
+        digestRealm: 'davnode',
+      });
+      const user = await digestService.createUser({
+        tenantId: tenant.id,
+        username: 'alice',
+        email: 'alice@example.com',
+        password: 'old-password',
+      });
+
+      await digestService.setUserPassword(user.id, 'new-password');
+
+      const credentials = await credentialsOf(user.id);
+      const basic = credentials.find((c) => c.type === 'basic');
+      const digest = credentials.find((c) => c.type === 'digest');
+      expect(await verifyPassword('new-password', basic!.passwordHash!)).toBe(
+        true,
+      );
+      expect(await verifyPassword('old-password', basic!.passwordHash!)).toBe(
+        false,
+      );
+      expect(digest!.digestHa1).toBe(
+        computeDigestHa1('alice', 'davnode', 'new-password'),
+      );
+    });
+
+    it('setUserPassword creates the digest credential for a user that predates digest', async () => {
+      const user = await service.createUser({
+        tenantId: tenant.id,
+        username: 'alice',
+        email: 'alice@example.com',
+        password: 'old-password',
+      });
+
+      await new UserService(dataSource, {
+        digestRealm: 'davnode',
+      }).setUserPassword(user.id, 'new-password');
+
+      expect((await credentialsOf(user.id)).map((c) => c.type).sort()).toEqual([
+        'basic',
+        'digest',
+      ]);
+    });
+
+    it('setUserPassword drops a stale digest credential once digest is disabled', async () => {
+      const user = await new UserService(dataSource, {
+        digestRealm: 'davnode',
+      }).createUser({
+        tenantId: tenant.id,
+        username: 'alice',
+        email: 'alice@example.com',
+        password: 'old-password',
+      });
+
+      await service.setUserPassword(user.id, 'new-password');
+
+      expect((await credentialsOf(user.id)).map((c) => c.type)).toEqual([
+        'basic',
+      ]);
+    });
+
+    it('setUserPassword throws NotFoundError for an unknown user', async () => {
+      await expect(service.setUserPassword('nope', 'x')).rejects.toThrow(
+        NotFoundError,
+      );
+    });
   });
 });
