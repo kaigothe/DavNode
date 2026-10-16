@@ -322,6 +322,7 @@ export {
   parseVCard,
   VCardParseError,
   type ParsedVCard,
+  type ParsedVCardProperty,
 } from './carddav/vcard-parser.js';
 export {
   indexVCard,
