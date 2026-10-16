@@ -64,3 +64,18 @@ Empfohlene Bearbeitungsreihenfolge: wie nummeriert (1→6).
   sofort scheitern — keine vollständige Versions-Konvertierung
 - Kein `expand-property`-REPORT (weiterhin zurückgestellt, siehe
   [planning/03-open-questions.md](../../planning/03-open-questions.md))
+
+## Nachtrag (M11, Konformitätstests)
+Beim Lauf von CardDAVTester in M11 (siehe
+[docs/conformance.md](../../docs/conformance.md)) fielen Lücken auf, die
+in M5 nicht vorgesehen waren:
+- **`DELETE` auf ein Adressbuch** lieferte `405`; Clients konnten kein
+  Adressbuch löschen. In M11 ergänzt (Besitzer-only, kaskadierend,
+  Quota-Neuberechnung).
+- **`DAV:supported-report-set` und `DAV:sync-token`** fehlten an
+  Adressbüchern. In M11 ergänzt.
+- Offen und bewusst unverändert: `addressbook-query` filtert nur die
+  indizierten Properties (`FN`, `N`, `EMAIL`, `TEL`, `ORG`, `NICKNAME`),
+  alles andere (`NOTE`, `PHOTO`, `is-not-defined`) liefert
+  `403 supported-filter`; ein Adressbuch wird über seinen Anzeigenamen
+  adressiert, nicht über die beim Anlegen verwendete URL.

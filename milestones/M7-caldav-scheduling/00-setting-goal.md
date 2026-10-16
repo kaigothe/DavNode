@@ -59,3 +59,12 @@ setzen alle auf 1–2 auf.
   einzelne Instanzen (`RECURRENCE-ID`-scoped Scheduling, RFC 6638
   §5) — v1 behandelt Einladungsänderungen nur auf Ebene des gesamten
   CalendarObject (Master + alle Overrides), nicht pro Einzelinstanz
+
+## Nachtrag (M11, Konformitätstests)
+Die `implicit*`-/`schedule*`-Suiten von CalDAVTester (siehe
+[docs/conformance.md](../../docs/conformance.md)) bestehen größtenteils
+nicht. Stichproben zeigen, dass sie CalendarServer-spezifisches Verhalten
+prüfen (Auto-Accept für Ressourcen, Reisezeit, private Events,
+`schedule-calendar-transp`-Varianten, 40 vorbereitete Nutzer); die
+einzelnen Fehler wurden **nicht** einzeln ausgewertet. Eine gezielte
+Prüfung der RFC-6638-Kernpfade gegen diese Suiten ist offen.

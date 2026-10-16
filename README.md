@@ -45,9 +45,15 @@ history are in [CHANGELOG.md](CHANGELOG.md)). Implemented:
   `OPTIONS` headers the Windows WebDAV client needs. Setup notes and
   Windows-specific limitations are in
   [docs/client-compatibility.md](docs/client-compatibility.md).
+- **Conformance tests in CI**: all 104 litmus WebDAV tests pass, and a
+  ratchet over Apple's CalDAVTester/CardDAVTester keeps the 219 tests that
+  pass today from regressing; what those suites expect that DavNode does
+  differently is listed in [docs/conformance.md](docs/conformance.md).
 
-Still to come: real-world client compatibility fixes (M11) and
-production hardening (M12).
+Still to come: production hardening (M12). Client compatibility (M11) has
+been checked against the litmus, CalDAVTester and CardDAVTester suites and
+documented client limitations, but not yet against real Apple, Windows,
+Thunderbird or DAVx5 installations.
 
 ### Configuring authentication
 
@@ -160,13 +166,13 @@ architecture, and data model live under [planning/](planning/).
 | | OAuth2 core | JWT/JWKS validation against an OIDC provider | ✅ Done |
 | | OAuth2 HTTP | Bearer token handling (RFC 6750) | ✅ Done |
 | | Provider management | Enable/configure auth providers per tenant | ✅ Done |
-| **M11 — Client Compatibility** | | Fixes for real-world Apple/Google/Microsoft client quirks | ⏳ Planned |
-| | Well-known discovery | `/.well-known/caldav` and `/carddav` (RFC 6764) | ⏳ Planned |
-| | Apple compatibility | `getctag` and other Apple client quirks | ⏳ Planned |
-| | vCard 3.0 compatibility | Accept vCard 3.0 alongside 4.0 | ⏳ Planned |
-| | Windows mini-redirector compatibility | Explorer WebDAV client support | ⏳ Planned |
-| | Google compatibility | Fixes found via real-world testing | ⏳ Planned |
-| | Conformance suite in CI | litmus/CalDAVtester/CardDAVtester in CI | ⏳ Planned |
+| **M11 — Client Compatibility** | | Fixes for real-world Apple/Google/Microsoft client quirks | ✅ Done |
+| | Well-known discovery | `/.well-known/caldav` and `/carddav` (RFC 6764) | ✅ Done |
+| | Apple compatibility | `getctag` and other Apple client quirks | ✅ Done |
+| | vCard 3.0 compatibility | Accept vCard 3.0 alongside 4.0 | ✅ Done |
+| | Windows mini-redirector compatibility | Explorer WebDAV client support | ✅ Done |
+| | Google compatibility | Fixes found via real-world testing | ✅ Done |
+| | Conformance suite in CI | litmus/CalDAVtester/CardDAVtester in CI | ✅ Done |
 | **M12 — Hardening & Production Readiness** | | Deployment, observability, backups, and security review | ⏳ Planned |
 | | Health checks & production deployment | Health endpoint + production Compose reference | ⏳ Planned |
 | | Observability | Structured logs + metrics endpoint | ⏳ Planned |

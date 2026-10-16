@@ -67,3 +67,18 @@ Empfohlene Bearbeitungsreihenfolge: wie nummeriert (1→7).
 - `CALDAV:read-free-busy`-Privilege wird zwar für
   `free-busy-query` eingeführt (Große Aufgabe 6), aber ohne die vollen
   Scheduling-Privileges aus M7
+
+## Nachtrag (M11, Konformitätstests)
+Beim Lauf von CalDAVTester in M11 (siehe
+[docs/conformance.md](../../docs/conformance.md)) fielen Lücken auf, die
+in M6 nicht vorgesehen waren:
+- **`DELETE` auf einen Kalender** lieferte `405`; Clients konnten keinen
+  Kalender löschen. In M11 ergänzt (Besitzer-only, kaskadierend,
+  Quota-Neuberechnung, ohne Scheduling-Nachrichten).
+- **`DAV:supported-report-set` und `DAV:sync-token`** fehlten an
+  Kalendern. In M11 ergänzt.
+- **`OPTIONS`** wurde von keinem Milestone implementiert (kein
+  `DAV:`-Header, an dem Clients CalDAV erkennen). In M11 ergänzt.
+- Offen und bewusst unverändert: kein `VTODO`/`VJOURNAL`, ungültige
+  Kombinationen von Datumstypen werden mit `403 valid-calendar-data`
+  abgelehnt statt repariert.
