@@ -29,3 +29,14 @@ verweigert das Öffnen).
 
 ## Referenzen
 - [planning/06-standards-compliance.md](../../../planning/06-standards-compliance.md) — Client-Kompatibilität-Abschnitt
+
+## Nachtrag (bei der Umsetzung festgestellt)
+Entgegen der Annahme im Kontext gab es **keine** eigene `OPTIONS`-
+Antwort aus M2: kein Milestone hatte `OPTIONS` implementiert, es gab nur
+Expresss automatische `Allow`-Antwort ohne `DAV`-Header. Das war auch für
+CalDAV/CardDAV-Clients relevant (sie erkennen den Server an
+`calendar-access`/`addressbook` im `DAV`-Header). `OPTIONS` wurde daher
+hier komplett nachgerüstet (`options.route.ts`): pro Baum
+(`files`/`calendars`/`addressbooks`/`principals`) die tatsächlich
+implementierten Methoden in `Allow`, die passenden Compliance-Tokens in
+`DAV`, dazu `MS-Author-Via: DAV`. Der manuelle Windows-Test bleibt offen.

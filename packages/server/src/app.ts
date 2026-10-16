@@ -44,6 +44,7 @@ import { registerLockRoute } from './http/routes/lock.route.js';
 import { registerMkcalendarRoute } from './http/routes/mkcalendar.route.js';
 import { registerMkcolRoute } from './http/routes/mkcol.route.js';
 import { registerMoveRoute } from './http/routes/move.route.js';
+import { registerOptionsRoute } from './http/routes/options.route.js';
 import { registerPrincipalsRoute } from './http/routes/principals.route.js';
 import { registerPropfindRoute } from './http/routes/propfind.route.js';
 import { registerProppatchRoute } from './http/routes/proppatch.route.js';
@@ -145,6 +146,7 @@ export function createApp(
   // they check two resources (source and destination parent), which
   // that single-resolver middleware isn't shaped for, so they run
   // hasPrivilege inline instead — see copy.route.ts/move.route.ts.
+  registerOptionsRoute(app);
   registerPropfindRoute(app, dataSource);
   registerProppatchRoute(app, dataSource);
   registerMkcolRoute(app, dataSource);

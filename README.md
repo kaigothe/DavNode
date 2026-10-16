@@ -40,6 +40,11 @@ history are in [CHANGELOG.md](CHANGELOG.md)). Implemented:
   provider and never creates users from tokens — an administrator links
   a user to the provider's `(issuer, subject)` through the Admin API.
   See [Configuring authentication](#configuring-authentication).
+- **Client compatibility**: RFC 6764 discovery (`/.well-known/caldav`,
+  `/.well-known/carddav`), `getctag`, vCard 3.0 tolerance and the
+  `OPTIONS` headers the Windows WebDAV client needs. Setup notes and
+  Windows-specific limitations are in
+  [docs/client-compatibility.md](docs/client-compatibility.md).
 
 Still to come: real-world client compatibility fixes (M11) and
 production hardening (M12).
