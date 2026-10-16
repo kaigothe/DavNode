@@ -16,7 +16,13 @@ import type { Request } from 'express';
  */
 export function pathSegments(req: Request): string[] {
   const splat: unknown = (req.params as Record<string, unknown>).splat;
-  return Array.isArray(splat) ? (splat as string[]) : [];
+  // A collection's URL conventionally ends in "/" (that is how Windows,
+  // Finder and litmus write MKCOL, PUT-into-collection, COPY ...), which
+  // the wildcard reports as a trailing empty segment; "a//b" does the
+  // same in the middle. Neither names an extra path component.
+  return Array.isArray(splat)
+    ? (splat as string[]).filter((segment) => segment !== '')
+    : [];
 }
 
 /**

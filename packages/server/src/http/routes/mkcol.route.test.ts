@@ -106,6 +106,16 @@ describe('MKCOL route', () => {
     expect(body).toContain('/dav/acme/files/sub');
   });
 
+  it('accepts a URL with a trailing slash, the usual spelling of a collection URL', async () => {
+    const response = await mkcol('/dav/acme/files/slashed/');
+
+    expect(response.status).toBe(201);
+    const nested = await mkcol('/dav/acme/files/slashed/inner/');
+    expect(nested.status).toBe(201);
+    const again = await mkcol('/dav/acme/files/slashed/');
+    expect(again.status).toBe(405);
+  });
+
   it('returns 409 when the parent collection does not exist', async () => {
     const response = await mkcol('/dav/acme/files/no-such-parent/sub');
 
