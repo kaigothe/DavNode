@@ -33,7 +33,7 @@ export class FileLock {
   fileResourceId!: string;
 
   /** The file this lock applies to. */
-  @ManyToOne(() => FileResource)
+  @ManyToOne(() => FileResource, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'file_resource_id' })
   fileResource!: FileResource;
 
@@ -42,7 +42,7 @@ export class FileLock {
   principalId!: string;
 
   /** The principal that holds this lock. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'principal_id' })
   principal!: Principal;
 

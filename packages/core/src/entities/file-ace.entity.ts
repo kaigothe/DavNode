@@ -35,7 +35,7 @@ export class FileAce {
   fileResourceId!: string;
 
   /** The file this ACE applies to. */
-  @ManyToOne(() => FileResource)
+  @ManyToOne(() => FileResource, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'file_resource_id' })
   fileResource!: FileResource;
 
@@ -44,7 +44,7 @@ export class FileAce {
   principalId!: string;
 
   /** The principal this ACE grants or denies `privilege` to. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'principal_id' })
   principal!: Principal;
 

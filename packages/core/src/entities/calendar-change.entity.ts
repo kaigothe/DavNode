@@ -44,7 +44,7 @@ export class CalendarChange {
   calendarId!: string;
 
   /** The calendar this change happened in. */
-  @ManyToOne(() => CalendarCollection)
+  @ManyToOne(() => CalendarCollection, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'calendar_id' })
   calendar!: CalendarCollection;
 

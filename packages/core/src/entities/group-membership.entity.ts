@@ -34,7 +34,7 @@ export class GroupMembership {
   groupId!: string;
 
   /** The group this membership belongs to. */
-  @ManyToOne(() => Group)
+  @ManyToOne(() => Group, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'group_id' })
   group!: Group;
 
@@ -43,7 +43,7 @@ export class GroupMembership {
   memberPrincipalId!: string;
 
   /** The member principal (a user's or another group's). */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'member_principal_id' })
   memberPrincipal!: Principal;
 }

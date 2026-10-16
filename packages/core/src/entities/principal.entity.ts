@@ -58,7 +58,7 @@ export class Principal {
   tenantId!: string;
 
   /** The tenant this principal belongs to. */
-  @ManyToOne(() => Tenant)
+  @ManyToOne(() => Tenant, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'tenant_id' })
   tenant!: Tenant;
 

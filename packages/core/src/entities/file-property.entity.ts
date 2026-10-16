@@ -33,7 +33,7 @@ export class FileProperty {
   fileResourceId!: string;
 
   /** The file resource this property is set on. */
-  @ManyToOne(() => FileResource)
+  @ManyToOne(() => FileResource, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'file_resource_id' })
   fileResource!: FileResource;
 

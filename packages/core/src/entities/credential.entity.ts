@@ -42,7 +42,7 @@ export class Credential {
   userId!: string;
 
   /** The user this credential authenticates. */
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user!: User;
 

@@ -32,7 +32,7 @@ export class AddressObjectLock {
   addressObjectId!: string;
 
   /** The address object this lock applies to. */
-  @ManyToOne(() => AddressObject)
+  @ManyToOne(() => AddressObject, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'address_object_id' })
   addressObject!: AddressObject;
 
@@ -41,7 +41,7 @@ export class AddressObjectLock {
   principalId!: string;
 
   /** The principal that holds this lock. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'principal_id' })
   principal!: Principal;
 

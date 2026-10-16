@@ -82,7 +82,7 @@ export class CalendarObject {
   tenantId!: string;
 
   /** The tenant this calendar object belongs to. */
-  @ManyToOne(() => Tenant)
+  @ManyToOne(() => Tenant, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'tenant_id' })
   tenant!: Tenant;
 
@@ -91,7 +91,7 @@ export class CalendarObject {
   calendarId!: string;
 
   /** The parent calendar. */
-  @ManyToOne(() => CalendarCollection)
+  @ManyToOne(() => CalendarCollection, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'calendar_id' })
   calendar!: CalendarCollection;
 
@@ -129,7 +129,7 @@ export class CalendarObject {
   ownerPrincipalId!: string;
 
   /** The principal that owns this calendar object. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'owner_principal_id' })
   ownerPrincipal!: Principal;
 

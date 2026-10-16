@@ -32,7 +32,7 @@ export class CalendarObjectLock {
   calendarObjectId!: string;
 
   /** The calendar object this lock applies to. */
-  @ManyToOne(() => CalendarObject)
+  @ManyToOne(() => CalendarObject, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'calendar_object_id' })
   calendarObject!: CalendarObject;
 
@@ -41,7 +41,7 @@ export class CalendarObjectLock {
   principalId!: string;
 
   /** The principal that holds this lock. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'principal_id' })
   principal!: Principal;
 

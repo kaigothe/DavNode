@@ -50,7 +50,7 @@ export class User {
   principalId!: string;
 
   /** The principal this user owns. */
-  @OneToOne(() => Principal)
+  @OneToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'principal_id' })
   principal!: Principal;
 
@@ -62,7 +62,7 @@ export class User {
   tenantId!: string;
 
   /** The tenant this user belongs to. */
-  @ManyToOne(() => Tenant)
+  @ManyToOne(() => Tenant, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'tenant_id' })
   tenant!: Tenant;
 
@@ -108,8 +108,13 @@ export class User {
   @Column({ type: 'uuid', nullable: true })
   defaultCalendarId!: string | null;
 
-  /** The calendar {@link User.defaultCalendarId} points to, if set. */
-  @ManyToOne(() => CalendarCollection)
+  /**
+   * The calendar {@link User.defaultCalendarId} points to, if set.
+   * `onDelete: 'SET NULL'`, not `'CASCADE'`: this is a convenience
+   * pointer to one of the user's own calendars, not an ownership
+   * relationship — deleting that calendar must not delete the user.
+   */
+  @ManyToOne(() => CalendarCollection, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'default_calendar_id' })
   defaultCalendar!: CalendarCollection | null;
 

@@ -33,7 +33,7 @@ export class AddressbookProperty {
   addressbookId!: string;
 
   /** The addressbook this property is set on. */
-  @ManyToOne(() => AddressbookCollection)
+  @ManyToOne(() => AddressbookCollection, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'addressbook_id' })
   addressbook!: AddressbookCollection;
 

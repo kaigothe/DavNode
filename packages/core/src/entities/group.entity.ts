@@ -27,7 +27,7 @@ export class Group {
   principalId!: string;
 
   /** The principal this group owns. */
-  @OneToOne(() => Principal)
+  @OneToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'principal_id' })
   principal!: Principal;
 
@@ -36,7 +36,7 @@ export class Group {
   tenantId!: string;
 
   /** The tenant this group belongs to. */
-  @ManyToOne(() => Tenant)
+  @ManyToOne(() => Tenant, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'tenant_id' })
   tenant!: Tenant;
 

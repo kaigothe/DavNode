@@ -36,7 +36,7 @@ export class AddressbookAce {
   addressbookId!: string;
 
   /** The addressbook this ACE applies to. */
-  @ManyToOne(() => AddressbookCollection)
+  @ManyToOne(() => AddressbookCollection, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'addressbook_id' })
   addressbook!: AddressbookCollection;
 
@@ -45,7 +45,7 @@ export class AddressbookAce {
   principalId!: string;
 
   /** The principal this ACE grants or denies `privilege` to. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'principal_id' })
   principal!: Principal;
 

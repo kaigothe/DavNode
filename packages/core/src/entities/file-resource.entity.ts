@@ -31,7 +31,7 @@ export class FileResource {
   tenantId!: string;
 
   /** The tenant this file belongs to. */
-  @ManyToOne(() => Tenant)
+  @ManyToOne(() => Tenant, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'tenant_id' })
   tenant!: Tenant;
 
@@ -40,7 +40,7 @@ export class FileResource {
   collectionId!: string;
 
   /** The parent collection. */
-  @ManyToOne(() => Collection)
+  @ManyToOne(() => Collection, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'collection_id' })
   collection!: Collection;
 
@@ -65,7 +65,7 @@ export class FileResource {
   ownerPrincipalId!: string;
 
   /** The principal that owns this file. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'owner_principal_id' })
   ownerPrincipal!: Principal;
 

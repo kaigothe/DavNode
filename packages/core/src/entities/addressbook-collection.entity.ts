@@ -40,7 +40,7 @@ export class AddressbookCollection {
   tenantId!: string;
 
   /** The tenant this addressbook belongs to. */
-  @ManyToOne(() => Tenant)
+  @ManyToOne(() => Tenant, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'tenant_id' })
   tenant!: Tenant;
 
@@ -49,7 +49,7 @@ export class AddressbookCollection {
   ownerPrincipalId!: string;
 
   /** The principal that owns this addressbook. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'owner_principal_id' })
   ownerPrincipal!: Principal;
 

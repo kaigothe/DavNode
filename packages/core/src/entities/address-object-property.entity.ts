@@ -32,7 +32,7 @@ export class AddressObjectProperty {
   addressObjectId!: string;
 
   /** The address object this property is set on. */
-  @ManyToOne(() => AddressObject)
+  @ManyToOne(() => AddressObject, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'address_object_id' })
   addressObject!: AddressObject;
 

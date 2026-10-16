@@ -33,7 +33,7 @@ export class CalendarObjectProperty {
   calendarObjectId!: string;
 
   /** The calendar object this property is set on. */
-  @ManyToOne(() => CalendarObject)
+  @ManyToOne(() => CalendarObject, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'calendar_object_id' })
   calendarObject!: CalendarObject;
 

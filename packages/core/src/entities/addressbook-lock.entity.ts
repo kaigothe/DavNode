@@ -38,7 +38,7 @@ export class AddressbookLock {
   addressbookId!: string;
 
   /** The addressbook this lock applies to. */
-  @ManyToOne(() => AddressbookCollection)
+  @ManyToOne(() => AddressbookCollection, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'addressbook_id' })
   addressbook!: AddressbookCollection;
 
@@ -47,7 +47,7 @@ export class AddressbookLock {
   principalId!: string;
 
   /** The principal that holds this lock. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'principal_id' })
   principal!: Principal;
 

@@ -50,7 +50,7 @@ export class AddressbookChange {
   addressbookId!: string;
 
   /** The addressbook this change happened in. */
-  @ManyToOne(() => AddressbookCollection)
+  @ManyToOne(() => AddressbookCollection, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'addressbook_id' })
   addressbook!: AddressbookCollection;
 

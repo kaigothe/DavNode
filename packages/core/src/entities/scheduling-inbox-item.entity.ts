@@ -66,7 +66,7 @@ export class SchedulingInboxItem {
   tenantId!: string;
 
   /** The tenant this inbox item belongs to. */
-  @ManyToOne(() => Tenant)
+  @ManyToOne(() => Tenant, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'tenant_id' })
   tenant!: Tenant;
 
@@ -75,7 +75,7 @@ export class SchedulingInboxItem {
   ownerPrincipalId!: string;
 
   /** The principal whose inbox this item is in. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'owner_principal_id' })
   ownerPrincipal!: Principal;
 

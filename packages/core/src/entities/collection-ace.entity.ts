@@ -46,7 +46,7 @@ export class CollectionAce {
   collectionId!: string;
 
   /** The collection this ACE applies to. */
-  @ManyToOne(() => Collection)
+  @ManyToOne(() => Collection, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'collection_id' })
   collection!: Collection;
 
@@ -55,7 +55,7 @@ export class CollectionAce {
   principalId!: string;
 
   /** The principal this ACE grants or denies `privilege` to. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'principal_id' })
   principal!: Principal;
 

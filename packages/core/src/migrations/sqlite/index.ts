@@ -25,6 +25,7 @@ import { CreateCalendarAcesLocksChanges1790247515906 } from './1790247515906-Cre
 import { AddCalendarName1790257151802 } from './1790257151802-AddCalendarName.js';
 import { CreateSchedulingInboxItems1790317024315 } from './1790317024315-CreateSchedulingInboxItems.js';
 import { AddUserDefaultCalendar1790317314341 } from './1790317314341-AddUserDefaultCalendar.js';
+import { AddTenantCascadeDeletes1791295189420 } from './1791295189420-AddTenantCascadeDeletes.js';
 
 /**
  * Every SQLite migration in `@davnode/core`, in chronological order. Used
@@ -64,4 +65,5 @@ export const ALL_MIGRATIONS: Array<new () => MigrationInterface> = [
   AddCalendarName1790257151802,
   CreateSchedulingInboxItems1790317024315,
   AddUserDefaultCalendar1790317314341,
+  AddTenantCascadeDeletes1791295189420,
 ];

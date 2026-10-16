@@ -55,7 +55,7 @@ export class CollectionLock {
   collectionId!: string;
 
   /** The collection this lock applies to. */
-  @ManyToOne(() => Collection)
+  @ManyToOne(() => Collection, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'collection_id' })
   collection!: Collection;
 
@@ -64,7 +64,7 @@ export class CollectionLock {
   principalId!: string;
 
   /** The principal that holds this lock. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'principal_id' })
   principal!: Principal;
 

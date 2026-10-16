@@ -36,7 +36,7 @@ export class AddressObjectAce {
   addressObjectId!: string;
 
   /** The address object this ACE applies to. */
-  @ManyToOne(() => AddressObject)
+  @ManyToOne(() => AddressObject, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'address_object_id' })
   addressObject!: AddressObject;
 
@@ -45,7 +45,7 @@ export class AddressObjectAce {
   principalId!: string;
 
   /** The principal this ACE grants or denies `privilege` to. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'principal_id' })
   principal!: Principal;
 

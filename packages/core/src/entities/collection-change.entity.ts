@@ -48,7 +48,7 @@ export class CollectionChange {
   collectionId!: string;
 
   /** The collection this change happened in. */
-  @ManyToOne(() => Collection)
+  @ManyToOne(() => Collection, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'collection_id' })
   collection!: Collection;
 

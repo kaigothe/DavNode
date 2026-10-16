@@ -33,7 +33,7 @@ export class CollectionProperty {
   collectionId!: string;
 
   /** The collection this property is set on. */
-  @ManyToOne(() => Collection)
+  @ManyToOne(() => Collection, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'collection_id' })
   collection!: Collection;
 

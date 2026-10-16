@@ -31,7 +31,7 @@ export class Collection {
   tenantId!: string;
 
   /** The tenant this collection belongs to. */
-  @ManyToOne(() => Tenant)
+  @ManyToOne(() => Tenant, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'tenant_id' })
   tenant!: Tenant;
 
@@ -44,7 +44,7 @@ export class Collection {
   parentCollectionId!: string | null;
 
   /** The parent collection, or `null` for the tenant's root collection. */
-  @ManyToOne(() => Collection, { nullable: true })
+  @ManyToOne(() => Collection, { nullable: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'parent_collection_id' })
   parentCollection!: Collection | null;
 
@@ -53,7 +53,7 @@ export class Collection {
   ownerPrincipalId!: string;
 
   /** The principal that owns this collection. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'owner_principal_id' })
   ownerPrincipal!: Principal;
 

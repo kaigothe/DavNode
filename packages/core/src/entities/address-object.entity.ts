@@ -44,7 +44,7 @@ export class AddressObject {
   tenantId!: string;
 
   /** The tenant this address object belongs to. */
-  @ManyToOne(() => Tenant)
+  @ManyToOne(() => Tenant, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'tenant_id' })
   tenant!: Tenant;
 
@@ -53,7 +53,7 @@ export class AddressObject {
   addressbookId!: string;
 
   /** The parent addressbook. */
-  @ManyToOne(() => AddressbookCollection)
+  @ManyToOne(() => AddressbookCollection, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'addressbook_id' })
   addressbook!: AddressbookCollection;
 
@@ -85,7 +85,7 @@ export class AddressObject {
   ownerPrincipalId!: string;
 
   /** The principal that owns this address object. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'owner_principal_id' })
   ownerPrincipal!: Principal;
 

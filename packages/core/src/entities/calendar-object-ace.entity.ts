@@ -40,7 +40,7 @@ export class CalendarObjectAce {
   calendarObjectId!: string;
 
   /** The calendar object this ACE applies to. */
-  @ManyToOne(() => CalendarObject)
+  @ManyToOne(() => CalendarObject, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'calendar_object_id' })
   calendarObject!: CalendarObject;
 
@@ -49,7 +49,7 @@ export class CalendarObjectAce {
   principalId!: string;
 
   /** The principal this ACE grants or denies `privilege` to. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'principal_id' })
   principal!: Principal;
 

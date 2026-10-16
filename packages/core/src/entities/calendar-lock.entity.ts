@@ -37,7 +37,7 @@ export class CalendarLock {
   calendarId!: string;
 
   /** The calendar this lock applies to. */
-  @ManyToOne(() => CalendarCollection)
+  @ManyToOne(() => CalendarCollection, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'calendar_id' })
   calendar!: CalendarCollection;
 
@@ -46,7 +46,7 @@ export class CalendarLock {
   principalId!: string;
 
   /** The principal that holds this lock. */
-  @ManyToOne(() => Principal)
+  @ManyToOne(() => Principal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'principal_id' })
   principal!: Principal;
 
