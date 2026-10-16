@@ -1,3 +1,24 @@
+# [1.25.0](https://github.com/kaigothe/DavNode/compare/v1.24.0...v1.25.0) (2026-10-16)
+
+
+### Bug Fixes
+
+* **core:** export UpdateTenantInput ([0aa56cd](https://github.com/kaigothe/DavNode/commit/0aa56cd72c93d5533234b8e14e690ed1fd954779))
+
+
+### Features
+
+* **admin-api:** add OAuth2 identity linking endpoints (M10) ([e7bddcd](https://github.com/kaigothe/DavNode/commit/e7bddcd9582c228865a70487fd6bbb20d3adafab))
+* **admin-api:** add the admin password reset endpoint (M10) ([e54c9a5](https://github.com/kaigothe/DavNode/commit/e54c9a50be6cc24c3bf85bee1b94cc634aeca296))
+* **core:** add Digest and OAuth2 columns to credentials (M10) ([51c0e15](https://github.com/kaigothe/DavNode/commit/51c0e152a24f67a0db8dda63694e7ed58e6085e7))
+* **core:** add the Digest auth provider and nonce store (M10) ([54d6eaa](https://github.com/kaigothe/DavNode/commit/54d6eaafa488bf062d0db74d3d5bb9c5b08346a6))
+* **core:** add the OAuth2 resource-server auth provider (M10) ([1c9d766](https://github.com/kaigothe/DavNode/commit/1c9d76664ec0342d1c685576e48fe4a8c963fca8))
+* **core:** cap the number of remembered Digest nonces (M10) ([b9258b7](https://github.com/kaigothe/DavNode/commit/b9258b79e4504047bf789bcdf445daa5f0260e89))
+* **core:** maintain digest credentials and add setUserPassword (M10) ([ed84b06](https://github.com/kaigothe/DavNode/commit/ed84b06b4539a17777b28b839f2202dcedd50e26))
+* **server:** add Digest auth challenge and validation middleware (M10) ([c9f1885](https://github.com/kaigothe/DavNode/commit/c9f1885b4a2478ce9d22af937581a22b24f6c6af))
+* **server:** add the OAuth2 bearer middleware (M10) ([aa2e871](https://github.com/kaigothe/DavNode/commit/aa2e87173143f8c9294f4e51fd0b90ab6dc041b2))
+* **server:** make the active auth providers configurable (M10) ([0d4b771](https://github.com/kaigothe/DavNode/commit/0d4b771e3f3a7d82e18e8b05fbc35278c533ba08))
+
 # [1.24.0](https://github.com/kaigothe/DavNode/compare/v1.23.0...v1.24.0) (2026-10-16)
 
 
