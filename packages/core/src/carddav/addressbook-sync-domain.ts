@@ -77,7 +77,10 @@ export class AddressbookSyncCollectionDomain implements SyncCollectionDomain {
       listMembers: async (): Promise<SyncCollectionMember[]> => {
         const contacts = await context.manager
           .getRepository(AddressObject)
-          .findBy({ addressbookId: addressbook.id });
+          .find({
+            where: { addressbookId: addressbook.id },
+            order: { name: 'ASC' },
+          });
         return contacts.map((contact) => ({
           name: contact.name,
           resolveHref: () =>

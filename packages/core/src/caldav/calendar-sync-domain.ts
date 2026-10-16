@@ -74,7 +74,7 @@ export class CalendarSyncCollectionDomain implements SyncCollectionDomain {
       listMembers: async (): Promise<SyncCollectionMember[]> => {
         const objects = await context.manager
           .getRepository(CalendarObject)
-          .findBy({ calendarId: calendar.id });
+          .find({ where: { calendarId: calendar.id }, order: { name: 'ASC' } });
         return objects.map((object) => ({
           name: object.name,
           resolveHref: () =>
