@@ -2,6 +2,7 @@ import type { DataSource } from '@davnode/core';
 import express, { type Router } from 'express';
 import { adminErrorHandler } from './admin-error-handler.middleware.js';
 import { registerGroupRoutes } from './group-routes.js';
+import { registerQuotaRoutes } from './quota-routes.js';
 import { registerTenantRoutes } from './tenant-routes.js';
 import { registerUserRoutes } from './user-routes.js';
 
@@ -32,6 +33,7 @@ export function createAdminRouter(dataSource: DataSource): Router {
   registerTenantRoutes(router, dataSource);
   registerUserRoutes(router, dataSource);
   registerGroupRoutes(router, dataSource);
+  registerQuotaRoutes(router, dataSource);
 
   // Must be the last middleware added to this router — see its own doc
   // comment for why.
