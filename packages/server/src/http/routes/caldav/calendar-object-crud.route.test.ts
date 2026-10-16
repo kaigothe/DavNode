@@ -852,14 +852,79 @@ describe('calendar object CRUD routes', () => {
       expect(await objects().count()).toBe(0);
     });
 
-    it('answers 405 for DELETE on a calendar or the home, which are not deletable here', async () => {
-      const home = `/dav/acme/calendars/${alice.principalId}`;
+    describe('DELETE on a calendar (M11)', () => {
+      const home = () => `/dav/acme/calendars/${alice.principalId}`;
 
-      expect((await request('DELETE', `${home}/work`)).status).toBe(405);
-      expect((await request('DELETE', home)).status).toBe(405);
-      expect(await dataSource.getRepository(CalendarCollection).count()).toBe(
-        1,
-      );
+      it("removes the calendar with its events, their content and the user's quota share", async () => {
+        await put(url('a.ics'), event('uid-1'));
+        await put(url('b.ics'), event('uid-2'));
+        expect((await request('GET', url('a.ics'))).status).toBe(200);
+
+        const response = await request('DELETE', `${home()}/work`);
+
+        expect(response.status).toBe(204);
+        expect(await dataSource.getRepository(CalendarCollection).count()).toBe(
+          0,
+        );
+        expect(await objects().count()).toBe(0);
+        expect(
+          await dataSource.getRepository(CalendarObjectContent).count(),
+        ).toBe(0);
+        expect((await request('GET', url('a.ics'))).status).toBe(404);
+        expect(
+          (
+            await dataSource
+              .getRepository(User)
+              .findOneByOrFail({ id: alice.id })
+          ).quotaUsedBytes,
+        ).toBe(0);
+      });
+
+      it('lets the name be used again, and leaves other calendars alone', async () => {
+        await createCalendar(alice, 'private');
+        await put(url('a.ics', alice, 'private'), event('uid-1'));
+
+        expect((await request('DELETE', `${home()}/work`)).status).toBe(204);
+
+        expect((await request('MKCALENDAR', `${home()}/work`)).status).toBe(
+          201,
+        );
+        expect(
+          (await request('GET', url('a.ics', alice, 'private'))).status,
+        ).toBe(200);
+      });
+
+      it("answers 404 for an unknown calendar, 405 for the home, and 403 for someone else's home", async () => {
+        await createUser('bob');
+
+        expect((await request('DELETE', `${home()}/missing`)).status).toBe(404);
+        expect((await request('DELETE', home())).status).toBe(405);
+        const foreign = await request('DELETE', `${home()}/work`, {
+          username: 'bob',
+        });
+        expect(foreign.status).toBe(403);
+        expect(await dataSource.getRepository(CalendarCollection).count()).toBe(
+          1,
+        );
+      });
+
+      it('requires the lock token while the calendar is locked', async () => {
+        const locked = await request('LOCK', `${home()}/work`, {
+          headers: { 'Content-Type': 'application/xml', Depth: '0' },
+          body: '<?xml version="1.0"?><D:lockinfo xmlns:D="DAV:"><D:lockscope><D:exclusive/></D:lockscope><D:locktype><D:write/></D:locktype></D:lockinfo>',
+        });
+        expect(locked.status).toBe(200);
+        const token = locked.headers.get('Lock-Token')!.slice(1, -1);
+
+        expect((await request('DELETE', `${home()}/work`)).status).toBe(423);
+        expect(
+          (
+            await request('DELETE', `${home()}/work`, {
+              headers: { If: `(<${token}>)` },
+            })
+          ).status,
+        ).toBe(204);
+      });
     });
 
     it('answers 404 for a path below an object', async () => {

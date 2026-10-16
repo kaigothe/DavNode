@@ -5,6 +5,7 @@ import {
   AddressObjectContent,
   AddressObjectProperty,
   applyQuotaDelta,
+  deleteAddressbookCollection,
   getEffectiveAddressbookLocks,
   hasAddressbookPrivilege,
   User,
@@ -13,10 +14,15 @@ import {
 } from '@davnode/core';
 import type { Express, Request } from 'express';
 import { createAclAuthorizationMiddleware } from '../../acl-authorization.middleware.js';
-import { createLockEnforcementMiddleware } from '../../lock-enforcement.middleware.js';
+import {
+  checkLockEnforcement,
+  createLockEnforcementMiddleware,
+  sendLockEnforcementError,
+} from '../../lock-enforcement.middleware.js';
 import {
   addressbookOwnerIdParam,
   pathSegments,
+  requirePrincipal,
   requireTenant,
 } from '../dav-request.util.js';
 import {
@@ -129,6 +135,43 @@ export function registerCarddavDeleteRoute(
       const userId = addressbookOwnerIdParam(req);
 
       const segments = pathSegments(req);
+      if (segments.length === 0) {
+        // The home is virtual and cannot be removed.
+        res.sendStatus(405);
+        return;
+      }
+      if (segments.length === 1) {
+        // An addressbook. Its home is owner-only (like every home route),
+        // so only the owner can remove it; locks on it need their token.
+        if (userId !== requirePrincipal(req).id) {
+          res.sendStatus(403);
+          return;
+        }
+        const addressbook = await resolveAddressbook(
+          dataSource,
+          tenant.id,
+          userId,
+          segments[0],
+        );
+        if (!addressbook) {
+          res.sendStatus(404);
+          return;
+        }
+        if (
+          !(await checkLockEnforcement(
+            dataSource,
+            req.header('If'),
+            [addressbook],
+            getEffectiveAddressbookLocks,
+          ))
+        ) {
+          sendLockEnforcementError(res);
+          return;
+        }
+        await deleteAddressbookCollection(dataSource, addressbook);
+        res.sendStatus(204);
+        return;
+      }
       if (segments.length !== 2) {
         res.sendStatus(404);
         return;

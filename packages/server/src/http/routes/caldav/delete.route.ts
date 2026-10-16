@@ -11,10 +11,15 @@ import {
   type CalendarAclResource,
   type DataSource,
   type SchedulingRole,
+  deleteCalendarCollection,
 } from '@davnode/core';
 import type { Express, Request } from 'express';
 import { createAclAuthorizationMiddleware } from '../../acl-authorization.middleware.js';
-import { createLockEnforcementMiddleware } from '../../lock-enforcement.middleware.js';
+import {
+  checkLockEnforcement,
+  createLockEnforcementMiddleware,
+  sendLockEnforcementError,
+} from '../../lock-enforcement.middleware.js';
 import { ifMatchSatisfied } from '../conditional-request.util.js';
 import {
   calendarOwnerIdParam,
@@ -49,8 +54,9 @@ import {
  *
  * **Conditional**: `If-Match` (a client deleting an object it last saw as
  * such-and-such) fails with `412` when the ETag has moved on, checked
- * atomically with the delete. Only single objects are deletable here —
- * `DELETE` on a calendar or the home is `405`, on anything deeper `404`.
+ * atomically with the delete. `DELETE` on a calendar (M11) removes it with
+ * all its events and is owner-only; on the home it is `405`, on anything
+ * deeper `404`.
  *
  * **Scheduling hook** (M7, RFC 6638 §3.2.1.3/§3.2.2.4, "CANCEL-Workflow"):
  * `detectSchedulingRole` decides which side of the event the deleter is
@@ -122,9 +128,41 @@ export function registerCaldavDeleteRoute(
       const userId = calendarOwnerIdParam(req);
 
       const segments = pathSegments(req);
-      if (segments.length < 2) {
-        // The home or a calendar: removing a calendar isn't supported.
+      if (segments.length === 0) {
+        // The home is virtual and cannot be removed.
         res.sendStatus(405);
+        return;
+      }
+      if (segments.length === 1) {
+        // A calendar. Its home is owner-only (like every home route), so
+        // only the owner can remove it; locks on it need their token.
+        if (userId !== principal.id) {
+          res.sendStatus(403);
+          return;
+        }
+        const calendar = await resolveCalendar(
+          dataSource,
+          tenant.id,
+          userId,
+          segments[0],
+        );
+        if (!calendar) {
+          res.sendStatus(404);
+          return;
+        }
+        if (
+          !(await checkLockEnforcement(
+            dataSource,
+            req.header('If'),
+            [calendar],
+            getEffectiveCalendarLocks,
+          ))
+        ) {
+          sendLockEnforcementError(res);
+          return;
+        }
+        await deleteCalendarCollection(dataSource, calendar);
+        res.sendStatus(204);
         return;
       }
       if (segments.length > 2) {

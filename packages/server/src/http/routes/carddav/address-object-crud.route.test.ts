@@ -327,6 +327,53 @@ describe('CardDAV AddressObject CRUD routes', () => {
     ]);
   });
 
+  describe('DELETE on an addressbook (M11)', () => {
+    const home = () => `/dav/acme/addressbooks/${alice.principalId}`;
+    const bookUrl = () => `${home()}/${addressbook.displayName}`;
+    const request = (method: string, path: string, username = 'alice') =>
+      fetch(`${baseUrl}${path}`, {
+        method,
+        headers: { Authorization: basicAuthHeader(username, PASSWORD) },
+      });
+
+    it('removes the addressbook with its contacts, index rows and quota share', async () => {
+      await put('a.vcf', { body: vcard('uid-1') });
+      await put('b.vcf', { body: vcard('uid-2') });
+
+      const response = await request('DELETE', bookUrl());
+
+      expect(response.status).toBe(204);
+      expect(
+        await dataSource.getRepository(AddressbookCollection).count(),
+      ).toBe(0);
+      expect(await dataSource.getRepository(AddressObject).count()).toBe(0);
+      expect(await dataSource.getRepository(AddressObjectContent).count()).toBe(
+        0,
+      );
+      expect((await get('a.vcf')).status).toBe(404);
+      expect(
+        (await dataSource.getRepository(User).findOneByOrFail({ id: alice.id }))
+          .quotaUsedBytes,
+      ).toBe(0);
+    });
+
+    it("answers 404 for an unknown addressbook, 405 for the home and 403 for someone else's home", async () => {
+      await new UserService(dataSource).createUser({
+        tenantId: tenant.id,
+        username: 'bob',
+        email: 'bob@example.com',
+        password: PASSWORD,
+      });
+
+      expect((await request('DELETE', `${home()}/missing`)).status).toBe(404);
+      expect((await request('DELETE', home())).status).toBe(405);
+      expect((await request('DELETE', bookUrl(), 'bob')).status).toBe(403);
+      expect(
+        await dataSource.getRepository(AddressbookCollection).count(),
+      ).toBe(1);
+    });
+  });
+
   it('returns 404 for GET/DELETE of a nonexistent contact', async () => {
     expect((await get('nonexistent.vcf')).status).toBe(404);
     expect((await del('nonexistent.vcf')).status).toBe(404);
