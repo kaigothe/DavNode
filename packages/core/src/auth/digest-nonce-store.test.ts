@@ -102,6 +102,18 @@ describe('DigestNonceStore', () => {
     expect(store.validateAndConsumeNonce(fresh, 1)).toBe('valid');
   });
 
+  it('caps the number of remembered nonces by dropping the oldest', () => {
+    const store = new DigestNonceStore({ maxEntries: 3 });
+    const first = store.generateNonce();
+    const others = [store.generateNonce(), store.generateNonce()];
+    const newest = store.generateNonce();
+
+    expect(store.size).toBe(3);
+    expect(store.validateAndConsumeNonce(first, 1)).toBe('unknown');
+    expect(store.validateAndConsumeNonce(others[0]!, 1)).toBe('valid');
+    expect(store.validateAndConsumeNonce(newest, 1)).toBe('valid');
+  });
+
   it('startDigestNonceSweep rejects an invalid cron expression and schedules a valid one', () => {
     const store = new DigestNonceStore();
 

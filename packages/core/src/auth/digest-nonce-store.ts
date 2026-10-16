@@ -7,6 +7,9 @@ const DEFAULT_TTL_MS = 5 * 60 * 1000;
 /** Default time an expired nonce is remembered (so it can still be told apart from a never-issued one). */
 const DEFAULT_STALE_GRACE_MS = 60 * 60 * 1000;
 
+/** Default cap on remembered nonces; see {@link DigestNonceStoreOptions.maxEntries}. */
+const DEFAULT_MAX_ENTRIES = 100_000;
+
 /** Every five minutes. */
 const DEFAULT_SWEEP_SCHEDULE = '*/5 * * * *';
 
@@ -21,6 +24,14 @@ export interface DigestNonceStoreOptions {
    * for the password). Default 1 hour.
    */
   staleGraceMs?: number;
+  /**
+   * Upper bound on remembered nonces. Every unauthenticated request
+   * mints one, so without a cap a flood of challenges could grow the
+   * map faster than the sweep shrinks it; once full, the oldest nonces
+   * are dropped (a legitimate client holding one then simply gets a new
+   * challenge). Default 100,000.
+   */
+  maxEntries?: number;
   /** Clock source, injectable for tests. Defaults to `Date.now`. */
   now?: () => number;
 }
@@ -52,11 +63,13 @@ export class DigestNonceStore {
   private readonly entries = new Map<string, NonceEntry>();
   private readonly ttlMs: number;
   private readonly staleGraceMs: number;
+  private readonly maxEntries: number;
   private readonly now: () => number;
 
   constructor(options: DigestNonceStoreOptions = {}) {
     this.ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
     this.staleGraceMs = options.staleGraceMs ?? DEFAULT_STALE_GRACE_MS;
+    this.maxEntries = options.maxEntries ?? DEFAULT_MAX_ENTRIES;
     this.now = options.now ?? Date.now;
   }
 
@@ -72,6 +85,12 @@ export class DigestNonceStore {
       expiresAt: this.now() + this.ttlMs,
       highestNc: 0,
     });
+    // Maps iterate in insertion order, so the first key is the oldest.
+    while (this.entries.size > this.maxEntries) {
+      const oldest = this.entries.keys().next().value;
+      if (oldest === undefined) break;
+      this.entries.delete(oldest);
+    }
     return nonce;
   }
 
