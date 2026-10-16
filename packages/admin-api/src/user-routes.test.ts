@@ -4,6 +4,8 @@ import {
   ALL_SQLITE_MIGRATIONS,
   Collection,
   createDataSource,
+  BasicAuthProvider,
+  computeDigestHa1,
   Credential,
   FileContent,
   FileResource,
@@ -64,7 +66,11 @@ describe('user routes', () => {
     });
 
   /** Mounts the real admin router acting as `user` on `managed`'s URL. */
-  function mountAs(managed: Tenant, user: User): void {
+  function mountAs(
+    managed: Tenant,
+    user: User,
+    routerOptions: { digestRealm?: string } = {},
+  ): void {
     const app = express();
     app.use(async (req: Request, _res: Response, next: NextFunction) => {
       req.tenant = managed;
@@ -73,7 +79,7 @@ describe('user routes', () => {
         .findOneByOrFail({ id: user.principalId });
       next();
     });
-    app.use('/admin', createAdminRouter(dataSource));
+    app.use('/admin', createAdminRouter(dataSource, routerOptions));
     server = app.listen(0);
     baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   }
@@ -446,5 +452,97 @@ describe('user routes', () => {
 
     expect(response.status).toBe(403);
     expect(await errorCode(response)).toBe('wrong_tenant');
+  });
+
+  describe('POST /users/{id}/password', () => {
+    it('resets basic and digest consistently: the new password works, the old one does not', async () => {
+      const boss = await createUser(acme, 'boss', 'tenant_admin');
+      const alice = await new UserService(dataSource, {
+        digestRealm: 'davnode',
+      }).createUser({
+        tenantId: acme.id,
+        username: 'alice',
+        email: 'alice@example.com',
+        password: 'old-password',
+      });
+      mountAs(acme, boss, { digestRealm: 'davnode' });
+
+      const response = await send('POST', `/users/${alice.id}/password`, {
+        password: 'new-password',
+      });
+
+      expect(response.status).toBe(204);
+      const basic = new BasicAuthProvider(dataSource);
+      const login = (password: string) =>
+        basic.verify({ tenantSlug: 'acme', username: 'alice', password });
+      expect(await login('new-password')).not.toBeNull();
+      expect(await login('old-password')).toBeNull();
+      const digest = await dataSource
+        .getRepository(Credential)
+        .findOneByOrFail({ userId: alice.id, type: 'digest' });
+      expect(digest.digestHa1).toBe(
+        computeDigestHa1('alice', 'davnode', 'new-password'),
+      );
+    });
+
+    it('creates no digest credential when digest is not enabled', async () => {
+      const boss = await createUser(acme, 'boss', 'tenant_admin');
+      const alice = await createUser(acme, 'alice', 'member');
+      mountAs(acme, boss);
+
+      const response = await send('POST', `/users/${alice.id}/password`, {
+        password: 'new-password',
+      });
+
+      expect(response.status).toBe(204);
+      expect(
+        await dataSource
+          .getRepository(Credential)
+          .countBy({ userId: alice.id, type: 'digest' }),
+      ).toBe(0);
+    });
+
+    it('rejects a missing password (400), an unknown user (404) and a member (403)', async () => {
+      const boss = await createUser(acme, 'boss', 'tenant_admin');
+      const alice = await createUser(acme, 'alice', 'member');
+      mountAs(acme, boss);
+
+      const missing = await send('POST', `/users/${alice.id}/password`, {});
+      expect(missing.status).toBe(400);
+      expect(await errorCode(missing)).toBe('invalid_password');
+      const unknown = await send(
+        'POST',
+        '/users/00000000-0000-4000-8000-000000000000/password',
+        { password: 'x' },
+      );
+      expect(unknown.status).toBe(404);
+
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+      mountAs(acme, alice);
+      const denied = await send('POST', `/users/${alice.id}/password`, {
+        password: 'x',
+      });
+      expect(denied.status).toBe(403);
+    });
+
+    it('a tenant_admin cannot reset the password of a server_admin', async () => {
+      const boss = await createUser(acme, 'boss', 'tenant_admin');
+      const root = await createUser(acme, 'root', 'server_admin');
+      mountAs(acme, boss);
+
+      const response = await send('POST', `/users/${root.id}/password`, {
+        password: 'hijacked',
+      });
+
+      expect(response.status).toBe(403);
+      expect(await errorCode(response)).toBe('role_escalation');
+      expect(
+        await new BasicAuthProvider(dataSource).verify({
+          tenantSlug: 'acme',
+          username: 'root',
+          password: 'hijacked',
+        }),
+      ).toBeNull();
+    });
   });
 });

@@ -6,6 +6,16 @@ import { registerQuotaRoutes } from './quota-routes.js';
 import { registerTenantRoutes } from './tenant-routes.js';
 import { registerUserRoutes } from './user-routes.js';
 
+/** Options for {@link createAdminRouter}. */
+export interface AdminRouterOptions {
+  /**
+   * The server's Digest realm when Digest auth is enabled (M10). Passed
+   * to `UserService` so user creation and password resets also maintain
+   * the `digest` credential; leave unset when Digest is disabled.
+   */
+  digestRealm?: string;
+}
+
 /**
  * Builds the `/admin` Express `Router` (M9, planning/04-architecture.md:
  * "`admin-api` exportiert einen Express-Router ... `server` bindet ihn
@@ -23,15 +33,19 @@ import { registerUserRoutes } from './user-routes.js';
  *
  * @param dataSource - Handed to every route registration, mirroring
  * `server`'s own `createApp(dataSource)`.
+ * @param options - See {@link AdminRouterOptions}.
  */
-export function createAdminRouter(dataSource: DataSource): Router {
+export function createAdminRouter(
+  dataSource: DataSource,
+  options: AdminRouterOptions = {},
+): Router {
   const router = express.Router();
 
   // Große Aufgaben 3-6 add their own registerXRoutes(router,
   // dataSource) calls here, in that order, mirroring server/app.ts's
   // own registration pattern.
   registerTenantRoutes(router, dataSource);
-  registerUserRoutes(router, dataSource);
+  registerUserRoutes(router, dataSource, options);
   registerGroupRoutes(router, dataSource);
   registerQuotaRoutes(router, dataSource);
 

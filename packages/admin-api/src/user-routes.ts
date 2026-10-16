@@ -15,6 +15,7 @@ import {
   parseJsonBody,
 } from './request-body.util.js';
 import { requireAdminRole } from './require-admin-role.middleware.js';
+import type { AdminRouterOptions } from './router.js';
 
 /**
  * The JSON representation of a user in Admin API responses. Credentials
@@ -73,8 +74,11 @@ const isRole = (value: unknown): value is UserRole =>
 export function registerUserRoutes(
   router: Router,
   dataSource: DataSource,
+  options: AdminRouterOptions = {},
 ): void {
-  const users = new UserService(dataSource);
+  const users = new UserService(dataSource, {
+    digestRealm: options.digestRealm,
+  });
   const tenantAdmin = requireAdminRole(dataSource, 'tenant_admin');
 
   const invalid = (res: Response, code: string, message: string) =>
@@ -294,6 +298,41 @@ export function registerUserRoutes(
       // The cascade bypasses applyQuotaDelta: bring the counters back in
       // line right away rather than waiting for the reconciliation job.
       await recomputeQuotaForTenant(dataSource, requireTenant(req).id);
+      res.status(204).end();
+    },
+  );
+
+  router.post(
+    '/users/:userId/password',
+    tenantAdmin,
+    parseJsonBody,
+    async (req, res) => {
+      const password = (req.body as { password?: unknown } | undefined)
+        ?.password;
+      if (!isNonEmptyString(password)) {
+        invalid(
+          res,
+          'invalid_password',
+          '"password" must be a non-empty string.',
+        );
+        return;
+      }
+
+      const target = await loadTarget(req, res);
+      if (!target) {
+        return;
+      }
+      // Resetting a server_admin's password would be a takeover of that
+      // account, so it is held to the same rule as modifying one.
+      if (
+        target.role === 'server_admin' &&
+        (await loadRequester(req)).role !== 'server_admin'
+      ) {
+        forbidEscalation(res);
+        return;
+      }
+
+      await users.setUserPassword(target.id, password);
       res.status(204).end();
     },
   );
