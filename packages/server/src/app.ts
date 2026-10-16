@@ -9,6 +9,7 @@ import {
   CalendarSyncCollectionDomain,
   CARDDAV_NAMESPACE,
   DAV_NAMESPACE,
+  DigestNonceStore,
   FreeBusyQueryReportHandler,
   PrincipalPropertySearchReportHandler,
   ReportRegistry,
@@ -17,7 +18,8 @@ import {
   type DataSource,
 } from '@davnode/core';
 import express from 'express';
-import { createBasicAuthMiddleware } from './http/basic-auth.middleware.js';
+import { DEFAULT_AUTH_CONFIG, type AuthConfig } from './auth-config.js';
+import { createAuthMiddlewares } from './http/auth-stack.js';
 import { errorHandlerMiddleware } from './http/error-handler.middleware.js';
 import { registerAclRoute } from './http/routes/acl.route.js';
 import { registerAddressbookHomeRoute } from './http/routes/addressbook-home.route.js';
@@ -53,6 +55,12 @@ import { registerOutboxRoute } from './http/routes/scheduling/outbox.route.js';
 import { registerUnlockRoute } from './http/routes/unlock.route.js';
 import { createTenantResolutionMiddleware } from './http/tenant-resolution.middleware.js';
 
+/** Options for {@link createApp}. */
+export interface CreateAppOptions {
+  /** Which authentication schemes to offer; defaults to Basic only. */
+  auth?: AuthConfig;
+}
+
 /**
  * Creates the Express application, without starting it. Keeping app
  * construction separate from `.listen()` keeps the app importable and
@@ -61,9 +69,19 @@ import { createTenantResolutionMiddleware } from './http/tenant-resolution.middl
  *
  * @param dataSource - An initialized DataSource, used to build the
  * services this app's middleware/routes need.
+ * @param options - See {@link CreateAppOptions}; the default is Basic
+ * auth only.
  */
-export function createApp(dataSource: DataSource): express.Express {
+export function createApp(
+  dataSource: DataSource,
+  options: CreateAppOptions = {},
+): express.Express {
   const app = express();
+  const authConfig = options.auth ?? DEFAULT_AUTH_CONFIG;
+  const digestNonces = new DigestNonceStore();
+  // Exposed so the process entry point can run the periodic sweep (a
+  // timer has no place in a plain app factory used by tests).
+  app.locals['digestNonceStore'] = digestNonces;
 
   // The ICS feed route is deliberately registered before tenant
   // resolution and Basic-Auth: it must never prompt for credentials
@@ -82,14 +100,26 @@ export function createApp(dataSource: DataSource): express.Express {
   // instruction, and @davnode/admin-api's router.ts never resolves a
   // tenant or authenticates a request itself.
   const tenantResolution = createTenantResolutionMiddleware(dataSource);
-  const basicAuth = createBasicAuthMiddleware(dataSource);
+  const authenticate = createAuthMiddlewares(
+    dataSource,
+    authConfig,
+    digestNonces,
+  );
 
   app.use('/dav/:tenantSlug', tenantResolution);
-  app.use('/dav/:tenantSlug', basicAuth);
+  app.use('/dav/:tenantSlug', ...authenticate);
 
   app.use('/admin/:tenantSlug', tenantResolution);
-  app.use('/admin/:tenantSlug', basicAuth);
-  app.use('/admin/:tenantSlug', createAdminRouter(dataSource));
+  app.use('/admin/:tenantSlug', ...authenticate);
+  app.use(
+    '/admin/:tenantSlug',
+    createAdminRouter(dataSource, {
+      digestRealm: authConfig.providers.includes('digest')
+        ? authConfig.realm
+        : undefined,
+      oauth2Issuers: authConfig.oauth2Issuers.map((issuer) => issuer.issuer),
+    }),
+  );
 
   // ACL authorization (the real RFC 3744 evaluation engine, replacing
   // M2's owner-only placeholder — milestones/M3-webdav-acl/

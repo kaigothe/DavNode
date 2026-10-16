@@ -41,16 +41,48 @@ describe('startServer', () => {
       }),
     ).rejects.toThrow();
   });
-});
 
-describe('shutdown', () => {
-  it('closes the HTTP server and destroys the DataSource', async () => {
-    const running = await startServer({ env: { DAVNODE_HTTP_PORT: '0' } });
-    const address = running.server.address() as AddressInfo;
+  it('runs the Digest nonce sweep only when digest is enabled, and shuts it down', async () => {
+    const withDigest = await startServer({
+      env: { DAVNODE_HTTP_PORT: '0', DAVNODE_AUTH_PROVIDERS: 'basic,digest' },
+    });
+    expect(withDigest.digestNonceSweepTask).toBeDefined();
+    await shutdown(withDigest);
 
-    await shutdown(running);
+    running = await startServer({ env: { DAVNODE_HTTP_PORT: '0' } });
+    expect(running.digestNonceSweepTask).toBeUndefined();
+  });
 
-    expect(running.dataSource.isInitialized).toBe(false);
-    await expect(fetch(`http://127.0.0.1:${address.port}/`)).rejects.toThrow();
+  describe('shutdown', () => {
+    it('closes the HTTP server and destroys the DataSource', async () => {
+      const running = await startServer({ env: { DAVNODE_HTTP_PORT: '0' } });
+      const address = running.server.address() as AddressInfo;
+
+      await shutdown(running);
+
+      expect(running.dataSource.isInitialized).toBe(false);
+      await expect(
+        fetch(`http://127.0.0.1:${address.port}/`),
+      ).rejects.toThrow();
+    });
+
+    it('rejects startup, before opening any database, when oauth2 is enabled without issuers', async () => {
+      await expect(
+        startServer({
+          env: {
+            DAVNODE_HTTP_PORT: '0',
+            DAVNODE_AUTH_PROVIDERS: 'basic,oauth2',
+          },
+        }),
+      ).rejects.toThrow(/DAVNODE_OAUTH2_ISSUERS/);
+    });
+
+    it('rejects startup for an unknown auth provider', async () => {
+      await expect(
+        startServer({
+          env: { DAVNODE_HTTP_PORT: '0', DAVNODE_AUTH_PROVIDERS: 'ntlm' },
+        }),
+      ).rejects.toThrow(/Unknown auth provider "ntlm"/);
+    });
   });
 });

@@ -2,11 +2,14 @@ import type { Server } from 'node:http';
 import { pathToFileURL } from 'node:url';
 import {
   createDataSource,
+  startDigestNonceSweep,
   startQuotaReconciliationCron,
   type DataSource,
+  type DigestNonceStore,
   type ScheduledTask,
 } from '@davnode/core';
 import { createApp } from './app.js';
+import { parseAuthConfig } from './auth-config.js';
 
 /** Default HTTP port, used when `DAVNODE_HTTP_PORT` isn't set. */
 const DEFAULT_HTTP_PORT = 8080;
@@ -25,6 +28,8 @@ export interface RunningServer {
   server: Server;
   dataSource: DataSource;
   quotaReconciliationTask: ScheduledTask;
+  /** Periodic cleanup of the Digest nonce store; present when Digest is enabled. */
+  digestNonceSweepTask?: ScheduledTask;
 }
 
 /**
@@ -41,6 +46,11 @@ export interface RunningServer {
  * `DAVNODE_QUOTA_RECONCILE_CRON` overrides its schedule (default daily),
  * read as a plain cron expression rather than parsed any further here.
  *
+ * The offered authentication schemes come from `DAVNODE_AUTH_PROVIDERS`
+ * (see `parseAuthConfig`); an invalid setup rejects before the database
+ * is touched. With Digest enabled, its nonce store is swept by an
+ * in-process cron job as well.
+ *
  * @param options - See {@link StartServerOptions}.
  * @returns The running HTTP server, its DataSource, and its quota
  * reconciliation task, once all are up.
@@ -51,10 +61,13 @@ export async function startServer(
   options: StartServerOptions = {},
 ): Promise<RunningServer> {
   const env = options.env ?? process.env;
+  // Resolved before touching the database so a misconfiguration (an
+  // unknown provider, oauth2 without issuers) fails fast and clearly.
+  const auth = parseAuthConfig(env);
   const dataSource = createDataSource(env);
   await dataSource.initialize();
 
-  const app = createApp(dataSource);
+  const app = createApp(dataSource, { auth });
   const port = env.DAVNODE_HTTP_PORT
     ? Number(env.DAVNODE_HTTP_PORT)
     : DEFAULT_HTTP_PORT;
@@ -73,7 +86,11 @@ export async function startServer(
     env.DAVNODE_QUOTA_RECONCILE_CRON,
   );
 
-  return { server, dataSource, quotaReconciliationTask };
+  const digestNonceSweepTask = auth.providers.includes('digest')
+    ? startDigestNonceSweep(app.locals['digestNonceStore'] as DigestNonceStore)
+    : undefined;
+
+  return { server, dataSource, quotaReconciliationTask, digestNonceSweepTask };
 }
 
 /**
@@ -88,8 +105,10 @@ export async function shutdown({
   server,
   dataSource,
   quotaReconciliationTask,
+  digestNonceSweepTask,
 }: RunningServer): Promise<void> {
   await quotaReconciliationTask.stop();
+  await digestNonceSweepTask?.stop();
   await new Promise<void>((resolve, reject) => {
     server.close((error) => {
       if (error) {
