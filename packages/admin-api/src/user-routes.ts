@@ -25,6 +25,8 @@ import type { AdminRouterOptions } from './router.js';
 function toUserBody(user: User) {
   return {
     id: user.id,
+    /** Id of the user's principal, which forms the DAV URLs `/dav/{tenant}/principals/users/{principalId}`, `/calendars/{principalId}` and `/addressbooks/{principalId}`. */
+    principalId: user.principalId,
     username: user.username,
     email: user.email,
     role: user.role,

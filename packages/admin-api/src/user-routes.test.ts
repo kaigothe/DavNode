@@ -118,6 +118,7 @@ describe('user routes', () => {
       expect(JSON.parse(text)).toMatchObject({
         username: 'alice',
         role: 'member',
+        principalId: expect.stringMatching(/^[0-9a-f-]{36}$/),
       });
       expect(text).not.toMatch(/hash|digest|password/i);
       const user = await dataSource
