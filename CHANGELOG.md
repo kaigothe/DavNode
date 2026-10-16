@@ -1,3 +1,23 @@
+# [1.24.0](https://github.com/kaigothe/DavNode/compare/v1.23.0...v1.24.0) (2026-10-16)
+
+
+### Bug Fixes
+
+* **core:** list sync-collection members in a deterministic order ([e0746ed](https://github.com/kaigothe/DavNode/commit/e0746ed93184de8a202d9897e980232f7efac039))
+
+
+### Features
+
+* **admin-api:** add tenant create, list, show and update endpoints (M9) ([974ba9c](https://github.com/kaigothe/DavNode/commit/974ba9cebfad09681c4adec14bd39a44e2fa44b9))
+* **admin-api:** add the group management endpoints (M9) ([f6f3358](https://github.com/kaigothe/DavNode/commit/f6f3358833ebf050793ada1ff3f6a353238cd575))
+* **admin-api:** add the quota management endpoints (M9) ([0112ddc](https://github.com/kaigothe/DavNode/commit/0112ddcf8fe3f6d5be03fb745eb7acb309ebcfc4))
+* **admin-api:** add the tenant deletion endpoint (M9) ([426387e](https://github.com/kaigothe/DavNode/commit/426387e5a480f90e9607af674de92c7991f53220))
+* **admin-api:** add the user management endpoints (M9) ([98ab87c](https://github.com/kaigothe/DavNode/commit/98ab87c06b734bee2ca55f4dbe95d701df01f2b0))
+* **core:** add TenantService.deleteTenant (M9) ([9acd74e](https://github.com/kaigothe/DavNode/commit/9acd74ec9b947753a079f645cec2c801edda5026))
+* **core:** add user listing, update and deletion to UserService (M9) ([e4dd855](https://github.com/kaigothe/DavNode/commit/e4dd855f7edaac1dfd774f65687e2949e76cbdf1))
+* **core:** cascade tenant deletes through every foreign key (M9) ([2aa9b27](https://github.com/kaigothe/DavNode/commit/2aa9b27d576edf44c172f2d1bce39ffffe1314e1))
+* **core:** extend the group services for the Admin API (M9) ([8a06c8a](https://github.com/kaigothe/DavNode/commit/8a06c8a9ea94d4cccfb3f8a4356b732c3140e151))
+
 # [1.23.0](https://github.com/kaigothe/DavNode/compare/v1.22.0...v1.23.0) (2026-10-06)
 
 
