@@ -2,6 +2,7 @@ import type { DataSource } from '@davnode/core';
 import express, { type Router } from 'express';
 import { adminErrorHandler } from './admin-error-handler.middleware.js';
 import { registerTenantRoutes } from './tenant-routes.js';
+import { registerUserRoutes } from './user-routes.js';
 
 /**
  * Builds the `/admin` Express `Router` (M9, planning/04-architecture.md:
@@ -28,6 +29,7 @@ export function createAdminRouter(dataSource: DataSource): Router {
   // dataSource) calls here, in that order, mirroring server/app.ts's
   // own registration pattern.
   registerTenantRoutes(router, dataSource);
+  registerUserRoutes(router, dataSource);
 
   // Must be the last middleware added to this router — see its own doc
   // comment for why.

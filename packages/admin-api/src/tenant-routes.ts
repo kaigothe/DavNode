@@ -1,27 +1,12 @@
 import { TenantService, type DataSource, type Tenant } from '@davnode/core';
-import express, { type RequestHandler, type Router } from 'express';
+import type { Router } from 'express';
 import { sendAdminError } from './admin-error-response.js';
+import {
+  isNonEmptyString,
+  isQuotaLimit,
+  parseJsonBody,
+} from './request-body.util.js';
 import { requireAdminRole } from './require-admin-role.middleware.js';
-
-/**
- * Parses a JSON request body, answering a malformed one with the shared
- * `400` error envelope instead of letting `express.json()`'s raw
- * `SyntaxError` fall through to the generic `500` handler.
- */
-const parseJsonBody: RequestHandler = (req, res, next) => {
-  express.json()(req, res, (error?: unknown) => {
-    if (error) {
-      sendAdminError(
-        res,
-        400,
-        'invalid_body',
-        'The request body is not valid JSON.',
-      );
-      return;
-    }
-    next();
-  });
-};
 
 /** The JSON representation of a tenant in Admin API responses. */
 function toTenantBody(tenant: Tenant) {
@@ -38,13 +23,6 @@ function toTenantBody(tenant: Tenant) {
 /** Slugs end up in URL paths: lowercase alphanumerics and inner hyphens only. */
 const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const MAX_SLUG_LENGTH = 63;
-
-const isNonEmptyString = (value: unknown): value is string =>
-  typeof value === 'string' && value.trim() !== '';
-
-/** `null` (no limit) or a non-negative safe integer. */
-const isQuotaLimit = (value: unknown): value is number | null =>
-  value === null || (Number.isSafeInteger(value) && (value as number) >= 0);
 
 /**
  * Registers the tenant-management routes (M9 Große Aufgabe 3) on the
