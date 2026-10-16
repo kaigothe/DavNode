@@ -6,6 +6,7 @@ import {
   DeadPropertyService,
   parsePropfindRequestBody,
   PropertyProviderRegistry,
+  CollectionSyncProperties,
   DiscoveryPropertiesProvider,
   GetctagProvider,
   QuotaPropertiesProvider,
@@ -152,6 +153,7 @@ export function registerCalendarHomeRoute(
   registry.register(new CalendarLiveProperties());
   registry.register(new QuotaPropertiesProvider<CalendarHomeTreeResource>());
   registry.register(new GetctagProvider<CalendarHomeTreeResource>());
+  registry.register(new CollectionSyncProperties<CalendarHomeTreeResource>());
   registry.register(
     new DiscoveryPropertiesProvider<CalendarHomeTreeResource>(),
   );

@@ -5,6 +5,7 @@ import {
   buildMultistatusResponse,
   parsePropfindRequestBody,
   PropertyProviderRegistry,
+  CollectionSyncProperties,
   DiscoveryPropertiesProvider,
   GetctagProvider,
   QuotaPropertiesProvider,
@@ -153,6 +154,9 @@ export function registerAddressbookHomeRoute(
   registry.register(new AddressbookLiveProperties());
   registry.register(new QuotaPropertiesProvider<AddressbookHomeTreeResource>());
   registry.register(new GetctagProvider<AddressbookHomeTreeResource>());
+  registry.register(
+    new CollectionSyncProperties<AddressbookHomeTreeResource>(),
+  );
   registry.register(
     new DiscoveryPropertiesProvider<AddressbookHomeTreeResource>(),
   );

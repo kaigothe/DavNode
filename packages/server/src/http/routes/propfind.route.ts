@@ -7,6 +7,7 @@ import {
   LockPropertiesProvider,
   parsePropfindRequestBody,
   PropertyProviderRegistry,
+  CollectionSyncProperties,
   DiscoveryPropertiesProvider,
   GetctagProvider,
   QuotaPropertiesProvider,
@@ -110,6 +111,7 @@ export function registerPropfindRoute(
   registry.register(new LockPropertiesProvider());
   registry.register(new QuotaPropertiesProvider<WebDavResource>());
   registry.register(new GetctagProvider<WebDavResource>());
+  registry.register(new CollectionSyncProperties<WebDavResource>());
   registry.register(new DiscoveryPropertiesProvider<WebDavResource>());
 
   app.propfind(

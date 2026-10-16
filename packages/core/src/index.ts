@@ -13,6 +13,7 @@ export {
   OAuth2AuthProvider,
   type OAuth2AuthProviderOptions,
 } from './auth/oauth2-auth-provider.js';
+export { CollectionSyncProperties } from './webdav/properties/collection-sync-properties.js';
 export {
   CALENDARSERVER_NAMESPACE,
   GetctagProvider,

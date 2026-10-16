@@ -2,6 +2,7 @@ import {
   buildMultistatusResponse,
   DeadPropertyService,
   getEffectiveWebDavLocks,
+  CollectionSyncProperties,
   DiscoveryPropertiesProvider,
   GetctagProvider,
   hasPrivilege,
@@ -62,6 +63,7 @@ export function registerProppatchRoute(
   // `lock-properties-provider.ts`.
   registry.register(new LockPropertiesProvider());
   registry.register(new GetctagProvider<WebDavResource>());
+  registry.register(new CollectionSyncProperties<WebDavResource>());
   registry.register(new DiscoveryPropertiesProvider<WebDavResource>());
 
   app.proppatch(
