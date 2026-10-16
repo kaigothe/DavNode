@@ -25,3 +25,12 @@ vom Ergebnis der
 
 ## Referenzen
 - [01-research-and-gap-analysis.md](01-research-and-gap-analysis.md)
+
+## Ergebnis (2026-10-17)
+Die Recherche ([FINDINGS.md](FINDINGS.md)) ergab, dass **keine
+serverseitigen Anpassungen nötig** sind: alles, was Google anbietet und
+Clients dort nutzen können, ist in DavNode bereits vorhanden. Diese Aufgabe
+entfällt damit, wie oben vorgesehen; es wurde nichts „auf Verdacht"
+geändert. Der einzige Unterschied (RFC 5995 `add-member` zum Anlegen per
+`POST`) ist als optionale Erweiterung vermerkt und bewusst nicht umgesetzt,
+solange kein realer Client daran scheitert.
