@@ -71,13 +71,35 @@ export class GroupService {
     return this.dataSource.getRepository(Group).findOneBy({ tenantId, name });
   }
 
+  /** Lists every group of a tenant, ordered by name. */
+  async listGroups(tenantId: string): Promise<Group[]> {
+    return this.dataSource
+      .getRepository(Group)
+      .find({ where: { tenantId }, order: { name: 'ASC' } });
+  }
+
   /**
-   * Deletes a group and every `GroupMembership` row that references it —
-   * both rows where it's the group being listed, and rows where its
-   * principal is a *member* of some other group — so no membership row
-   * is left pointing at a group that no longer exists. Its `Principal`
-   * row is left in place (ACEs may still reference it; removing it is a
-   * separate concern for a later milestone).
+   * Looks up a group by id within a tenant.
+   *
+   * @returns The group, or `null` if the tenant has no group with that id.
+   */
+  async findGroupById(
+    tenantId: string,
+    groupId: string,
+  ): Promise<Group | null> {
+    return this.dataSource
+      .getRepository(Group)
+      .findOneBy({ tenantId, id: groupId });
+  }
+
+  /**
+   * Deletes a group together with its `Principal`: every
+   * `GroupMembership` row that references it — both rows where it's the
+   * group being listed, and rows where its principal is a *member* of
+   * some other group — and every ACE that grants or denies something to
+   * the group are removed, so no row is left pointing at a principal
+   * that no longer exists. The group's own members (users and nested
+   * groups) are untouched.
    *
    * @throws {@link NotFoundError} If no group has `groupId`.
    */
@@ -92,6 +114,8 @@ export class GroupService {
         memberPrincipalId: group.principalId,
       });
       await manager.delete(Group, { id: group.id });
+      // The ACE tables' principal foreign keys cascade from here.
+      await manager.delete(Principal, { id: group.principalId });
     });
   }
 }

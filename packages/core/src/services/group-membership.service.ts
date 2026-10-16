@@ -3,6 +3,7 @@ import { In } from 'typeorm';
 import { Group } from '../entities/group.entity.js';
 import { GroupMembership } from '../entities/group-membership.entity.js';
 import { Principal } from '../entities/principal.entity.js';
+import { User } from '../entities/user.entity.js';
 import {
   CycleDetectedError,
   DuplicateEntryError,
@@ -52,6 +53,12 @@ export class GroupMembershipService {
       throw new NotFoundError(`Group "${groupId}" not found.`);
     }
 
+    if (memberPrincipalId === targetGroup.principalId) {
+      throw new CycleDetectedError(
+        `Cannot add this member: group "${groupId}" cannot be a member of itself.`,
+      );
+    }
+
     if (memberPrincipal.kind === 'group') {
       const memberGroup = await this.dataSource
         .getRepository(Group)
@@ -93,6 +100,23 @@ export class GroupMembershipService {
     await this.dataSource
       .getRepository(GroupMembership)
       .delete({ groupId, memberPrincipalId });
+  }
+
+  /**
+   * Lists the direct (non-transitive) members of `groupId`, ordered by
+   * principal id for a stable result.
+   */
+  async listDirectMembers(groupId: string): Promise<Principal[]> {
+    const memberships = await this.dataSource
+      .getRepository(GroupMembership)
+      .findBy({ groupId });
+    if (memberships.length === 0) {
+      return [];
+    }
+    const principals = await this.dataSource.getRepository(Principal).findBy({
+      id: In(memberships.map((membership) => membership.memberPrincipalId)),
+    });
+    return principals.sort((a, b) => a.id.localeCompare(b.id));
   }
 
   /**
@@ -139,7 +163,41 @@ export class GroupMembershipService {
     if (groupIds.size === 0) {
       return [];
     }
-    return this.dataSource.getRepository(Group).findBy({ id: In([...groupIds]) });
+    return this.dataSource
+      .getRepository(Group)
+      .findBy({ id: In([...groupIds]) });
+  }
+
+  /**
+   * Pairs each principal with a human-readable name: the username for a
+   * user, the group name for a group, `null` for a special principal.
+   */
+  async describePrincipals(
+    principals: readonly Principal[],
+  ): Promise<
+    { principalId: string; kind: Principal['kind']; name: string | null }[]
+  > {
+    const ids = principals.map((principal) => principal.id);
+    const [users, groups] =
+      ids.length === 0
+        ? [[], []]
+        : await Promise.all([
+            this.dataSource
+              .getRepository(User)
+              .findBy({ principalId: In(ids) }),
+            this.dataSource
+              .getRepository(Group)
+              .findBy({ principalId: In(ids) }),
+          ]);
+    const names = new Map<string, string>([
+      ...users.map((user) => [user.principalId, user.username] as const),
+      ...groups.map((group) => [group.principalId, group.name] as const),
+    ]);
+    return principals.map((principal) => ({
+      principalId: principal.id,
+      kind: principal.kind,
+      name: names.get(principal.id) ?? null,
+    }));
   }
 
   /**

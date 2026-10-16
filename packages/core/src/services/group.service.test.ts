@@ -120,4 +120,36 @@ describe('GroupService', () => {
     const remaining = await memberships.find();
     expect(remaining).toHaveLength(0);
   });
+
+  it("lists a tenant's groups by name and finds one by id within the tenant only", async () => {
+    const zeta = await service.createGroup({
+      tenantId: tenant.id,
+      name: 'zeta',
+    });
+    await service.createGroup({ tenantId: tenant.id, name: 'alpha' });
+
+    expect((await service.listGroups(tenant.id)).map((g) => g.name)).toEqual([
+      'alpha',
+      'zeta',
+    ]);
+    expect((await service.findGroupById(tenant.id, zeta.id))?.name).toBe(
+      'zeta',
+    );
+    expect(await service.findGroupById('other-tenant', zeta.id)).toBeNull();
+  });
+
+  it('deleteGroup also removes the group principal, so ACEs granting to it cascade away', async () => {
+    const group = await service.createGroup({
+      tenantId: tenant.id,
+      name: 'team',
+    });
+
+    await service.deleteGroup(group.id);
+
+    expect(
+      await dataSource
+        .getRepository(Principal)
+        .countBy({ id: group.principalId }),
+    ).toBe(0);
+  });
 });

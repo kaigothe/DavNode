@@ -264,4 +264,32 @@ describe('GroupMembershipService', () => {
     const topOccurrences = groups.filter((g) => g.id === top.id);
     expect(topOccurrences).toHaveLength(1);
   });
+
+  it('rejects adding a group to itself as a cycle', async () => {
+    const group = await groupService.createGroup({ tenantId: tenant.id, name: 'solo' });
+
+    await expect(
+      membershipService.addMember(group.id, group.principalId),
+    ).rejects.toThrow(CycleDetectedError);
+  });
+
+  it('lists direct members only and describes them by name', async () => {
+    const outer = await groupService.createGroup({ tenantId: tenant.id, name: 'outer' });
+    const inner = await groupService.createGroup({ tenantId: tenant.id, name: 'inner' });
+    const user = await userService.createUser({
+      tenantId: tenant.id,
+      username: 'alice',
+      email: 'alice@example.com',
+      password: 'pw',
+    });
+    await membershipService.addMember(outer.id, inner.principalId);
+    await membershipService.addMember(inner.id, user.principalId);
+
+    const direct = await membershipService.listDirectMembers(outer.id);
+    const described = await membershipService.describePrincipals(direct);
+
+    expect(described).toEqual([
+      { principalId: inner.principalId, kind: 'group', name: 'inner' },
+    ]);
+  });
 });
