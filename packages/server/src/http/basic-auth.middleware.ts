@@ -4,6 +4,7 @@ import {
   type DataSource,
 } from '@davnode/core';
 import type { RequestHandler } from 'express';
+import { appendChallenge } from './auth-chain.js';
 
 /** Default HTTP Basic realm, used when {@link BasicAuthMiddlewareOptions.realm} isn't set. */
 const DEFAULT_REALM = 'davnode';
@@ -12,6 +13,13 @@ const DEFAULT_REALM = 'davnode';
 export interface BasicAuthMiddlewareOptions {
   /** Sent in the `WWW-Authenticate` challenge. Defaults to `'davnode'`. */
   realm?: string;
+  /**
+   * Chained mode (see `auth-chain.ts`): instead of answering `401`
+   * itself, record the Basic challenge and call `next()` so another
+   * scheme can try, leaving the final `401` to the chain's terminator.
+   * Default `false`: the middleware answers `401` itself, as in M2.
+   */
+  chained?: boolean;
 }
 
 interface BasicCredentials {
@@ -99,10 +107,23 @@ export function createBasicAuthMiddleware(
       );
     }
 
-    const credentials = parseBasicAuthHeader(req.header('Authorization'));
-    if (!credentials) {
+    if (options.chained && req.principal) {
+      next();
+      return;
+    }
+    const deny = (): void => {
+      if (options.chained) {
+        appendChallenge(res, `Basic realm="${realm}"`);
+        next();
+        return;
+      }
       res.set('WWW-Authenticate', `Basic realm="${realm}"`);
       res.sendStatus(401);
+    };
+
+    const credentials = parseBasicAuthHeader(req.header('Authorization'));
+    if (!credentials) {
+      deny();
       return;
     }
 
@@ -112,8 +133,7 @@ export function createBasicAuthMiddleware(
       password: credentials.password,
     });
     if (!principal) {
-      res.set('WWW-Authenticate', `Basic realm="${realm}"`);
-      res.sendStatus(401);
+      deny();
       return;
     }
 
