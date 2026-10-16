@@ -172,6 +172,7 @@ export {
 export {
   type CreateTenantInput,
   TenantService,
+  type UpdateTenantInput,
   type UpdateTenantQuotaInput,
 } from './services/tenant.service.js';
 export {
