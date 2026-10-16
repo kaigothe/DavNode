@@ -36,7 +36,7 @@ interface BasicCredentials {
  * is missing, isn't the `Basic` scheme, or doesn't decode to a
  * `username:password` pair.
  */
-function parseBasicAuthHeader(
+export function parseBasicAuthHeader(
   header: string | undefined,
 ): BasicCredentials | null {
   if (!header) {

@@ -46,6 +46,9 @@ export interface RunningServer {
  * `DAVNODE_QUOTA_RECONCILE_CRON` overrides its schedule (default daily),
  * read as a plain cron expression rather than parsed any further here.
  *
+ * `DAVNODE_DEFAULT_TENANT` names the tenant RFC 6764 discovery
+ * (`/.well-known/caldav`) resolves plain usernames against.
+ *
  * The offered authentication schemes come from `DAVNODE_AUTH_PROVIDERS`
  * (see `parseAuthConfig`); an invalid setup rejects before the database
  * is touched. With Digest enabled, its nonce store is swept by an
@@ -67,7 +70,10 @@ export async function startServer(
   const dataSource = createDataSource(env);
   await dataSource.initialize();
 
-  const app = createApp(dataSource, { auth });
+  const app = createApp(dataSource, {
+    auth,
+    defaultTenant: env.DAVNODE_DEFAULT_TENANT?.trim() || undefined,
+  });
   const port = env.DAVNODE_HTTP_PORT
     ? Number(env.DAVNODE_HTTP_PORT)
     : DEFAULT_HTTP_PORT;

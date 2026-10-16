@@ -52,6 +52,7 @@ import { registerReportRoute } from './http/routes/report.route.js';
 import { registerInboxRoute } from './http/routes/scheduling/inbox.route.js';
 import { registerOutboxPostRoute } from './http/routes/scheduling/outbox-post.route.js';
 import { registerOutboxRoute } from './http/routes/scheduling/outbox.route.js';
+import { registerWellKnownRoute } from './http/routes/well-known.route.js';
 import { registerUnlockRoute } from './http/routes/unlock.route.js';
 import { createTenantResolutionMiddleware } from './http/tenant-resolution.middleware.js';
 
@@ -59,6 +60,12 @@ import { createTenantResolutionMiddleware } from './http/tenant-resolution.middl
 export interface CreateAppOptions {
   /** Which authentication schemes to offer; defaults to Basic only. */
   auth?: AuthConfig;
+  /**
+   * Tenant that `/.well-known/caldav` and `/carddav` resolve plain
+   * usernames against (`DAVNODE_DEFAULT_TENANT`); without it those
+   * endpoints expect `user@tenantSlug`.
+   */
+  defaultTenant?: string;
 }
 
 /**
@@ -90,6 +97,14 @@ export function createApp(
   // matches this and only this route, requests to it never reach either
   // middleware below.
   registerIcsFeedRoute(app, dataSource);
+
+  // RFC 6764 discovery lives outside /dav/{tenantSlug}, so it brings its
+  // own tenant lookup and Basic authentication and, like the ICS feed,
+  // is registered ahead of the tenant-scoped middleware below.
+  registerWellKnownRoute(app, dataSource, {
+    defaultTenant: options.defaultTenant,
+    realm: authConfig.realm,
+  });
 
   // Every DAV route lives under /dav/{tenantSlug}/... (path-prefix
   // tenancy) and needs the resolved Tenant before anything else runs —
