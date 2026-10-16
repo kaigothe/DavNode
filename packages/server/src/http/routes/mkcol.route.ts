@@ -76,7 +76,7 @@ export function registerMkcolRoute(app: Express, dataSource: DataSource): void {
           tenant.id,
           segments.slice(0, -1),
         );
-        return parent ? { resources: [parent] } : null;
+        return parent ? { resources: [parent], subject: null } : null;
       },
       getEffectiveWebDavLocks,
     ),

@@ -162,19 +162,19 @@ export function registerCopyRoute(app: Express, dataSource: DataSource): void {
         return;
       }
 
-      // Lock enforcement (M4): only the destination parent, and only
-      // when an existing destination is about to be overwritten — the
-      // source is never checked (COPY never modifies it), and a plain
-      // create-into-a-locked-parent isn't checked either, unlike
-      // MKCOL/PUT (see milestones/M4-locking-sync/
-      // 05-lock-enforcement-middleware/01-if-header-enforcement.md's
-      // table).
+      // Lock enforcement (M4, RFC 4918 §7.4): the destination parent
+      // (adding a member to a locked collection, or replacing one in it)
+      // and, when it already exists, the destination itself — an
+      // overwriting COPY would otherwise replace a locked resource and
+      // silently delete its lock. The source is never checked: COPY does
+      // not modify it. (M4's original table skipped both of these; found
+      // by litmus, see milestones/M11-client-compatibility/
+      // 06-conformance-suite-ci.)
       if (
-        existingTarget &&
         !(await checkLockEnforcement(
           dataSource,
           req.header('If'),
-          [destParent],
+          existingTarget ? [destParent, existingTarget] : [destParent],
           getEffectiveWebDavLocks,
         ))
       ) {

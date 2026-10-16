@@ -1,6 +1,8 @@
 import {
   buildErrorResponse,
+  evaluateIfHeader,
   hasValidLockToken,
+  parseIfHeader,
   type DataSource,
   type EffectiveLock,
   type EntityManager,
@@ -105,6 +107,15 @@ export function sendLockEnforcementError(res: Response): void {
  */
 export interface LockEnforcementCheck<TResource> {
   resources: TResource[];
+  /**
+   * The resource the request itself addresses, for evaluating the `If`
+   * header's conditions (RFC 4918 §10.4): `null` when it does not exist
+   * (so no entity tag matches and it has no locks), omitted when the
+   * route does not want `If` conditions evaluated at all. Distinct from
+   * {@link resources}, which also holds parents whose locks must be
+   * covered.
+   */
+  subject?: TResource | null;
 }
 
 /**
@@ -178,6 +189,46 @@ export function createLockEnforcementMiddleware<TResource>(
       return;
     }
 
+    // Lock tokens are covered; now the rest of the `If` header (entity
+    // tags, Not, tokens that are not actually held) must hold too, else
+    // 412 Precondition Failed (RFC 4918 §10.4.1).
+    const ifLists = parseIfHeader(req.header('If'));
+    if (ifLists && check.subject !== undefined) {
+      const subject = check.subject;
+      const etag = (subject as { etag?: unknown } | null)?.etag;
+      // A token counts as held if it covers the subject *or* any other
+      // resource this request has to cover (the parent whose membership
+      // changes): a client creating a member of a locked collection
+      // submits the collection's token in an untagged list, and the
+      // not-yet-existing subject has no locks of its own.
+      const lockTokens = new Set<string>();
+      for (const resource of check.resources) {
+        for (const lock of await getEffectiveLocksFn(
+          dataSource.manager,
+          resource,
+        )) {
+          lockTokens.add(lock.token);
+        }
+      }
+      const holds = evaluateIfHeader(ifLists, decodeRequestPath(req), {
+        etag: typeof etag === 'string' ? etag : null,
+        lockTokens,
+      });
+      if (!holds) {
+        res.sendStatus(412);
+        return;
+      }
+    }
+
     next();
   };
+}
+
+/** The request path without query string, percent-decoded where possible. */
+function decodeRequestPath(req: Request): string {
+  try {
+    return decodeURIComponent(req.path);
+  } catch {
+    return req.path;
+  }
 }

@@ -179,6 +179,22 @@ export function registerMoveRoute(app: Express, dataSource: DataSource): void {
         return;
       }
 
+      // An overwritten destination is deleted, so it needs a covering
+      // lock token as well (RFC 4918 §7.4) — otherwise MOVE could replace
+      // a locked resource and silently drop its lock.
+      if (
+        existingTarget &&
+        !(await checkLockEnforcement(
+          dataSource,
+          req.header('If'),
+          [existingTarget],
+          getEffectiveWebDavLocks,
+        ))
+      ) {
+        sendLockEnforcementError(res);
+        return;
+      }
+
       await dataSource.transaction(async (manager) => {
         if (existingTarget) {
           await resourceTree.deleteRecursively(manager, existingTarget);

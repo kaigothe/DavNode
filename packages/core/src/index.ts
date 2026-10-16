@@ -17,6 +17,13 @@ export {
   CALENDARSERVER_NAMESPACE,
   GetctagProvider,
 } from './webdav/properties/getctag-provider.js';
+export {
+  evaluateIfHeader,
+  parseIfHeader,
+  type IfCondition,
+  type IfList,
+  type IfResourceState,
+} from './webdav/locking/if-header.js';
 export { DigestAuthProvider } from './auth/digest-auth-provider.js';
 export { computeDigestHa1 } from './auth/digest-ha1.js';
 export {

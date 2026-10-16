@@ -169,6 +169,64 @@ describe('Lock-enforcement middleware', () => {
     expect(body).toContain('lock-token-submitted');
   });
 
+  describe('If header conditions beyond lock tokens (RFC 4918 section 10.4)', () => {
+    const put = (ifHeader: string | undefined) =>
+      fetch(`${baseUrl}/dav/acme/files/doc.txt`, {
+        method: 'PUT',
+        headers: {
+          Authorization: basicAuthHeader('alice', PASSWORD),
+          'Content-Type': 'text/plain',
+          ...(ifHeader === undefined ? {} : { If: ifHeader }),
+        },
+        body: 'new content',
+      });
+
+    it('a valid token with a wrong entity tag fails with 412, not 423', async () => {
+      const token = await lock('/dav/acme/files/doc.txt');
+
+      expect((await put(`(<${token}> ["wrong"])`)).status).toBe(412);
+    });
+
+    it('a valid token with the right entity tag succeeds', async () => {
+      const token = await lock('/dav/acme/files/doc.txt');
+
+      expect((await put(`(<${token}> [etag-1])`)).status).toBe(204);
+    });
+
+    it('a token that is no longer held (resource unlocked) fails with 412', async () => {
+      const token = await lock('/dav/acme/files/doc.txt');
+      await fetch(`${baseUrl}/dav/acme/files/doc.txt`, {
+        method: 'UNLOCK',
+        headers: {
+          Authorization: basicAuthHeader('alice', PASSWORD),
+          'Lock-Token': `<${token}>`,
+        },
+      });
+
+      expect((await put(`(<${token}>)`)).status).toBe(412);
+    });
+
+    it('an entity tag alone, with no lock, is a plain precondition', async () => {
+      expect((await put('(["wrong"])')).status).toBe(412);
+      expect((await put('([etag-1])')).status).toBe(204);
+    });
+
+    it('Not <DAV:no-lock> holds, DAV:no-lock itself never does', async () => {
+      expect((await put('(Not <DAV:no-lock>)')).status).toBe(204);
+      expect((await put('(<DAV:no-lock>)')).status).toBe(412);
+    });
+
+    it('lists tagged with another resource are not held against this request', async () => {
+      expect(
+        (await put('</dav/acme/files/elsewhere.txt> (<urn:uuid:x>)')).status,
+      ).toBe(204);
+    });
+
+    it('a malformed If header is ignored as before', async () => {
+      expect((await put('garbage')).status).toBe(204);
+    });
+  });
+
   it('PUT (overwrite) with the correct lock token in the If header succeeds', async () => {
     const token = await lock('/dav/acme/files/doc.txt');
 
@@ -300,18 +358,65 @@ describe('Lock-enforcement middleware', () => {
     expect(withToken.status).toBe(201);
   });
 
-  it('COPY into an unlocked destination is unaffected by a lock on the destination parent when not overwriting', async () => {
-    await lock('/dav/acme/files', { depth: 'infinity' });
+  it('COPY creating a new member in a locked collection requires the token (RFC 4918 section 7.4)', async () => {
+    const token = await lock('/dav/acme/files', { depth: 'infinity' });
+    const copy = (headers: Record<string, string> = {}) =>
+      fetch(`${baseUrl}/dav/acme/files/doc.txt`, {
+        method: 'COPY',
+        headers: {
+          Authorization: basicAuthHeader('alice', PASSWORD),
+          Destination: `${baseUrl}/dav/acme/files/copy.txt`,
+          ...headers,
+        },
+      });
 
-    const response = await fetch(`${baseUrl}/dav/acme/files/doc.txt`, {
-      method: 'COPY',
+    expect((await copy()).status).toBe(423);
+    expect((await copy({ If: `(<${token}>)` })).status).toBe(201);
+  });
+
+  it('COPY and MOVE onto a locked destination file are refused without its token, and the lock survives', async () => {
+    await dataSource.transaction(async (manager) => {
+      const existing = await manager.getRepository(FileResource).save(
+        manager.getRepository(FileResource).create({
+          tenantId: tenant.id,
+          collectionId: root.id,
+          name: 'locked-target.txt',
+          contentType: 'text/plain',
+          etag: 'etag-3',
+          sizeBytes: 1,
+          ownerPrincipalId: alice.principalId,
+        }),
+      );
+      await createOwnerAllAce(manager, 'file', existing.id, alice.principalId);
+    });
+    const token = await lock('/dav/acme/files/locked-target.txt', {
+      depth: '0',
+    });
+    const headers = {
+      Authorization: basicAuthHeader('alice', PASSWORD),
+      Destination: `${baseUrl}/dav/acme/files/locked-target.txt`,
+      Overwrite: 'T',
+    };
+
+    for (const method of ['COPY', 'MOVE']) {
+      const response = await fetch(`${baseUrl}/dav/acme/files/doc.txt`, {
+        method,
+        headers,
+      });
+      expect(response.status).toBe(423);
+    }
+
+    // The lock is still there: a second exclusive lock is refused.
+    const again = await fetch(`${baseUrl}/dav/acme/files/locked-target.txt`, {
+      method: 'LOCK',
       headers: {
         Authorization: basicAuthHeader('alice', PASSWORD),
-        Destination: `${baseUrl}/dav/acme/files/copy.txt`,
+        'Content-Type': 'application/xml',
       },
+      body: '<?xml version="1.0"?><D:lockinfo xmlns:D="DAV:"><D:lockscope><D:exclusive/></D:lockscope><D:locktype><D:write/></D:locktype></D:lockinfo>',
     });
-
-    expect(response.status).toBe(201);
+    expect(again.status).toBe(423);
+    expect(token).toMatch(/^urn:uuid:/);
   });
 
   it('COPY overwriting an existing destination inside a locked parent requires the token', async () => {

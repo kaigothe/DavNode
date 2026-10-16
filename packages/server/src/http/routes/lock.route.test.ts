@@ -81,7 +81,12 @@ describe('LOCK route', () => {
           displayName: 'root',
         }),
       );
-      await createOwnerAllAce(manager, 'collection', root.id, alice.principalId);
+      await createOwnerAllAce(
+        manager,
+        'collection',
+        root.id,
+        alice.principalId,
+      );
 
       doc = await manager.getRepository(FileResource).save(
         manager.getRepository(FileResource).create({
@@ -228,9 +233,59 @@ describe('LOCK route', () => {
     expect(stored).toHaveLength(0);
   });
 
-  it('a request for an unlocked, nonexistent resource returns 404', async () => {
-    const response = await lock('/dav/acme/files/missing.txt');
-    expect(response.status).toBe(404);
+  it('LOCK on an unmapped URL creates an empty resource and locks it (201, RFC 4918 section 7.3)', async () => {
+    const response = await lock('/dav/acme/files/reserved.txt');
+
+    expect(response.status).toBe(201);
+    expect(response.headers.get('Lock-Token')).toMatch(/^<urn:uuid:/);
+    const created = await dataSource
+      .getRepository(FileResource)
+      .findOneByOrFail({ name: 'reserved.txt' });
+    expect(created.sizeBytes).toBe(0);
+    expect(
+      await dataSource
+        .getRepository(FileLock)
+        .countBy({ fileResourceId: created.id }),
+    ).toBe(1);
+    const read = await fetch(`${baseUrl}/dav/acme/files/reserved.txt`, {
+      headers: { Authorization: basicAuthHeader('alice', PASSWORD) },
+    });
+    expect(read.status).toBe(200);
+    expect(await read.text()).toBe('');
+  });
+
+  it('LOCK on an unmapped URL without an existing parent is 409, and a refresh of one is 404', async () => {
+    expect((await lock('/dav/acme/files/no-such-dir/x.txt')).status).toBe(409);
+
+    const refresh = await fetch(`${baseUrl}/dav/acme/files/missing.txt`, {
+      method: 'LOCK',
+      headers: {
+        Authorization: basicAuthHeader('alice', PASSWORD),
+        If: '(<urn:uuid:00000000-0000-4000-8000-000000000000>)',
+      },
+    });
+    expect(refresh.status).toBe(404);
+  });
+
+  it("LOCK on an unmapped URL in a locked collection needs that collection's token, and is refused without create rights", async () => {
+    // A depth-0 lock protects the collection's membership without covering
+    // (and thus conflicting with locks on) its members.
+    const rootLock = await lock('/dav/acme/files', { depth: '0' });
+    const rootToken = rootLock.headers.get('Lock-Token')!.slice(1, -1);
+    const create = (headers: Record<string, string> = {}, user = 'alice') =>
+      fetch(`${baseUrl}/dav/acme/files/new.txt`, {
+        method: 'LOCK',
+        headers: {
+          Authorization: basicAuthHeader(user, PASSWORD),
+          'Content-Type': 'application/xml',
+          ...headers,
+        },
+        body: lockInfoBody('shared'),
+      });
+
+    expect((await create()).status).toBe(423);
+    expect((await create({ If: `(<${rootToken}>)` })).status).toBe(201);
+    expect((await create({}, 'bob')).status).toBe(403);
   });
 
   it('a user without write-content is refused an exclusive lock (403)', async () => {

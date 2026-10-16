@@ -85,7 +85,7 @@ export function registerProppatchRoute(
           requireTenant(req).id,
           pathSegments(req),
         );
-        return target ? { resources: [target] } : null;
+        return target ? { resources: [target], subject: target } : null;
       },
       getEffectiveWebDavLocks,
     ),

@@ -93,7 +93,7 @@ export function registerDeleteRoute(
         // regardless of locks, so — same as the ACL check above — no
         // check is needed in that case either.
         const parent = await resolveParentCollection(dataSource, target);
-        return parent ? { resources: [target, parent] } : null;
+        return parent ? { resources: [target, parent], subject: target } : null;
       },
       getEffectiveWebDavLocks,
     ),

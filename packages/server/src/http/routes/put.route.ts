@@ -104,13 +104,13 @@ export function registerPutRoute(app: Express, dataSource: DataSource): void {
         }
         const target = await resourcePathResolver.resolve(tenant.id, segments);
         if (target) {
-          return { resources: [target] };
+          return { resources: [target], subject: target };
         }
         const parent = await resourcePathResolver.resolve(
           tenant.id,
           segments.slice(0, -1),
         );
-        return parent ? { resources: [parent] } : null;
+        return parent ? { resources: [parent], subject: null } : null;
       },
       getEffectiveWebDavLocks,
     ),

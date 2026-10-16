@@ -1,10 +1,14 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   buildActiveLockXml,
   buildErrorResponse,
   Collection,
+  CollectionChangeService,
   CollectionLock,
+  createOwnerAllAce,
+  FileContent,
   FileLock,
+  FileResource,
   getEffectiveWebDavLocks,
   hasPrivilege,
   parseLockInfoRequestBody,
@@ -28,6 +32,10 @@ import {
   grantLockTimeout,
   isCollectionLock,
 } from './lock.util.js';
+import {
+  checkLockEnforcement,
+  sendLockEnforcementError,
+} from '../lock-enforcement.middleware.js';
 
 /** Sends a `423 Locked`/`412 Precondition Failed` with an RFC 4918 §16 `<D:error>` body naming `condition`. */
 function sendLockError(
@@ -194,15 +202,77 @@ export function registerLockRoute(app: Express, dataSource: DataSource): void {
       const tenant = requireTenant(req);
       const principal = requirePrincipal(req);
       const segments = pathSegments(req);
-
-      const target = await resourcePathResolver.resolve(tenant.id, segments);
-      if (!target) {
-        res.sendStatus(404);
-        return;
-      }
+      let createdEmptyResource = false;
 
       const rawBody = typeof req.body === 'string' ? req.body.trim() : '';
       const isRefresh = rawBody === '';
+
+      let target = await resourcePathResolver.resolve(tenant.id, segments);
+      if (!target) {
+        // LOCK on an unmapped URL creates an empty resource and locks it
+        // (RFC 4918 §7.3, §9.10.4) — how a client reserves a name before
+        // uploading. A refresh has nothing to refresh, and the tenant
+        // root always exists, so those are plain 404s.
+        if (isRefresh || segments.length === 0) {
+          res.sendStatus(404);
+          return;
+        }
+        const parent = await resourcePathResolver.resolve(
+          tenant.id,
+          segments.slice(0, -1),
+        );
+        if (!parent || !(parent instanceof Collection)) {
+          res.sendStatus(409);
+          return;
+        }
+        if (
+          !(await hasPrivilege(dataSource.manager, principal, parent, 'bind'))
+        ) {
+          res.sendStatus(403);
+          return;
+        }
+        if (
+          !(await checkLockEnforcement(
+            dataSource,
+            req.header('If'),
+            [parent],
+            getEffectiveWebDavLocks,
+          ))
+        ) {
+          sendLockEnforcementError(res);
+          return;
+        }
+        const name = segments[segments.length - 1];
+        target = await dataSource.transaction(async (manager) => {
+          const created = await manager.getRepository(FileResource).save(
+            manager.getRepository(FileResource).create({
+              tenantId: tenant.id,
+              collectionId: parent.id,
+              name,
+              contentType: 'application/octet-stream',
+              etag: createHash('sha256').update(Buffer.alloc(0)).digest('hex'),
+              sizeBytes: 0,
+              ownerPrincipalId: principal.id,
+            }),
+          );
+          await manager
+            .getRepository(FileContent)
+            .save(
+              manager
+                .getRepository(FileContent)
+                .create({ fileResourceId: created.id, data: Buffer.alloc(0) }),
+            );
+          await createOwnerAllAce(manager, 'file', created.id, principal.id);
+          await new CollectionChangeService().recordChange(
+            manager,
+            parent.id,
+            name,
+            'added',
+          );
+          return created;
+        });
+        createdEmptyResource = true;
+      }
 
       if (isRefresh) {
         const token = extractIfHeaderLockToken(req.header('If'));
@@ -343,7 +413,7 @@ export function registerLockRoute(app: Express, dataSource: DataSource): void {
       };
 
       res
-        .status(200)
+        .status(createdEmptyResource ? 201 : 200)
         .set('Lock-Token', `<${token}>`)
         .set('Timeout', `Second-${timeoutSeconds}`)
         .set('Content-Type', 'application/xml; charset=utf-8')
