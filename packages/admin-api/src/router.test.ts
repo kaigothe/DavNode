@@ -25,7 +25,7 @@ describe('createAdminRouter', () => {
     await dataSource.destroy();
   });
 
-  it('mounts as a plain Express Router, answering 404 for any path since no routes exist yet', async () => {
+  it('mounts as a plain Express Router, answering 404 for a path no route handles', async () => {
     const app = express();
     app.use('/admin', createAdminRouter(dataSource));
     const server = app.listen(0);

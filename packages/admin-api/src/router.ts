@@ -1,6 +1,7 @@
 import type { DataSource } from '@davnode/core';
 import express, { type Router } from 'express';
 import { adminErrorHandler } from './admin-error-handler.middleware.js';
+import { registerTenantRoutes } from './tenant-routes.js';
 
 /**
  * Builds the `/admin` Express `Router` (M9, planning/04-architecture.md:
@@ -14,22 +15,19 @@ import { adminErrorHandler } from './admin-error-handler.middleware.js';
  * trying to handle it).
  *
  * Große Aufgaben 3–6 (Tenant-/User-/Group-/Quota-Management) each
- * register their own routes onto this same router — none exist yet, so
- * for now this is just the skeleton: an empty router plus the shared
- * `adminErrorHandler`.
+ * register their own routes onto this same router; so far only the
+ * tenant routes exist (`tenant-routes.ts`).
  *
- * @param _dataSource - Not yet used by this Große Aufgabe's own code,
- * but every later one's route registrations will need it — kept in the
- * signature from the start rather than added as a breaking change once
- * the first real route needs it, mirroring `server`'s own
- * `createApp(dataSource)`.
+ * @param dataSource - Handed to every route registration, mirroring
+ * `server`'s own `createApp(dataSource)`.
  */
-export function createAdminRouter(_dataSource: DataSource): Router {
+export function createAdminRouter(dataSource: DataSource): Router {
   const router = express.Router();
 
-  // Große Aufgaben 3-6 will add their own registerXRoutes(router,
+  // Große Aufgaben 3-6 add their own registerXRoutes(router,
   // dataSource) calls here, in that order, mirroring server/app.ts's
   // own registration pattern.
+  registerTenantRoutes(router, dataSource);
 
   // Must be the last middleware added to this router — see its own doc
   // comment for why.
