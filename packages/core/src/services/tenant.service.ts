@@ -114,4 +114,21 @@ export class TenantService {
     tenant.quotaLimitBytes = input.quotaLimitBytes;
     return repository.save(tenant);
   }
+
+  /**
+   * Deletes a tenant and, through the database's `ON DELETE CASCADE`
+   * foreign keys (migration `AddTenantCascadeDeletes`), every row it
+   * owns in every table — one `DELETE`, no application-level cleanup.
+   * Irreversible; callers are expected to have confirmed the intent.
+   *
+   * @throws {@link NotFoundError} If no tenant has `tenantId`.
+   */
+  async deleteTenant(tenantId: string): Promise<void> {
+    const result = await this.dataSource
+      .getRepository(Tenant)
+      .delete({ id: tenantId });
+    if (!result.affected) {
+      throw new NotFoundError(`Tenant "${tenantId}" not found.`);
+    }
+  }
 }
