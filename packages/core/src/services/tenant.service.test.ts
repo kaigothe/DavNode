@@ -115,4 +115,35 @@ describe('TenantService', () => {
       service.updateTenantQuota('no-such-id', { quotaLimitBytes: 1 }),
     ).rejects.toThrow(NotFoundError);
   });
+
+  it('lists every tenant ordered by slug', async () => {
+    await service.createTenant({ slug: 'zeta', name: 'Zeta' });
+    await service.createTenant({ slug: 'alpha', name: 'Alpha' });
+
+    const tenants = await service.listTenants();
+
+    expect(tenants.map((tenant) => tenant.slug)).toEqual(['alpha', 'zeta']);
+  });
+
+  it('updateTenant changes only the supplied fields', async () => {
+    const created = await service.createTenant({
+      slug: 'acme',
+      name: 'Acme Inc.',
+      quotaLimitBytes: 10,
+    });
+
+    const renamed = await service.updateTenant(created.id, { name: 'Acme' });
+    expect(renamed).toMatchObject({ name: 'Acme', quotaLimitBytes: 10 });
+
+    const unlimited = await service.updateTenant(created.id, {
+      quotaLimitBytes: null,
+    });
+    expect(unlimited).toMatchObject({ name: 'Acme', quotaLimitBytes: null });
+  });
+
+  it('throws NotFoundError when updating an unknown tenant', async () => {
+    await expect(
+      service.updateTenant('no-such-id', { name: 'x' }),
+    ).rejects.toThrow(NotFoundError);
+  });
 });

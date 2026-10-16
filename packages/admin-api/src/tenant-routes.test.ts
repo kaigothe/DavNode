@@ -164,4 +164,157 @@ describe('tenant routes', () => {
       expect(await tenantExists('acme')).toBe(true);
     },
   );
+
+  function send(
+    method: string,
+    path: string,
+    body?: unknown,
+  ): Promise<Response> {
+    return fetch(`${baseUrl}/admin${path}`, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }) as unknown as Promise<Response>;
+  }
+
+  const errorCode = async (response: Response) =>
+    ((await response.json()) as AdminErrorBody).error.code;
+
+  describe('create, list, show, update', () => {
+    beforeEach(async () => {
+      mountAs(acme, await createUser(acme, 'root', 'server_admin'));
+    });
+
+    it('POST creates a tenant with its special principals (201)', async () => {
+      const response = await send('POST', '/tenants', {
+        slug: 'new-co',
+        name: 'New Co',
+        quotaLimitBytes: 1000,
+      });
+
+      expect(response.status).toBe(201);
+      const body = (await response.json()) as Record<string, unknown>;
+      expect(body).toMatchObject({
+        slug: 'new-co',
+        name: 'New Co',
+        quotaLimitBytes: 1000,
+        quotaUsedBytes: 0,
+      });
+      const created = await dataSource
+        .getRepository(Tenant)
+        .findOneByOrFail({ slug: 'new-co' });
+      expect(
+        await dataSource
+          .getRepository(Principal)
+          .countBy({ tenantId: created.id }),
+      ).toBe(4);
+    });
+
+    it('POST with a duplicate slug answers 409 duplicate_entry', async () => {
+      const response = await send('POST', '/tenants', {
+        slug: 'acme',
+        name: 'Again',
+      });
+
+      expect(response.status).toBe(409);
+      expect(await errorCode(response)).toBe('duplicate_entry');
+    });
+
+    it.each([
+      [{ name: 'x' }, 'invalid_slug'],
+      [{ slug: 'Bad Slug', name: 'x' }, 'invalid_slug'],
+      [{ slug: 'a/b', name: 'x' }, 'invalid_slug'],
+      [{ slug: 'ok' }, 'invalid_name'],
+      [{ slug: 'ok', name: '  ' }, 'invalid_name'],
+      [{ slug: 'ok', name: 'x', quotaLimitBytes: -1 }, 'invalid_quota'],
+      [{ slug: 'ok', name: 'x', quotaLimitBytes: '5' }, 'invalid_quota'],
+    ])('POST %j answers 400 %s and creates nothing', async (body, code) => {
+      const response = await send('POST', '/tenants', body);
+
+      expect(response.status).toBe(400);
+      expect(await errorCode(response)).toBe(code);
+      expect(await dataSource.getRepository(Tenant).count()).toBe(2);
+    });
+
+    it("GET lists every tenant, not just the requester's own", async () => {
+      const response = await send('GET', '/tenants');
+
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { tenants: { slug: string }[] };
+      expect(body.tenants.map((t) => t.slug)).toEqual(['acme', 'other']);
+    });
+
+    it('GET shows one tenant including its quota figures', async () => {
+      const response = await send('GET', '/tenants/other');
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        slug: 'other',
+        quotaLimitBytes: null,
+        quotaUsedBytes: 0,
+      });
+      expect((await send('GET', '/tenants/ghost')).status).toBe(404);
+    });
+
+    it('PATCH updates name and quota limit, and null removes the limit', async () => {
+      let response = await send('PATCH', '/tenants/other', {
+        name: 'Renamed',
+        quotaLimitBytes: 5000,
+      });
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        name: 'Renamed',
+        quotaLimitBytes: 5000,
+      });
+
+      response = await send('PATCH', '/tenants/other', {
+        quotaLimitBytes: null,
+      });
+      expect(await response.json()).toMatchObject({
+        name: 'Renamed',
+        quotaLimitBytes: null,
+      });
+    });
+
+    it.each([
+      [{ name: '' }, 'invalid_name'],
+      [{ quotaLimitBytes: 1.5 }, 'invalid_quota'],
+    ])('PATCH %j answers 400 %s', async (body, code) => {
+      const response = await send('PATCH', '/tenants/other', body);
+
+      expect(response.status).toBe(400);
+      expect(await errorCode(response)).toBe(code);
+    });
+
+    it('PATCH on an unknown tenant answers 404', async () => {
+      expect(
+        (await send('PATCH', '/tenants/ghost', { name: 'x' })).status,
+      ).toBe(404);
+    });
+  });
+
+  describe('a tenant_admin', () => {
+    it('gets 403 on every tenant route, PATCH of their own quota included', async () => {
+      mountAs(acme, await createUser(acme, 'boss', 'tenant_admin'));
+
+      const responses = [
+        await send('POST', '/tenants', { slug: 'x', name: 'x' }),
+        await send('GET', '/tenants'),
+        await send('GET', '/tenants/acme'),
+        await send('PATCH', '/tenants/acme', { quotaLimitBytes: null }),
+      ];
+
+      for (const response of responses) {
+        expect(response.status).toBe(403);
+        expect(await errorCode(response)).toBe('insufficient_role');
+      }
+      expect(
+        (
+          await dataSource
+            .getRepository(Tenant)
+            .findOneByOrFail({ slug: 'acme' })
+        ).quotaLimitBytes,
+      ).toBeNull();
+    });
+  });
 });

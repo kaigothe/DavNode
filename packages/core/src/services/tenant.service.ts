@@ -37,6 +37,12 @@ export interface UpdateTenantQuotaInput {
   quotaLimitBytes: number | null;
 }
 
+/** Input for {@link TenantService.updateTenant}; omitted fields stay unchanged. */
+export interface UpdateTenantInput {
+  name?: string;
+  quotaLimitBytes?: number | null;
+}
+
 /**
  * Tenant management, backed directly by TypeORM repositories. Callers
  * (`@davnode/server`, and `@davnode/admin-api` from M9) go through this
@@ -95,6 +101,37 @@ export class TenantService {
    */
   async findTenantBySlug(slug: string): Promise<Tenant | null> {
     return this.dataSource.getRepository(Tenant).findOneBy({ slug });
+  }
+
+  /** Lists every tenant, ordered by slug. */
+  async listTenants(): Promise<Tenant[]> {
+    return this.dataSource
+      .getRepository(Tenant)
+      .find({ order: { slug: 'ASC' } });
+  }
+
+  /**
+   * Updates a tenant's name and/or quota limit; fields left `undefined`
+   * stay unchanged (a `null` `quotaLimitBytes` removes the limit).
+   *
+   * @throws {@link NotFoundError} If no tenant has `tenantId`.
+   */
+  async updateTenant(
+    tenantId: string,
+    input: UpdateTenantInput,
+  ): Promise<Tenant> {
+    const repository = this.dataSource.getRepository(Tenant);
+    const tenant = await repository.findOneBy({ id: tenantId });
+    if (!tenant) {
+      throw new NotFoundError(`Tenant "${tenantId}" not found.`);
+    }
+    if (input.name !== undefined) {
+      tenant.name = input.name;
+    }
+    if (input.quotaLimitBytes !== undefined) {
+      tenant.quotaLimitBytes = input.quotaLimitBytes;
+    }
+    return repository.save(tenant);
   }
 
   /**
