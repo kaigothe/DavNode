@@ -120,6 +120,20 @@ describe('PROPFIND route', () => {
     return hrefs;
   }
 
+  it.each([
+    ['not well-formed XML', '<propfind xmlns="DAV:"><prop></propfind>'],
+    [
+      'an undeclared namespace prefix',
+      '<D:propfind xmlns:D="DAV:"><D:prop><bar:x/></D:prop></D:propfind>',
+    ],
+    ['a different root element', '<D:other xmlns:D="DAV:"/>'],
+    ['no allprop, propname or prop', '<D:propfind xmlns:D="DAV:"/>'],
+  ])('answers a body with %s with 400, not 500', async (_name, body) => {
+    const response = await propfind('/dav/acme/files', { depth: '0', body });
+
+    expect(response.status).toBe(400);
+  });
+
   it('Depth: 0 on a collection returns only the collection itself', async () => {
     await dataSource.getRepository(Collection).save(
       dataSource.getRepository(Collection).create({

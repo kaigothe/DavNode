@@ -219,6 +219,7 @@ export {
 } from './webdav/xml/error-response-builder.js';
 export {
   DAV_NAMESPACE,
+  InvalidRequestBodyError,
   type MkcolRequestBody,
   type MkcolSetProperty,
   type ProppatchOperation,

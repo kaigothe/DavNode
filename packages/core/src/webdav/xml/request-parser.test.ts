@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  InvalidRequestBodyError,
   parseMkcolRequestBody,
   parsePropfindRequestBody,
   parseProppatchRequestBody,
@@ -221,4 +222,22 @@ describe('parseMkcolRequestBody', () => {
 
     expect(() => parseMkcolRequestBody(xml)).toThrow(/DAV:mkcol/);
   });
+});
+
+describe('malformed request bodies', () => {
+  it.each([
+    ['PROPFIND', parsePropfindRequestBody],
+    ['PROPPATCH', parseProppatchRequestBody],
+    ['MKCOL', parseMkcolRequestBody],
+  ] as const)(
+    '%s parser reports malformed XML and a wrong root as InvalidRequestBodyError',
+    (_name, parse) => {
+      expect(() => parse('<a xmlns="DAV:"><b></a>')).toThrow(
+        InvalidRequestBodyError,
+      );
+      expect(() => parse('<D:wrong xmlns:D="DAV:"/>')).toThrow(
+        InvalidRequestBodyError,
+      );
+    },
+  );
 });

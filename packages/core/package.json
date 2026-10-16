@@ -23,6 +23,7 @@
     "node-cron": "^4.6.0",
     "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
+    "saxes": "^6.0.0",
     "typeorm": "^1.1.0",
     "vcf": "^2.1.2",
     "xmlbuilder2": "^4.0.3"

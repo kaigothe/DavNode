@@ -128,6 +128,18 @@ describe('PROPPATCH route', () => {
     return result;
   }
 
+  it.each([
+    [
+      'not well-formed XML',
+      '<propertyupdate xmlns="DAV:"><set></propertyupdate>',
+    ],
+    ['a different root element', '<D:propfind xmlns:D="DAV:"/>'],
+  ])('answers a body with %s with 400, not 500', async (_name, body) => {
+    const response = await proppatch('/dav/acme/files', body);
+
+    expect(response.status).toBe(400);
+  });
+
   it('applies a request with only valid dead-property changes; a later PROPFIND shows the new values', async () => {
     const body = `<D:propertyupdate xmlns:D="DAV:" xmlns:C="urn:example:ns">
       <D:set><D:prop><C:color>blue</C:color></D:prop></D:set>

@@ -1,4 +1,8 @@
-import { DuplicateEntryError, NotFoundError } from '@davnode/core';
+import {
+  DuplicateEntryError,
+  InvalidRequestBodyError,
+  NotFoundError,
+} from '@davnode/core';
 import type { ErrorRequestHandler } from 'express';
 
 /**
@@ -15,6 +19,9 @@ function mapKnownError(
   }
   if (error instanceof DuplicateEntryError) {
     return { status: 409, message: error.message };
+  }
+  if (error instanceof InvalidRequestBodyError) {
+    return { status: 400, message: error.message };
   }
   return null;
 }
