@@ -2,6 +2,7 @@ import {
   buildMultistatusResponse,
   DeadPropertyService,
   getEffectiveWebDavLocks,
+  DiscoveryPropertiesProvider,
   GetctagProvider,
   hasPrivilege,
   LockPropertiesProvider,
@@ -61,6 +62,7 @@ export function registerProppatchRoute(
   // `lock-properties-provider.ts`.
   registry.register(new LockPropertiesProvider());
   registry.register(new GetctagProvider<WebDavResource>());
+  registry.register(new DiscoveryPropertiesProvider<WebDavResource>());
 
   app.proppatch(
     '/dav/:tenantSlug/files{/*splat}',

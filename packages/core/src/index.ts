@@ -173,6 +173,7 @@ export {
   type PrincipalTreeResource,
   type VirtualPrincipalCollectionKind,
 } from './principals/principal-tree-resource.js';
+export { DiscoveryPropertiesProvider } from './principals/discovery-properties.js';
 export { PrincipalLiveProperties } from './principals/principal-live-properties.js';
 
 export {

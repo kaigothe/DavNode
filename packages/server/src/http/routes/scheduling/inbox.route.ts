@@ -1,4 +1,5 @@
 import {
+  DiscoveryPropertiesProvider,
   buildMultistatusResponse,
   parsePropfindRequestBody,
   PropertyProviderRegistry,
@@ -122,6 +123,9 @@ async function resolveProperties(
 export function registerInboxRoute(app: Express, dataSource: DataSource): void {
   const registry = new PropertyProviderRegistry<SchedulingInboxTreeResource>();
   registry.register(new SchedulingInboxLiveProperties());
+  registry.register(
+    new DiscoveryPropertiesProvider<SchedulingInboxTreeResource>(),
+  );
 
   app.propfind(
     '/dav/:tenantSlug/calendars/:userId/inbox{/*splat}',

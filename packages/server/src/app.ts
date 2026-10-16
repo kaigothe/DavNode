@@ -54,6 +54,7 @@ import { registerInboxRoute } from './http/routes/scheduling/inbox.route.js';
 import { registerOutboxPostRoute } from './http/routes/scheduling/outbox-post.route.js';
 import { registerOutboxRoute } from './http/routes/scheduling/outbox.route.js';
 import { registerWellKnownRoute } from './http/routes/well-known.route.js';
+import { registerTenantRootRoute } from './http/routes/tenant-root.route.js';
 import { registerUnlockRoute } from './http/routes/unlock.route.js';
 import { createTenantResolutionMiddleware } from './http/tenant-resolution.middleware.js';
 
@@ -147,6 +148,7 @@ export function createApp(
   // that single-resolver middleware isn't shaped for, so they run
   // hasPrivilege inline instead — see copy.route.ts/move.route.ts.
   registerOptionsRoute(app);
+  registerTenantRootRoute(app, dataSource);
   registerPropfindRoute(app, dataSource);
   registerProppatchRoute(app, dataSource);
   registerMkcolRoute(app, dataSource);

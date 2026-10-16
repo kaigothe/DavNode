@@ -223,9 +223,13 @@ describe('mkcalendar route', () => {
 
       const listing = await propfind(home(), '1');
 
-      const hrefs = elementsOf(await listing.text())
-        .filter((e) => e.name === 'href')
-        .map((e) => e.text);
+      // Only each response's own href: allprop also carries properties,
+      // such as DAV:current-user-principal, whose values are hrefs.
+      const hrefs = [
+        ...(await listing.text()).matchAll(
+          /<D:response><D:href>([^<]*)<\/D:href>/g,
+        ),
+      ].map((m) => m[1]);
       expect(hrefs).toEqual([home(), `${home()}/private`, `${home()}/work`]);
     });
 

@@ -2,6 +2,7 @@ import {
   AddressbookHomeSetProperty,
   buildMultistatusResponse,
   CalendarHomeSetProperty,
+  DiscoveryPropertiesProvider,
   Group,
   parsePropfindRequestBody,
   PrincipalLiveProperties,
@@ -162,6 +163,7 @@ export function registerPrincipalsRoute(
 ): void {
   const registry = new PropertyProviderRegistry<PrincipalTreeResource>();
   registry.register(new PrincipalLiveProperties());
+  registry.register(new DiscoveryPropertiesProvider<PrincipalTreeResource>());
   registry.register(new AddressbookHomeSetProperty());
   registry.register(new CalendarHomeSetProperty());
   registry.register(new SchedulingPrincipalProperties());

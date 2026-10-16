@@ -11,7 +11,11 @@ import {
   type PrincipalTreeResource,
 } from './principal-tree-resource.js';
 
-const LIVE_PROPERTY_NAMES = new Set(['displayname', 'resourcetype']);
+const LIVE_PROPERTY_NAMES = new Set([
+  'displayname',
+  'resourcetype',
+  'principal-URL',
+]);
 
 function property(name: string, value: string): PropertyValue {
   return { namespace: DAV_NAMESPACE, name, value };
@@ -31,27 +35,32 @@ function property(name: string, value: string): PropertyValue {
  * register more principal properties here (M5: `CARD:addressbook-home-set`,
  * M6: `CALDAV:calendar-home-set`) without this file changing.
  */
-export class PrincipalLiveProperties
-  implements PropertyProvider<PrincipalTreeResource>
-{
+export class PrincipalLiveProperties implements PropertyProvider<PrincipalTreeResource> {
   /** See {@link PropertyProvider.listLiveProperties}. */
   // eslint-disable-next-line @typescript-eslint/require-await -- must match the async PropertyProvider interface even though this implementation has no actual await.
   async listLiveProperties(
     resource: PrincipalTreeResource,
-    _context: PropertyProviderContext,
+    context: PropertyProviderContext,
   ): Promise<PropertyValue[]> {
     if (resource instanceof VirtualPrincipalCollection) {
-      const displayName = resource.kind === 'root' ? 'principals' : resource.kind;
+      const displayName =
+        resource.kind === 'root' ? 'principals' : resource.kind;
       return [
         property('displayname', escapeXmlText(displayName)),
         property('resourcetype', `<D:collection xmlns:D="${DAV_NAMESPACE}"/>`),
       ];
     }
 
-    const displayName = resource instanceof User ? resource.username : resource.name;
+    const displayName =
+      resource instanceof User ? resource.username : resource.name;
     return [
       property('displayname', escapeXmlText(displayName)),
       property('resourcetype', `<D:principal xmlns:D="${DAV_NAMESPACE}"/>`),
+      // RFC 3744 §4.2: a principal's own URL.
+      property(
+        'principal-URL',
+        `<D:href xmlns:D="${DAV_NAMESPACE}">/dav/${context.tenant.slug}/principals/${resource instanceof User ? 'users' : 'groups'}/${resource.principalId}</D:href>`,
+      ),
     ];
   }
 
