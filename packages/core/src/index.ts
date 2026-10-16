@@ -4,6 +4,15 @@ export const VERSION = '0.0.1';
 export { AuthProviderRegistry } from './auth/auth-provider-registry.js';
 export type { AuthProvider } from './auth/auth-provider.interface.js';
 export { BasicAuthProvider } from './auth/basic-auth-provider.js';
+export { JwksClient, type JwksClientOptions } from './auth/jwks-client.js';
+export {
+  parseOAuth2IssuersConfig,
+  type OAuth2IssuerConfig,
+} from './auth/oauth2-config.js';
+export {
+  OAuth2AuthProvider,
+  type OAuth2AuthProviderOptions,
+} from './auth/oauth2-auth-provider.js';
 export { DigestAuthProvider } from './auth/digest-auth-provider.js';
 export { computeDigestHa1 } from './auth/digest-ha1.js';
 export {
