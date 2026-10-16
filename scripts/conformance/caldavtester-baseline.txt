@@ -1,0 +1,224 @@
+# Tests of Apple's CalDAVTester/CardDAVTester that pass against DavNode.
+# A test listed here must keep passing (the CI gate); regenerate with
+#   CALDAVTESTER_SURVEY=1 scripts/conformance/run-caldavtester.sh
+#   node scripts/conformance/evaluate-caldavtester.mjs .conformance/caldavtester-logs caldavtester-baseline.txt --write-baseline
+# after improving DavNode. Format: <file>::<suite>::<test>.
+CalDAV/alarm-dismissal.xml::Recurring dismissal::1
+CalDAV/alarm-dismissal.xml::Recurring dismissal::2
+CalDAV/alarm-dismissal.xml::Recurring dismissal::3
+CalDAV/alarm-dismissal.xml::Recurring dismissal::4
+CalDAV/alarm-dismissal.xml::Simple dismissal::1
+CalDAV/alarm-dismissal.xml::Simple dismissal::2
+CalDAV/alarm-dismissal.xml::Simple dismissal::3
+CalDAV/alarm-dismissal.xml::Simple dismissal::4
+CalDAV/attachments.xml::External::1
+CalDAV/attachments.xml::Inline::1
+CalDAV/attachments.xml::Too many::1
+CalDAV/conditional.xml::Last_modified handling::2
+CalDAV/ctag.xml::PUT/DELETE/COPY/MOVE::-1
+CalDAV/ctag.xml::PUT/DELETE/COPY/MOVE::1
+CalDAV/ctag.xml::PUT/DELETE/COPY/MOVE::2
+CalDAV/ctag.xml::PUT/DELETE/COPY/MOVE::3
+CalDAV/ctag.xml::PUT/DELETE/COPY/MOVE::4
+CalDAV/ctag.xml::PUT/DELETE/COPY/MOVE::5
+CalDAV/ctag.xml::Same for each Depth::1
+CalDAV/ctag.xml::Same for each Depth::2
+CalDAV/ctag.xml::Same for each Depth::3
+CalDAV/ctag.xml::Same for each Depth::4
+CalDAV/ctag.xml::Same for each Depth::5
+CalDAV/ctag.xml::Same for each Depth::6
+CalDAV/ctag.xml::Same for each Depth::7
+CalDAV/ctag.xml::Same for each Depth::8
+CalDAV/ctag.xml::Scheduling::1
+CalDAV/ctag.xml::Scheduling::3
+CalDAV/ctag.xml::Scheduling::4
+CalDAV/current-user-principal.xml::Check for the property on /principals/::2
+CalDAV/duplicate_uids.xml::Create duplicate::1
+CalDAV/encodedURIs.xml::calendar resource double-encoded::1
+CalDAV/encodedURIs.xml::calendar resource double-encoded::10
+CalDAV/encodedURIs.xml::calendar resource double-encoded::3
+CalDAV/encodedURIs.xml::calendar resource::1
+CalDAV/encodedURIs.xml::calendar resource::10
+CalDAV/encodedURIs.xml::calendar resource::3
+CalDAV/errors.xml::Invalid CalDAV:timezone::1
+CalDAV/errors.xml::PUT::1
+CalDAV/errors.xml::PUT::11
+CalDAV/errors.xml::PUT::2
+CalDAV/errors.xml::PUT::20
+CalDAV/errors.xml::PUT::21
+CalDAV/errors.xml::PUT::23
+CalDAV/errors.xml::PUT::3
+CalDAV/errors.xml::PUT::4
+CalDAV/errors.xml::PUT::5
+CalDAV/errors.xml::PUT::6
+CalDAV/errors.xml::PUT::7
+CalDAV/errors.xml::REPORT/calendar-data::1
+CalDAV/errors.xml::REPORT/calendar-data::2
+CalDAV/errors.xml::REPORT/calendar-data::3
+CalDAV/errors.xml::REPORT/calendar-data::4
+CalDAV/errors.xml::REPORT/filter::12
+CalDAV/errors.xml::REPORT/filter::13
+CalDAV/errors.xml::Unauthenticated versus Forbidden::1
+CalDAV/errors.xml::Unauthenticated versus Forbidden::2
+CalDAV/floating.xml::Floating DTSTART with RRULE:UNTIL::1
+CalDAV/floating.xml::REPORT floating behaviour - calendar with timezone::1
+CalDAV/floating.xml::REPORT floating behaviour - calendar with timezone::2
+CalDAV/floating.xml::REPORT floating behaviour - calendar with timezone::3
+CalDAV/floating.xml::REPORT floating behaviour - calendar without timezone::1
+CalDAV/floating.xml::REPORT floating behaviour - calendar without timezone::2
+CalDAV/floating.xml::REPORT floating behaviour - calendar without timezone::3
+CalDAV/floating.xml::REPORT free-busy floating behaviour::1
+CalDAV/freebusy.xml::Freebusy - mixed timed and all-day::1
+CalDAV/freebusy.xml::Freebusy - mixed timed and all-day::2
+CalDAV/freebusy.xml::Freebusy - mixed timed and all-day::3
+CalDAV/freebusy.xml::Freebusy - mixed timed and all-day::4
+CalDAV/get.xml::GET on resource::1
+CalDAV/ical-client.xml::Account setup - client 1::1
+CalDAV/ical-client.xml::Account setup - client 2::1
+CalDAV/ical-client.xml::Polling - client 1::1
+CalDAV/ical-client.xml::Polling - client 2::1
+CalDAV/implicitacls.xml::Default Inbox/Outbox privileges::1
+CalDAV/implicitacls.xml::Default Inbox/Outbox privileges::2
+CalDAV/implicitacls.xml::Inbox/Outbox supported-privilege-set::1
+CalDAV/implicitacls.xml::Inbox/Outbox supported-privilege-set::2
+CalDAV/implicitcalendartransp.xml::New Calendar - free-busy-set compatibility::1
+CalDAV/implicitcalendartransp.xml::New Calendar - free-busy-set compatibility::15
+CalDAV/implicitcalendartransp.xml::New Calendar - free-busy-set compatibility::6
+CalDAV/implicitcalendartransp.xml::New Calendar - free-busy-set compatibility::9
+CalDAV/implicitcalendartransp.xml::New Calendar::1
+CalDAV/implicitdefaultcalendar.xml::Auto-create default calendar on scheduling::2
+CalDAV/impliciterrors.xml::Canonical paths::1
+CalDAV/mkcalendar.xml::MKCALENDAR read-free-busy privilege::1
+CalDAV/mkcalendar.xml::MKCALENDAR supported-component-set::1
+CalDAV/mkcalendar.xml::MKCALENDAR supported-component-set::2
+CalDAV/mkcalendar.xml::MKCALENDAR supported-component-set::3
+CalDAV/mkcalendar.xml::MKCALENDAR supported-component-set::4
+CalDAV/mkcalendar.xml::MKCALENDAR supported-component-set::7
+CalDAV/mkcalendar.xml::MKCALENDAR supported-component-set::8
+CalDAV/mkcalendar.xml::MKCALENDAR with body::1
+CalDAV/mkcalendar.xml::MKCALENDAR with body::3
+CalDAV/mkcalendar.xml::MKCALENDAR without body::1
+CalDAV/mkcalendar.xml::MKCALENDAR without body::3
+CalDAV/nonascii.xml::Non-ascii calendar data::1
+CalDAV/nonascii.xml::Non-ascii calendar data::2
+CalDAV/nonascii.xml::Non-ascii calendar data::3
+CalDAV/nonascii.xml::Non-ascii calendar data::4
+CalDAV/nonascii.xml::Non-ascii calendar data::5
+CalDAV/options.xml::OPTIONS+DAV::1
+CalDAV/options.xml::OPTIONS+DAV::2
+CalDAV/options.xml::PROPFIND - no DAV::1
+CalDAV/options.xml::PROPFIND - no DAV::2
+CalDAV/pretest.xml::User calendars and inboxes are empty::1
+CalDAV/pretest.xml::User calendars and inboxes are empty::2
+CalDAV/pretest.xml::User calendars and inboxes are empty::3
+CalDAV/pretest.xml::User calendars and inboxes are empty::4
+CalDAV/pretest.xml::User calendars and inboxes are empty::5
+CalDAV/pretest.xml::User calendars and inboxes are empty::6
+CalDAV/propfind.xml::prop all::1
+CalDAV/propfind.xml::prop all::2
+CalDAV/propfind.xml::prop errors::2
+CalDAV/propfind.xml::prop errors::3
+CalDAV/propfind.xml::prop names::1
+CalDAV/propfind.xml::prop names::2
+CalDAV/propfind.xml::regular calendar prop finds::1
+CalDAV/propfind.xml::regular calendar prop finds::2
+CalDAV/propfind.xml::regular calendar prop finds::5
+CalDAV/propfind.xml::regular calendar prop finds::6
+CalDAV/propfind.xml::regular calendar prop finds::7
+CalDAV/propfind.xml::regular home prop finds::1
+CalDAV/propfind.xml::regular home prop finds::2
+CalDAV/proppatch.xml::prop patches::6
+CalDAV/put.xml::PUT VEVENT::1
+CalDAV/put.xml::PUT VEVENT::3
+CalDAV/put.xml::PUT with Content-Type parameters::1
+CalDAV/put.xml::PUT with Content-Type parameters::2
+CalDAV/put.xml::PUT with X- using VALUE != TEXT::1
+CalDAV/put.xml::PUT with relaxed parsing::1
+CalDAV/put.xml::PUT with relaxed parsing::2
+CalDAV/put.xml::PUTs with ^ parameter encoding::1
+CalDAV/put.xml::Problem VEVENTs - EXDATE & various combinations of date-time/date values::1
+CalDAV/put.xml::Problem VEVENTs - EXDATE & various combinations of date-time/date values::11
+CalDAV/quota.xml::Quota after collection create, and PUT::1
+CalDAV/quota.xml::Quota after collection create, and PUT::2
+CalDAV/quota.xml::Quota after collection create::1
+CalDAV/quota.xml::Quota after empty collection delete::1
+CalDAV/quota.xml::Quota after non-empty collection delete::1
+CalDAV/quota.xml::Quota enabled by default on calendar home and below only::5
+CalDAV/quota.xml::Quota enabled by default on calendar home and below only::6
+CalDAV/quota.xml::Quota enabled by default on calendar home and below only::7
+CalDAV/recurrenceput.xml::VEVENTs::1
+CalDAV/recurrenceput.xml::VEVENTs::10
+CalDAV/recurrenceput.xml::VEVENTs::11
+CalDAV/recurrenceput.xml::VEVENTs::12
+CalDAV/recurrenceput.xml::VEVENTs::2
+CalDAV/recurrenceput.xml::VEVENTs::3
+CalDAV/recurrenceput.xml::VEVENTs::4
+CalDAV/recurrenceput.xml::VEVENTs::5
+CalDAV/recurrenceput.xml::VEVENTs::6
+CalDAV/recurrenceput.xml::VEVENTs::7
+CalDAV/recurrenceput.xml::VEVENTs::8
+CalDAV/recurrenceput.xml::VEVENTs::9
+CalDAV/scheduleimplicit-compatability.xml::POSTs ignored::2
+CalDAV/scheduleimplicit-compatability.xml::POSTs ignored::3
+CalDAV/scheduleimplicit-compatability.xml::POSTs ignored::4
+CalDAV/schedulepost.xml::POSTs::2
+CalDAV/schedulepost.xml::POSTs::3
+CalDAV/schedulepost.xml::POSTs::4
+CalDAV/scheduleprops.xml::free-busy-set::6
+CalDAV/scheduleprops.xml::free-busy-set::8
+CalDAV/sync-report.xml::simple reports - empty token - no props::12
+CalDAV/sync-report.xml::simple reports - empty token - no props::4
+CalDAV/sync-report.xml::simple reports - empty token - no props::8
+CalDAV/sync-report.xml::simple reports - sync-level::13
+CalDAV/timezones.xml::Timezone cache - aliases::1
+CalDAV/timezones.xml::Timezone cache - aliases::2
+CalDAV/timezones.xml::Timezone cache - aliases::3
+CalDAV/timezones.xml::Timezone cache - aliases::4
+CalDAV/timezones.xml::Timezone cache::1
+CalDAV/timezones.xml::Timezone cache::2
+CalDAV/timezones.xml::Timezone cache::3
+CalDAV/timezones.xml::Timezone cache::4
+CalDAV/timezones.xml::Timezone properties::1
+CalDAV/timezones.xml::Timezone properties::4
+CalDAV/timezones.xml::Timezone properties::7
+CardDAV/ab-client.xml::Account setup::1
+CardDAV/ab-client.xml::Polling::1
+CardDAV/current-user-principal.xml::Check for the property on /principals/::2
+CardDAV/errorcondition.xml::REPORT/addressbook-data::1
+CardDAV/errors.xml::ERROR CONDITIONS::7
+CardDAV/get.xml::GET on resource::1
+CardDAV/mkcol.xml::OPTIONS header::3
+CardDAV/nonascii.xml::high-ascii addressbook data::1
+CardDAV/nonascii.xml::high-ascii addressbook data::2
+CardDAV/propfind.xml::prop all::1
+CardDAV/propfind.xml::prop all::2
+CardDAV/propfind.xml::prop errors::2
+CardDAV/propfind.xml::prop errors::3
+CardDAV/propfind.xml::prop names::1
+CardDAV/propfind.xml::prop names::2
+CardDAV/propfind.xml::regular prop finds::1
+CardDAV/propfind.xml::regular prop finds::2
+CardDAV/propfind.xml::regular prop finds::5
+CardDAV/propfind.xml::regular prop finds::6
+CardDAV/propfind.xml::regular prop finds::7
+CardDAV/put.xml::PUT VCARD::1
+CardDAV/put.xml::PUT VCARD::10
+CardDAV/put.xml::PUT VCARD::2
+CardDAV/put.xml::PUT VCARD::3
+CardDAV/put.xml::PUT VCARD::4
+CardDAV/put.xml::PUT VCARD::5
+CardDAV/put.xml::PUT VCARD::6
+CardDAV/put.xml::PUT VCARD::7
+CardDAV/put.xml::PUT VCARD::8
+CardDAV/put.xml::PUT VCARD::9
+CardDAV/put.xml::PUT with X- using VALUE != TEXT::1
+CardDAV/put.xml::PUTs with ^ parameter encoding::1
+CardDAV/put.xml::Test \ escapes::1
+CardDAV/put.xml::Test \ escapes::2
+CardDAV/reports.xml::basic query reports::25
+CardDAV/reports.xml::multiget reports::1
+CardDAV/reports.xml::multiget reports::2
+CardDAV/reports.xml::multiget reports::3
+CardDAV/reports.xml::multiget reports::4
+CardDAV/reports.xml::multiget reports::5
+CardDAV/reports.xml::multiget reports::6

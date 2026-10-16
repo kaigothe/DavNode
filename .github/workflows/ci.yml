@@ -118,8 +118,40 @@ jobs:
             .conformance/server.log
           if-no-files-found: warn
 
+  # CalDAV/CardDAV conformance (M11, milestones/M11-client-compatibility/
+  # 06-conformance-suite-ci): Apple's CalDAVTester/CardDAVTester (Python 2,
+  # so run in a container) against a server started per test file. DavNode
+  # does not pass all of it, so the gate is a baseline of individually
+  # passing tests (scripts/conformance/caldavtester-baseline.txt); see
+  # docs/conformance.md.
+  caldavtester:
+    needs: lint-and-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspaces
+      - run: scripts/conformance/run-caldavtester.sh
+      - name: Stop the server
+        if: always()
+        run: scripts/conformance/stop-server.sh
+      - name: Upload the CalDAVTester logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: caldavtester-results
+          path: |
+            .conformance/caldavtester-logs
+            .conformance/server.log
+          if-no-files-found: warn
+
   release:
-    needs: [lint-and-build, test, litmus]
+    needs: [lint-and-build, test, litmus, caldavtester]
     # Only push events to main create releases — pull_request runs (and
     # pushes to any other branch) skip this job. .releaserc.json's own
     # `branches: ["main"]` would refuse a release anyway, but gating here

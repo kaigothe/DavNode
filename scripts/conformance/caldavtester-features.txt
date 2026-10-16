@@ -1,0 +1,26 @@
+# Features of CalDAVTester's serverinfo.xml that DavNode has. Tests that
+# require a feature not listed here are skipped by the suite itself, which
+# is how CalendarServer-only extensions drop out without being failures.
+# See https://github.com/apple/ccs-caldavtester (scripts/server/serverinfo.xml)
+# for what each one means.
+
+# Generic WebDAV
+COPY Method
+MOVE Method
+Extended MKCOL
+ACL Method
+ctag
+current-user-principal
+# directory listing
+quota
+sync-report
+well-known
+
+# CalDAV
+caldav
+implicit-scheduling
+no-duplicate-uids
+supported-component-sets
+
+# CardDAV
+carddav
