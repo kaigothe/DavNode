@@ -86,4 +86,70 @@ describe('Credential entity', () => {
       ),
     ).rejects.toThrow();
   });
+
+  it('stores digest and oauth2 credentials next to the basic one, with unset columns null', async () => {
+    const user = await createUser();
+    const repository = dataSource.getRepository(Credential);
+
+    await repository.save([
+      repository.create({ userId: user.id, type: 'basic', passwordHash: 'h' }),
+      repository.create({
+        userId: user.id,
+        type: 'digest',
+        digestHa1: 'ab'.repeat(32),
+        digestRealm: 'davnode',
+      }),
+      repository.create({
+        userId: user.id,
+        type: 'oauth2',
+        oauth2Issuer: 'https://idp.example.com',
+        oauth2Subject: 'sub-1',
+      }),
+    ]);
+
+    const digest = await repository.findOneByOrFail({
+      userId: user.id,
+      type: 'digest',
+    });
+    expect(digest).toMatchObject({
+      digestRealm: 'davnode',
+      passwordHash: null,
+      oauth2Issuer: null,
+    });
+    expect(await repository.countBy({ userId: user.id })).toBe(3);
+  });
+
+  it('rejects two credentials with the same (oauth2Issuer, oauth2Subject)', async () => {
+    const user = await createUser();
+    const second = await dataSource.getRepository(User).save(
+      dataSource.getRepository(User).create({
+        principalId: (
+          await dataSource.getRepository(Principal).save(
+            dataSource.getRepository(Principal).create({
+              tenantId: user.tenantId,
+              kind: 'user',
+              specialKind: null,
+            }),
+          )
+        ).id,
+        tenantId: user.tenantId,
+        username: 'bob',
+        email: 'bob@example.com',
+      }),
+    );
+    const repository = dataSource.getRepository(Credential);
+    const link = (userId: string) =>
+      repository.save(
+        repository.create({
+          userId,
+          type: 'oauth2',
+          oauth2Issuer: 'https://idp.example.com',
+          oauth2Subject: 'same-sub',
+        }),
+      );
+    await link(user.id);
+
+    await expect(link(second.id)).rejects.toThrow(/UNIQUE|unique|duplicate/i);
+    expect(await repository.countBy({ type: 'oauth2' })).toBe(1);
+  });
 });

@@ -11,27 +11,33 @@ import {
 import { User } from './user.entity.js';
 
 /**
- * A credential's authentication mechanism. Only `'basic'` is valid in M1;
- * modeled as a string enum (rather than a single literal type) so
- * `'digest'`/`'oauth2'` can be added in M10 without a column type change.
+ * A credential's authentication mechanism: `'basic'` (argon2id password
+ * hash), `'digest'` (stored RFC 7616 HA1, M10) or `'oauth2'` (a linked
+ * external identity, M10).
  */
-export type CredentialType = 'basic';
+export type CredentialType = 'basic' | 'digest' | 'oauth2';
 
 /** All valid {@link CredentialType} values. */
-export const CREDENTIAL_TYPES: readonly CredentialType[] = ['basic'];
+export const CREDENTIAL_TYPES: readonly CredentialType[] = [
+  'basic',
+  'digest',
+  'oauth2',
+];
 
 /**
  * A single authentication credential for a {@link User}. A user may have
- * multiple credentials of different types (one `basic` and, from M10
- * onward, one `digest` and/or one `oauth2`), but never two of the same
- * type — enforced by the unique `(userId, type)` index.
+ * one credential per type (`basic`, `digest`, `oauth2`), but never two of
+ * the same type — enforced by the unique `(userId, type)` index. Only the
+ * columns belonging to a row's `type` are set; the rest stay `null`.
  *
- * Only the `basic` type is populated in M1; digest- and OAuth2-specific
- * columns are added in M10 alongside their respective auth providers,
- * rather than carrying unused columns until then.
+ * The unique `(oauth2Issuer, oauth2Subject)` index guarantees an external
+ * identity is linked to at most one local user (rows of other types have
+ * both columns `null`, which the supported databases don't treat as
+ * duplicates).
  */
 @Entity('credentials')
 @Index(['userId', 'type'], { unique: true })
+@Index(['oauth2Issuer', 'oauth2Subject'], { unique: true })
 export class Credential {
   /** Primary key. */
   @PrimaryGeneratedColumn('uuid')
@@ -56,6 +62,27 @@ export class Credential {
    */
   @Column({ type: 'varchar', nullable: true })
   passwordHash!: string | null;
+
+  /**
+   * `HEX(SHA-256(username:realm:password))`, the RFC 7616 HA1 value, set
+   * only when `type` is `'digest'`. Weaker than {@link passwordHash} (it
+   * is password-equivalent for Digest auth, see planning/01-decisions.md
+   * Runde 12). Never log this value.
+   */
+  @Column({ type: 'varchar', nullable: true })
+  digestHa1!: string | null;
+
+  /** The Digest realm {@link digestHa1} was computed for; set with it. */
+  @Column({ type: 'varchar', nullable: true })
+  digestRealm!: string | null;
+
+  /** Issuer URL (`iss`) of the external identity, set only for `'oauth2'`. */
+  @Column({ type: 'varchar', nullable: true })
+  oauth2Issuer!: string | null;
+
+  /** Subject (`sub`) of the external identity, set only for `'oauth2'`. */
+  @Column({ type: 'varchar', nullable: true })
+  oauth2Subject!: string | null;
 
   /** Timestamp of credential creation. */
   @CreateDateColumn()
