@@ -4,7 +4,14 @@ export const VERSION = '0.0.1';
 export { AuthProviderRegistry } from './auth/auth-provider-registry.js';
 export type { AuthProvider } from './auth/auth-provider.interface.js';
 export { BasicAuthProvider } from './auth/basic-auth-provider.js';
+export { DigestAuthProvider } from './auth/digest-auth-provider.js';
 export { computeDigestHa1 } from './auth/digest-ha1.js';
+export {
+  DigestNonceStore,
+  startDigestNonceSweep,
+  type DigestNonceStoreOptions,
+  type NonceValidation,
+} from './auth/digest-nonce-store.js';
 export { hashPassword, verifyPassword } from './auth/password-hashing.js';
 
 export {
