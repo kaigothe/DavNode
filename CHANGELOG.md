@@ -1,3 +1,25 @@
+# [1.26.0](https://github.com/kaigothe/DavNode/compare/v1.25.0...v1.26.0) (2026-10-17)
+
+
+### Bug Fixes
+
+* answer malformed PROPFIND, PROPPATCH and MKCOL bodies with 400 ([d8bdb4e](https://github.com/kaigothe/DavNode/commit/d8bdb4e401b71248b3b9520566f0683ea0c2a408))
+* **core:** export ParsedVCardProperty ([d745a0e](https://github.com/kaigothe/DavNode/commit/d745a0ec7cf29b5585786235d2ffa2f4e1e76094))
+* **server:** accept a trailing slash in DAV URLs ([fb2d21b](https://github.com/kaigothe/DavNode/commit/fb2d21b226bfece847a8fd9deb4fffba48b765be))
+* **server:** make locking conform to RFC 4918, as found by litmus (M11) ([93b379f](https://github.com/kaigothe/DavNode/commit/93b379fce5455353d5c5ffb0149f42a241860913))
+
+
+### Features
+
+* **admin-api:** include the principalId in the user representation ([19f9bc2](https://github.com/kaigothe/DavNode/commit/19f9bc213d43c4af721c089d9150d55cb4e8311f))
+* **core:** add the getctag live property (M11) ([7583ea2](https://github.com/kaigothe/DavNode/commit/7583ea23ec67300de73d3047fd75a2b93b5b4d90))
+* **core:** harden the vCard parser for vCard 3.0 clients (M11) ([a6f6728](https://github.com/kaigothe/DavNode/commit/a6f67287e768417bc4692a7140ab44b4a84dac70))
+* **server:** add current-user-principal discovery and a tenant-root PROPFIND (M11) ([0a70bd6](https://github.com/kaigothe/DavNode/commit/0a70bd667e8302a2592f01522b8d199693568947))
+* **server:** add DAV:supported-report-set and DAV:sync-token (M11) ([200c29d](https://github.com/kaigothe/DavNode/commit/200c29d1e421bd2faa557ce8ef9e8e15ac7c74f1))
+* **server:** add OPTIONS with DAV and MS-Author-Via headers (M11) ([9810ddf](https://github.com/kaigothe/DavNode/commit/9810ddfc4a470cbc96960907d4ab3175e8b11be0))
+* **server:** add RFC 6764 well-known discovery (M11) ([9c5d14e](https://github.com/kaigothe/DavNode/commit/9c5d14e0a8b2eee817ab3c712f4e4ea139c5ef66))
+* **server:** allow deleting calendars and addressbooks (M11) ([acfceb4](https://github.com/kaigothe/DavNode/commit/acfceb4638c360c2ebcc208036ad329cdcf5a51c))
+
 # [1.25.0](https://github.com/kaigothe/DavNode/compare/v1.24.0...v1.25.0) (2026-10-16)
 
 
