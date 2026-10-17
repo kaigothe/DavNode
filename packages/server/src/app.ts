@@ -39,6 +39,7 @@ import { registerCarddavUnlockRoute } from './http/routes/carddav/unlock.route.j
 import { registerCopyRoute } from './http/routes/copy.route.js';
 import { registerDeleteRoute } from './http/routes/delete.route.js';
 import { registerGetRoute } from './http/routes/get.route.js';
+import { registerHealthRoute } from './http/routes/health.route.js';
 import { registerIcsFeedRoute } from './http/routes/ics-feed.route.js';
 import { registerLockRoute } from './http/routes/lock.route.js';
 import { registerMkcalendarRoute } from './http/routes/mkcalendar.route.js';
@@ -98,6 +99,9 @@ export function createApp(
   // only authentication, checked by ics-feed.route.ts itself. Since it
   // matches this and only this route, requests to it never reach either
   // middleware below.
+  // Liveness probe: no tenant, no credentials (M12).
+  registerHealthRoute(app, dataSource);
+
   registerIcsFeedRoute(app, dataSource);
 
   // RFC 6764 discovery lives outside /dav/{tenantSlug}, so it brings its
