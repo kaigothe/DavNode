@@ -1,3 +1,15 @@
+# [1.27.0](https://github.com/kaigothe/DavNode/compare/v1.26.0...v1.27.0) (2026-10-17)
+
+
+### Features
+
+* add a production Docker Compose overlay with Caddy (M12) ([76ca49f](https://github.com/kaigothe/DavNode/commit/76ca49f7386205e0e281c3081fe866a1d66c832b))
+* add structured logging and a metrics endpoint (M12) ([9c1f6fa](https://github.com/kaigothe/DavNode/commit/9c1f6fa72125594124c57eea4a03f37c638161f9))
+* add the backup runbook and an automated restore test (M12) ([94aa067](https://github.com/kaigothe/DavNode/commit/94aa067ec141cf304ea094966fbb146a1066fa3b))
+* **server:** add the /healthz endpoint (M12) ([128ecba](https://github.com/kaigothe/DavNode/commit/128ecbabbd57812786552fe738637fd16f95dda2))
+* **server:** apply pending migrations at startup (M12) ([8b1bad1](https://github.com/kaigothe/DavNode/commit/8b1bad151e3066e380550637cd77fdff6bda9c74))
+* **server:** rate-limit failed logins and add security headers (M12) ([55061a5](https://github.com/kaigothe/DavNode/commit/55061a57919da7c0be1e5402aaf6483def10e988))
+
 # [1.26.0](https://github.com/kaigothe/DavNode/compare/v1.25.0...v1.26.0) (2026-10-17)
 
 
