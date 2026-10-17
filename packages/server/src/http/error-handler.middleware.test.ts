@@ -1,6 +1,7 @@
 import type { AddressInfo } from 'node:net';
 import {
   ALL_ENTITIES,
+  setLogSink,
   ALL_SQLITE_MIGRATIONS,
   createDataSource,
   DuplicateEntryError,
@@ -40,14 +41,15 @@ function makeRes(): Response {
 }
 
 describe('errorHandlerMiddleware', () => {
-  let consoleErrorSpy: MockInstance;
+  let errorLog: MockInstance;
 
   beforeEach(() => {
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    errorLog = vi.fn();
+    setLogSink({ info: vi.fn(), warn: vi.fn(), error: errorLog as never });
   });
 
   afterEach(() => {
-    consoleErrorSpy.mockRestore();
+    setLogSink();
   });
 
   it('maps NotFoundError to 404 with its message', () => {
@@ -84,14 +86,15 @@ describe('errorHandlerMiddleware', () => {
     expect(sentBody).not.toContain('super secret internal detail');
   });
 
-  it('logs the full error, including its stack, to the server console', () => {
+  it('logs the full error, including its stack, to the log sink', () => {
     const res = makeRes();
     const error = new Error('boom');
 
     errorHandlerMiddleware(error, {} as Request, res, vi.fn() as NextFunction);
 
-    expect(consoleErrorSpy).toHaveBeenCalledExactlyOnceWith(error);
-    const loggedError = consoleErrorSpy.mock.calls[0]?.[0] as Error;
+    expect(errorLog).toHaveBeenCalledOnce();
+    const loggedError = (errorLog.mock.calls[0]?.[1] as { err: Error }).err;
+    expect(loggedError).toBe(error);
     expect(loggedError.stack).toBeTruthy();
   });
 
@@ -154,8 +157,8 @@ describe('errorHandlerMiddleware', () => {
         const body = await response.text();
         expect(body).not.toContain('simulated unexpected database failure');
         expect(body).not.toContain('.ts:');
-        expect(consoleErrorSpy).toHaveBeenCalledOnce();
-        const loggedError = consoleErrorSpy.mock.calls[0]?.[0] as Error;
+        expect(errorLog).toHaveBeenCalledOnce();
+        const loggedError = (errorLog.mock.calls[0]?.[1] as { err: Error }).err;
         expect(loggedError.message).toBe(
           'simulated unexpected database failure',
         );

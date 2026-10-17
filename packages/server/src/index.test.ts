@@ -13,7 +13,9 @@ describe('startServer', () => {
   });
 
   it('initializes the DataSource before listening, on an OS-assigned port', async () => {
-    running = await startServer({ env: { DAVNODE_HTTP_PORT: '0' } });
+    running = await startServer({
+      env: { DAVNODE_HTTP_PORT: '0', DAVNODE_LOG_LEVEL: 'error' },
+    });
 
     expect(running.dataSource.isInitialized).toBe(true);
     const address = running.server.address() as AddressInfo;
@@ -21,7 +23,9 @@ describe('startServer', () => {
   });
 
   it('responds to an unmatched path instead of crashing (no routes mounted yet)', async () => {
-    running = await startServer({ env: { DAVNODE_HTTP_PORT: '0' } });
+    running = await startServer({
+      env: { DAVNODE_HTTP_PORT: '0', DAVNODE_LOG_LEVEL: 'error' },
+    });
     const address = running.server.address() as AddressInfo;
 
     const response = await fetch(
@@ -44,18 +48,26 @@ describe('startServer', () => {
 
   it('runs the Digest nonce sweep only when digest is enabled, and shuts it down', async () => {
     const withDigest = await startServer({
-      env: { DAVNODE_HTTP_PORT: '0', DAVNODE_AUTH_PROVIDERS: 'basic,digest' },
+      env: {
+        DAVNODE_HTTP_PORT: '0',
+        DAVNODE_LOG_LEVEL: 'error',
+        DAVNODE_AUTH_PROVIDERS: 'basic,digest',
+      },
     });
     expect(withDigest.digestNonceSweepTask).toBeDefined();
     await shutdown(withDigest);
 
-    running = await startServer({ env: { DAVNODE_HTTP_PORT: '0' } });
+    running = await startServer({
+      env: { DAVNODE_HTTP_PORT: '0', DAVNODE_LOG_LEVEL: 'error' },
+    });
     expect(running.digestNonceSweepTask).toBeUndefined();
   });
 
   describe('shutdown', () => {
     it('closes the HTTP server and destroys the DataSource', async () => {
-      const running = await startServer({ env: { DAVNODE_HTTP_PORT: '0' } });
+      const running = await startServer({
+        env: { DAVNODE_HTTP_PORT: '0', DAVNODE_LOG_LEVEL: 'error' },
+      });
       const address = running.server.address() as AddressInfo;
 
       await shutdown(running);
@@ -67,7 +79,9 @@ describe('startServer', () => {
     });
 
     it('applies pending migrations at startup, so a fresh database works', async () => {
-      running = await startServer({ env: { DAVNODE_HTTP_PORT: '0' } });
+      running = await startServer({
+        env: { DAVNODE_HTTP_PORT: '0', DAVNODE_LOG_LEVEL: 'error' },
+      });
 
       const rows = await running.dataSource.query(
         'SELECT COUNT(*) AS n FROM tenants',
@@ -78,7 +92,11 @@ describe('startServer', () => {
 
     it('leaves the schema alone with DAVNODE_RUN_MIGRATIONS=false', async () => {
       running = await startServer({
-        env: { DAVNODE_HTTP_PORT: '0', DAVNODE_RUN_MIGRATIONS: 'false' },
+        env: {
+          DAVNODE_HTTP_PORT: '0',
+          DAVNODE_LOG_LEVEL: 'error',
+          DAVNODE_RUN_MIGRATIONS: 'false',
+        },
       });
 
       await expect(

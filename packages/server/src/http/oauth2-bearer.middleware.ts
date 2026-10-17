@@ -1,6 +1,7 @@
 import type { AuthProvider } from '@davnode/core';
 import type { RequestHandler } from 'express';
 import { appendChallenge, authorizationScheme } from './auth-chain.js';
+import type { AuthObserver } from './auth-observer.js';
 
 /** Options for {@link createOAuth2BearerMiddleware}. */
 export interface OAuth2BearerMiddlewareOptions {
@@ -12,6 +13,8 @@ export interface OAuth2BearerMiddlewareOptions {
    * Default `false`: the middleware answers `401` itself.
    */
   chained?: boolean;
+  /** Told about every credential check, see {@link AuthObserver}. */
+  observer?: AuthObserver;
 }
 
 /**
@@ -74,10 +77,12 @@ export function createOAuth2BearerMiddleware(
       ? await provider.verify({ token, tenantSlug: req.tenant.slug })
       : null;
     if (!principal) {
+      options.observer?.failure(req, 'oauth2');
       deny(invalidTokenChallenge);
       return;
     }
 
+    options.observer?.success(req);
     req.principal = principal;
     next();
   };

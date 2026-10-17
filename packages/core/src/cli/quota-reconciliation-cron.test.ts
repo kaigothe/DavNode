@@ -4,6 +4,7 @@ import { createDataSource } from '../db/data-source.js';
 import { ALL_ENTITIES } from '../entities/index.js';
 import { ALL_MIGRATIONS } from '../migrations/sqlite/index.js';
 import { TenantService } from '../services/tenant.service.js';
+import { setLogSink } from '../logging/log-sink.js';
 import * as recomputeQuotaModule from '../quota/recompute-quota.js';
 import {
   reconcileAllTenants,
@@ -43,7 +44,8 @@ describe('reconcileAllTenants', () => {
           throw new Error('simulated failure for the second tenant');
         }
       });
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.fn();
+    setLogSink({ info: vi.fn(), warn: vi.fn(), error: errorSpy });
 
     await reconcileAllTenants(dataSource);
 
@@ -54,7 +56,8 @@ describe('reconcileAllTenants', () => {
       third.id,
     ]);
     expect(errorSpy).toHaveBeenCalledTimes(1);
-    expect(errorSpy.mock.calls[0]?.[0]).toContain('second');
+    expect(errorSpy.mock.calls[0]?.[1]).toMatchObject({ tenantSlug: 'second' });
+    setLogSink();
   });
 
   it('processes tenants sequentially, one at a time, not concurrently', async () => {

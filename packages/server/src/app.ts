@@ -19,6 +19,10 @@ import {
 } from '@davnode/core';
 import express from 'express';
 import { DEFAULT_AUTH_CONFIG, type AuthConfig } from './auth-config.js';
+import { createMetricsMiddleware } from './http/metrics.middleware.js';
+import { createMetrics } from './metrics/metrics.js';
+import { createLogger, type Logger } from './logging/logger.js';
+import { createRequestLoggingMiddleware } from './http/request-logging.middleware.js';
 import { createAuthMiddlewares } from './http/auth-stack.js';
 import { errorHandlerMiddleware } from './http/error-handler.middleware.js';
 import { registerAclRoute } from './http/routes/acl.route.js';
@@ -69,6 +73,8 @@ export interface CreateAppOptions {
    * endpoints expect `user@tenantSlug`.
    */
   defaultTenant?: string;
+  /** Where the request log goes; defaults to a logger that writes nothing. */
+  logger?: Logger;
 }
 
 /**
@@ -87,6 +93,7 @@ export function createApp(
   options: CreateAppOptions = {},
 ): express.Express {
   const app = express();
+  const logger = options.logger ?? createLogger('silent');
   const authConfig = options.auth ?? DEFAULT_AUTH_CONFIG;
   const digestNonces = new DigestNonceStore();
   // Exposed so the process entry point can run the periodic sweep (a
@@ -99,6 +106,10 @@ export function createApp(
   // only authentication, checked by ics-feed.route.ts itself. Since it
   // matches this and only this route, requests to it never reach either
   // middleware below.
+  // First in the chain, so every response — also a 401 or a 429 — is
+  // logged and carries an X-Request-Id.
+  app.use(createRequestLoggingMiddleware(logger));
+
   // Liveness probe: no tenant, no credentials (M12).
   registerHealthRoute(app, dataSource);
 
@@ -121,10 +132,14 @@ export function createApp(
   // instruction, and @davnode/admin-api's router.ts never resolves a
   // tenant or authenticates a request itself.
   const tenantResolution = createTenantResolutionMiddleware(dataSource);
+  const metrics = createMetrics(dataSource);
+  app.use(createMetricsMiddleware(metrics));
+
   const authenticate = createAuthMiddlewares(
     dataSource,
     authConfig,
     digestNonces,
+    metrics.authObserver,
   );
 
   app.use('/dav/:tenantSlug', tenantResolution);
@@ -139,6 +154,7 @@ export function createApp(
         ? authConfig.realm
         : undefined,
       oauth2Issuers: authConfig.oauth2Issuers.map((issuer) => issuer.issuer),
+      metrics,
     }),
   );
 

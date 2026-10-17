@@ -2,6 +2,7 @@ import type { DataSource } from '@davnode/core';
 import express, { type Router } from 'express';
 import { adminErrorHandler } from './admin-error-handler.middleware.js';
 import { registerGroupRoutes } from './group-routes.js';
+import { registerMetricsRoute, type MetricsSource } from './metrics-routes.js';
 import { registerQuotaRoutes } from './quota-routes.js';
 import { registerTenantRoutes } from './tenant-routes.js';
 import { registerUserRoutes } from './user-routes.js';
@@ -20,6 +21,8 @@ export interface AdminRouterOptions {
    * or unset means OAuth2 is not enabled and linking is refused.
    */
   oauth2Issuers?: readonly string[];
+  /** The server's metrics; without them `GET /metrics` does not exist. */
+  metrics?: MetricsSource;
 }
 
 /**
@@ -54,6 +57,9 @@ export function createAdminRouter(
   registerUserRoutes(router, dataSource, options);
   registerGroupRoutes(router, dataSource);
   registerQuotaRoutes(router, dataSource);
+  if (options.metrics) {
+    registerMetricsRoute(router, dataSource, options.metrics);
+  }
 
   // Must be the last middleware added to this router — see its own doc
   // comment for why.

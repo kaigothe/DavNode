@@ -3,6 +3,7 @@ import { schedule, validate, type ScheduledTask } from 'node-cron';
 import type { DataSource } from 'typeorm';
 import { createDataSource } from '../db/data-source.js';
 import { Tenant } from '../entities/tenant.entity.js';
+import { getLogSink } from '../logging/log-sink.js';
 import { recomputeQuotaForTenant } from '../quota/recompute-quota.js';
 
 /** Daily at 03:00 — late enough that it rarely overlaps business-hours write traffic, early enough to finish before a new day's usage starts. */
@@ -25,14 +26,16 @@ export async function reconcileAllTenants(
     const startedAt = Date.now();
     try {
       await recomputeQuotaForTenant(dataSource, tenant.id);
-      console.log(
-        `Quota reconciliation for tenant "${tenant.slug}" completed in ${Date.now() - startedAt}ms.`,
-      );
+      getLogSink().info('Quota reconciliation completed', {
+        tenantSlug: tenant.slug,
+        durationMs: Date.now() - startedAt,
+      });
     } catch (error) {
-      console.error(
-        `Quota reconciliation for tenant "${tenant.slug}" failed after ${Date.now() - startedAt}ms:`,
-        error,
-      );
+      getLogSink().error('Quota reconciliation failed', {
+        tenantSlug: tenant.slug,
+        durationMs: Date.now() - startedAt,
+        err: error,
+      });
     }
   }
 }
@@ -68,7 +71,7 @@ export function startQuotaReconciliationCron(
 
   return schedule(cronExpression, () => {
     reconcileAllTenants(dataSource).catch((error: unknown) => {
-      console.error('Quota reconciliation run failed:', error);
+      getLogSink().error('Quota reconciliation run failed', { err: error });
     });
   });
 }

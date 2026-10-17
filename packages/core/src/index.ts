@@ -29,6 +29,12 @@ export {
   deleteAddressbookCollection,
   deleteCalendarCollection,
 } from './webdav/delete-collection.js';
+export {
+  getLogSink,
+  setLogSink,
+  type LogFields,
+  type LogSink,
+} from './logging/log-sink.js';
 export { DigestAuthProvider } from './auth/digest-auth-provider.js';
 export { computeDigestHa1 } from './auth/digest-ha1.js';
 export {

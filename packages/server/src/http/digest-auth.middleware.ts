@@ -5,6 +5,7 @@ import {
 } from '@davnode/core';
 import type { Request, RequestHandler } from 'express';
 import { appendChallenge, authorizationScheme } from './auth-chain.js';
+import type { AuthObserver } from './auth-observer.js';
 import type { DigestChallengeFactory } from './digest-auth-challenge.js';
 
 /** Options for {@link createDigestAuthMiddleware}. */
@@ -15,6 +16,8 @@ export interface DigestAuthMiddlewareOptions {
    * Default `false`: the middleware answers `401` itself.
    */
   chained?: boolean;
+  /** Told about every credential check, see {@link AuthObserver}. */
+  observer?: AuthObserver;
 }
 
 /**
@@ -167,10 +170,12 @@ export function createDigestAuthMiddleware(
       response: params['response'],
     });
     if (!principal) {
+      options.observer?.failure(req, 'digest');
       deny();
       return;
     }
 
+    options.observer?.success(req);
     req.principal = principal;
     next();
   };

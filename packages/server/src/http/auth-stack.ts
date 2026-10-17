@@ -5,6 +5,7 @@ import {
 } from '@davnode/core';
 import type { RequestHandler } from 'express';
 import type { AuthConfig } from '../auth-config.js';
+import type { AuthObserver } from './auth-observer.js';
 import { createAuthTerminator } from './auth-chain.js';
 import { createBasicAuthMiddleware } from './basic-auth.middleware.js';
 import { createDigestChallengeFactory } from './digest-auth-challenge.js';
@@ -29,10 +30,13 @@ export function createAuthMiddlewares(
   dataSource: DataSource,
   config: AuthConfig,
   nonces: DigestNonceStore,
+  observer?: AuthObserver,
 ): RequestHandler[] {
   const [only] = config.providers;
   if (config.providers.length === 1 && only === 'basic') {
-    return [createBasicAuthMiddleware(dataSource, { realm: config.realm })];
+    return [
+      createBasicAuthMiddleware(dataSource, { realm: config.realm, observer }),
+    ];
   }
 
   const chain: RequestHandler[] = config.providers.map((name) => {
@@ -41,18 +45,19 @@ export function createAuthMiddlewares(
         return createBasicAuthMiddleware(dataSource, {
           realm: config.realm,
           chained: true,
+          observer,
         });
       case 'digest':
         return createDigestAuthMiddleware(
           dataSource,
           nonces,
           createDigestChallengeFactory(nonces, config.realm),
-          { chained: true },
+          { chained: true, observer },
         );
       case 'oauth2':
         return createOAuth2BearerMiddleware(
           new OAuth2AuthProvider(dataSource, config.oauth2Issuers),
-          { realm: config.realm, chained: true },
+          { realm: config.realm, chained: true, observer },
         );
     }
   });

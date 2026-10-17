@@ -1,5 +1,6 @@
 import {
   DuplicateEntryError,
+  getLogSink,
   InvalidRequestBodyError,
   NotFoundError,
 } from '@davnode/core';
@@ -38,7 +39,7 @@ function mapKnownError(
  * genuinely unexpected failure, e.g. a database outage — responds
  * `500` with a generic, fixed body. The error itself (message and
  * stack) is never sent to the client; it's only written to the server
- * log via `console.error`, so operators can debug it without leaking
+ * log, so operators can debug it without leaking
  * internal detail to callers.
  *
  * Must be the last `app.use(...)` call: Express only invokes a
@@ -51,13 +52,17 @@ export const errorHandlerMiddleware: ErrorRequestHandler = (
   res,
   _next,
 ): void => {
-  console.error(error);
-
   const known = mapKnownError(error);
   if (known) {
+    // An expected outcome (not found, conflict, bad body), not a fault.
+    getLogSink().warn('Request failed', {
+      status: known.status,
+      reason: known.message,
+    });
     res.status(known.status).type('text/plain').send(known.message);
     return;
   }
 
+  getLogSink().error('Unhandled error', { err: error });
   res.status(500).type('text/plain').send('Internal Server Error');
 };

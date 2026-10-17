@@ -2,6 +2,7 @@ import type { Server } from 'node:http';
 import { pathToFileURL } from 'node:url';
 import {
   createDataSource,
+  setLogSink,
   startDigestNonceSweep,
   startQuotaReconciliationCron,
   type DataSource,
@@ -9,6 +10,13 @@ import {
   type ScheduledTask,
 } from '@davnode/core';
 import { createApp } from './app.js';
+import {
+  createLogger,
+  parseLogLevel,
+  toLogSink,
+  type Logger,
+  type LogLevel,
+} from './logging/logger.js';
 import { parseAuthConfig } from './auth-config.js';
 
 /** Default HTTP port, used when `DAVNODE_HTTP_PORT` isn't set. */
@@ -21,10 +29,13 @@ const DEFAULT_HTTP_HOST = '0.0.0.0';
 export interface StartServerOptions {
   /** Defaults to `process.env`; tests can supply a plain object instead. */
   env?: NodeJS.ProcessEnv;
+  /** Defaults to a JSON logger at `DAVNODE_LOG_LEVEL` writing to standard output. */
+  logger?: Logger;
 }
 
 /** A started server, the DataSource backing it, and its in-process quota reconciliation job, so all three can be closed together. */
 export interface RunningServer {
+  logger: Logger;
   server: Server;
   dataSource: DataSource;
   quotaReconciliationTask: ScheduledTask;
@@ -70,6 +81,10 @@ export async function startServer(
   // Resolved before touching the database so a misconfiguration (an
   // unknown provider, oauth2 without issuers) fails fast and clearly.
   const auth = parseAuthConfig(env);
+  const logger =
+    options.logger ?? createLogger(parseLogLevel(env.DAVNODE_LOG_LEVEL));
+  // Messages from @davnode/core and the error handlers go to the same log.
+  setLogSink(toLogSink(logger));
   const dataSource = createDataSource(env);
   await dataSource.initialize();
   // A fresh database has no tables; without this a container started
@@ -79,14 +94,16 @@ export async function startServer(
   if (env.DAVNODE_RUN_MIGRATIONS?.trim().toLowerCase() !== 'false') {
     const applied = await dataSource.runMigrations();
     if (applied.length > 0) {
-      console.log(
-        `Applied ${applied.length} database migration(s): ${applied.map((m) => m.name).join(', ')}.`,
+      logger.info(
+        { migrations: applied.map((m) => m.name) },
+        `Applied ${applied.length} database migration(s)`,
       );
     }
   }
 
   const app = createApp(dataSource, {
     auth,
+    logger,
     defaultTenant: env.DAVNODE_DEFAULT_TENANT?.trim() || undefined,
   });
   const port = env.DAVNODE_HTTP_PORT
@@ -111,7 +128,13 @@ export async function startServer(
     ? startDigestNonceSweep(app.locals['digestNonceStore'] as DigestNonceStore)
     : undefined;
 
-  return { server, dataSource, quotaReconciliationTask, digestNonceSweepTask };
+  return {
+    logger,
+    server,
+    dataSource,
+    quotaReconciliationTask,
+    digestNonceSweepTask,
+  };
 }
 
 /**
@@ -142,12 +165,22 @@ export async function shutdown({
   await dataSource.destroy();
 }
 
+/** The log level for messages written before configuration is validated (an invalid level falls back to `info`). */
+function bootLogLevel(): LogLevel {
+  try {
+    return parseLogLevel(process.env.DAVNODE_LOG_LEVEL);
+  } catch {
+    return 'info';
+  }
+}
+
 async function main(): Promise<void> {
+  const logger = createLogger(bootLogLevel());
   let running: RunningServer;
   try {
-    running = await startServer();
+    running = await startServer({ logger });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error({ err: error }, 'Failed to start server');
     process.exitCode = 1;
     return;
   }
@@ -157,18 +190,19 @@ async function main(): Promise<void> {
     typeof address === 'string'
       ? address
       : `${address?.address}:${address?.port}`;
-  console.log(
-    `Server listening on ${location} (DB: ${running.dataSource.options.type}).`,
+  logger.info(
+    { address: location, database: running.dataSource.options.type },
+    'Server listening',
   );
 
   const handleSignal = (signal: NodeJS.Signals): void => {
-    console.log(`Received ${signal}, shutting down...`);
+    logger.info({ signal }, 'Shutting down');
     shutdown(running)
       .then(() => {
-        console.log('Shutdown complete.');
+        logger.info('Shutdown complete');
       })
       .catch((error: unknown) => {
-        console.error('Error during shutdown:', error);
+        logger.error({ err: error }, 'Error during shutdown');
         process.exitCode = 1;
       });
   };
@@ -183,7 +217,7 @@ if (
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   main().catch((error: unknown) => {
-    console.error('Server failed:', error);
+    createLogger('error').error({ err: error }, 'Server failed');
     process.exitCode = 1;
   });
 }

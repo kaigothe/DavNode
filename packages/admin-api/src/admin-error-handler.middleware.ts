@@ -1,5 +1,6 @@
 import {
   CycleDetectedError,
+  getLogSink,
   DuplicateEntryError,
   NotFoundError,
 } from '@davnode/core';
@@ -43,7 +44,7 @@ function mapKnownError(
  * A genuinely unexpected failure (anything `mapKnownError` doesn't
  * recognize) answers `500` with a fixed, generic body — the error
  * itself (message and stack) is never sent to the client, only logged
- * via `console.error`, so operators can debug it without leaking
+ * to the log sink, so operators can debug it without leaking
  * internal detail to callers.
  *
  * Must be the last `router.use(...)` call on the Admin API router
@@ -57,13 +58,17 @@ export const adminErrorHandler: ErrorRequestHandler = (
   res,
   _next,
 ): void => {
-  console.error(error);
-
   const known = mapKnownError(error);
   if (known) {
+    // An expected outcome (not found, conflict), not a fault.
+    getLogSink().warn('Admin request failed', {
+      status: known.status,
+      code: known.code,
+    });
     sendAdminError(res, known.status, known.code, known.message);
     return;
   }
 
+  getLogSink().error('Unhandled admin error', { err: error });
   sendAdminError(res, 500, 'internal_error', 'An unexpected error occurred.');
 };

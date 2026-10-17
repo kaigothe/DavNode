@@ -5,6 +5,7 @@ import {
 } from '@davnode/core';
 import type { RequestHandler } from 'express';
 import { appendChallenge } from './auth-chain.js';
+import type { AuthObserver } from './auth-observer.js';
 
 /** Default HTTP Basic realm, used when {@link BasicAuthMiddlewareOptions.realm} isn't set. */
 const DEFAULT_REALM = 'davnode';
@@ -20,6 +21,8 @@ export interface BasicAuthMiddlewareOptions {
    * Default `false`: the middleware answers `401` itself, as in M2.
    */
   chained?: boolean;
+  /** Told about every credential check, see {@link AuthObserver}. */
+  observer?: AuthObserver;
 }
 
 interface BasicCredentials {
@@ -133,10 +136,12 @@ export function createBasicAuthMiddleware(
       password: credentials.password,
     });
     if (!principal) {
+      options.observer?.failure(req, 'basic');
       deny();
       return;
     }
 
+    options.observer?.success(req);
     req.principal = principal;
     next();
   };
