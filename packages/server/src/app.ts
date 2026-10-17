@@ -21,6 +21,17 @@ import express from 'express';
 import { DEFAULT_AUTH_CONFIG, type AuthConfig } from './auth-config.js';
 import { createMetricsMiddleware } from './http/metrics.middleware.js';
 import { createMetrics } from './metrics/metrics.js';
+import { combineObservers } from './http/auth-observer.js';
+import {
+  createAuthRateLimitMiddleware,
+  rateLimitObserver,
+} from './http/auth-rate-limit.middleware.js';
+import { createSecurityHeadersMiddleware } from './http/security-headers.middleware.js';
+import { AuthRateLimiter } from './security/auth-rate-limiter.js';
+import {
+  DEFAULT_SECURITY_CONFIG,
+  type SecurityConfig,
+} from './security/security-config.js';
 import { createLogger, type Logger } from './logging/logger.js';
 import { createRequestLoggingMiddleware } from './http/request-logging.middleware.js';
 import { createAuthMiddlewares } from './http/auth-stack.js';
@@ -75,6 +86,8 @@ export interface CreateAppOptions {
   defaultTenant?: string;
   /** Where the request log goes; defaults to a logger that writes nothing. */
   logger?: Logger;
+  /** Rate limit and proxy settings; defaults to the built-in limit, no proxy. */
+  security?: SecurityConfig;
 }
 
 /**
@@ -93,8 +106,21 @@ export function createApp(
   options: CreateAppOptions = {},
 ): express.Express {
   const app = express();
+  const security = options.security ?? DEFAULT_SECURITY_CONFIG;
+  // Do not announce the framework.
+  app.disable('x-powered-by');
+  if (security.behindTlsProxy) {
+    // One reverse proxy in front: take the client address from its
+    // X-Forwarded-For, so the rate limiter counts clients, not the proxy.
+    app.set('trust proxy', 1);
+  }
   const logger = options.logger ?? createLogger('silent');
   const authConfig = options.auth ?? DEFAULT_AUTH_CONFIG;
+  // One counter of failed logins per client address, shared by all schemes
+  // and by the discovery endpoint.
+  const rateLimiter = security.rateLimit
+    ? new AuthRateLimiter(security.rateLimit)
+    : undefined;
   const digestNonces = new DigestNonceStore();
   // Exposed so the process entry point can run the periodic sweep (a
   // timer has no place in a plain app factory used by tests).
@@ -106,7 +132,13 @@ export function createApp(
   // only authentication, checked by ics-feed.route.ts itself. Since it
   // matches this and only this route, requests to it never reach either
   // middleware below.
-  // First in the chain, so every response — also a 401 or a 429 — is
+  app.use(
+    createSecurityHeadersMiddleware({
+      behindTlsProxy: security.behindTlsProxy,
+    }),
+  );
+
+  // Early in the chain, so every response — also a 401 or a 429 — is
   // logged and carries an X-Request-Id.
   app.use(createRequestLoggingMiddleware(logger));
 
@@ -121,6 +153,7 @@ export function createApp(
   registerWellKnownRoute(app, dataSource, {
     defaultTenant: options.defaultTenant,
     realm: authConfig.realm,
+    rateLimiter,
   });
 
   // Every DAV route lives under /dav/{tenantSlug}/... (path-prefix
@@ -139,8 +172,18 @@ export function createApp(
     dataSource,
     authConfig,
     digestNonces,
-    metrics.authObserver,
+    combineObservers(
+      metrics.authObserver,
+      rateLimiter && rateLimitObserver(rateLimiter),
+    ),
   );
+  // Before tenant resolution and authentication: a blocked address costs no
+  // database lookup and no password hashing.
+  if (rateLimiter) {
+    const limit = createAuthRateLimitMiddleware(rateLimiter);
+    app.use('/dav/:tenantSlug', limit);
+    app.use('/admin/:tenantSlug', limit);
+  }
 
   app.use('/dav/:tenantSlug', tenantResolution);
   app.use('/dav/:tenantSlug', ...authenticate);

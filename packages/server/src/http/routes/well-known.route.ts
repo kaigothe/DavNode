@@ -5,7 +5,9 @@ import {
   type DataSource,
 } from '@davnode/core';
 import type { Express, Request, Response } from 'express';
+import { clientAddress } from '../auth-rate-limit.middleware.js';
 import { parseBasicAuthHeader } from '../basic-auth.middleware.js';
+import type { AuthRateLimiter } from '../../security/auth-rate-limiter.js';
 
 /** Options for {@link registerWellKnownRoute}. */
 export interface WellKnownRouteOptions {
@@ -18,6 +20,8 @@ export interface WellKnownRouteOptions {
   defaultTenant?: string;
   /** Realm of the Basic challenge. Defaults to `'davnode'`. */
   realm?: string;
+  /** The failed-login limiter shared with the authentication middlewares. */
+  rateLimiter?: AuthRateLimiter;
 }
 
 /**
@@ -56,6 +60,17 @@ export function registerWellKnownRoute(
   };
 
   const handler = async (req: Request, res: Response): Promise<void> => {
+    const address = clientAddress(req);
+    const retryAfter = options.rateLimiter?.retryAfterSeconds(address) ?? 0;
+    if (retryAfter > 0) {
+      res
+        .status(429)
+        .set('Retry-After', String(retryAfter))
+        .type('text/plain')
+        .send('Too many failed login attempts. Try again later.\n');
+      return;
+    }
+
     const credentials = parseBasicAuthHeader(req.header('Authorization'));
     if (!credentials) {
       unauthorized(res);
@@ -89,9 +104,11 @@ export function registerWellKnownRoute(
       ? await dataSource.getRepository(Tenant).findOneBy({ slug: tenantSlug })
       : null;
     if (!principal || !tenant) {
+      options.rateLimiter?.recordFailure(address);
       unauthorized(res);
       return;
     }
+    options.rateLimiter?.recordSuccess(address);
 
     res.redirect(302, toPrincipalUrl(principal, tenant));
   };

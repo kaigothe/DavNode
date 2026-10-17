@@ -18,6 +18,7 @@ import {
   type LogLevel,
 } from './logging/logger.js';
 import { parseAuthConfig } from './auth-config.js';
+import { parseSecurityConfig } from './security/security-config.js';
 
 /** Default HTTP port, used when `DAVNODE_HTTP_PORT` isn't set. */
 const DEFAULT_HTTP_PORT = 8080;
@@ -81,6 +82,7 @@ export async function startServer(
   // Resolved before touching the database so a misconfiguration (an
   // unknown provider, oauth2 without issuers) fails fast and clearly.
   const auth = parseAuthConfig(env);
+  const security = parseSecurityConfig(env);
   const logger =
     options.logger ?? createLogger(parseLogLevel(env.DAVNODE_LOG_LEVEL));
   // Messages from @davnode/core and the error handlers go to the same log.
@@ -103,6 +105,7 @@ export async function startServer(
 
   const app = createApp(dataSource, {
     auth,
+    security,
     logger,
     defaultTenant: env.DAVNODE_DEFAULT_TENANT?.trim() || undefined,
   });

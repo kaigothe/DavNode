@@ -115,6 +115,24 @@ describe('startServer', () => {
       ).rejects.toThrow(/DAVNODE_OAUTH2_ISSUERS/);
     });
 
+    it('rejects startup for a malformed rate limit or proxy setting', async () => {
+      await expect(
+        startServer({
+          env: { DAVNODE_HTTP_PORT: '0', DAVNODE_AUTH_RATE_LIMIT_MAX: 'lots' },
+        }),
+      ).rejects.toThrow(/DAVNODE_AUTH_RATE_LIMIT_MAX/);
+      await expect(
+        startServer({
+          env: { DAVNODE_HTTP_PORT: '0', DAVNODE_BEHIND_TLS_PROXY: 'maybe' },
+        }),
+      ).rejects.toThrow(/DAVNODE_BEHIND_TLS_PROXY/);
+      await expect(
+        startServer({
+          env: { DAVNODE_HTTP_PORT: '0', DAVNODE_LOG_LEVEL: 'loud' },
+        }),
+      ).rejects.toThrow(/DAVNODE_LOG_LEVEL/);
+    });
+
     it('rejects startup for an unknown auth provider', async () => {
       await expect(
         startServer({
