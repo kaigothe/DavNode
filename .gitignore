@@ -45,3 +45,6 @@ npm-debug.log*
 
 # Production secrets (see .env.prod.example)
 .env.prod
+
+# Scratch space of scripts/restore-test
+.restore-test/
