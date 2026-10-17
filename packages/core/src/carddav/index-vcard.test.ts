@@ -23,6 +23,15 @@ function parsedVCard(overrides: Partial<ParsedVCard> = {}): ParsedVCard {
     tel: [],
     org: [],
     nickname: [],
+    note: [],
+    adr: [],
+    title: [],
+    role: [],
+    url: [],
+    bday: [],
+    categories: [],
+    photo: [],
+    typed: [],
     ...overrides,
   };
 }
@@ -94,10 +103,9 @@ describe('indexVCard', () => {
       propertyName: 'EMAIL',
     });
     expect(emailRows).toHaveLength(2);
-    expect(emailRows.map((row) => row.propertyValue).sort()).toEqual([
-      'forrest@home.example.com',
-      'forrest@example.com',
-    ].sort());
+    expect(emailRows.map((row) => row.propertyValue).sort()).toEqual(
+      ['forrest@home.example.com', 'forrest@example.com'].sort(),
+    );
 
     const fnRows = await repository.findBy({
       addressObjectId,

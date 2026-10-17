@@ -13,6 +13,7 @@ import { ALL_MIGRATIONS } from '../migrations/sqlite/index.js';
 import { TenantService } from '../services/tenant.service.js';
 import {
   INDEXED_PROPERTY_NAMES,
+  INDEX_VERSION_PROPERTY,
   indexVCard,
   normalizeIndexValue,
 } from './index-vcard.js';
@@ -43,14 +44,22 @@ describe('INDEXED_PROPERTY_NAMES', () => {
     await dataSource.destroy();
   });
 
-  it('lists exactly the six properties the index holds', () => {
+  it('lists exactly the properties the index holds', () => {
     expect([...INDEXED_PROPERTY_NAMES].sort()).toEqual([
+      'ADR',
+      'BDAY',
+      'CATEGORIES',
       'EMAIL',
       'FN',
       'N',
       'NICKNAME',
+      'NOTE',
       'ORG',
+      'PHOTO',
+      'ROLE',
       'TEL',
+      'TITLE',
+      'URL',
     ]);
   });
 
@@ -98,6 +107,14 @@ describe('INDEXED_PROPERTY_NAMES', () => {
           'TEL:+1 555',
           'ORG:Acme',
           'NICKNAME:Annie',
+          'NOTE:Met at the fair',
+          'ADR:;;1 Main St;Town;;12345;DE',
+          'TITLE:CTO',
+          'ROLE:Boss',
+          'URL:https://example.com',
+          'BDAY:19800101',
+          'CATEGORIES:friends,work',
+          'PHOTO;ENCODING=b;TYPE=JPEG:AAAA',
           'END:VCARD',
           '',
         ].join('\r\n'),
@@ -108,7 +125,7 @@ describe('INDEXED_PROPERTY_NAMES', () => {
       .getRepository(AddressObjectIndex)
       .findBy({ addressObjectId: contact.id });
     expect(rows.map((row) => row.propertyName).sort()).toEqual(
-      [...INDEXED_PROPERTY_NAMES].sort(),
+      [...INDEXED_PROPERTY_NAMES, INDEX_VERSION_PROPERTY].sort(),
     );
     expect(
       rows.find((row) => row.propertyName === 'EMAIL')?.propertyValue,

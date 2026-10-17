@@ -2,6 +2,7 @@ import type { Server } from 'node:http';
 import { pathToFileURL } from 'node:url';
 import {
   createDataSource,
+  reindexStaleAddressObjects,
   setLogSink,
   startDigestNonceSweep,
   startQuotaReconciliationCron,
@@ -100,6 +101,11 @@ export async function startServer(
         { migrations: applied.map((m) => m.name) },
         `Applied ${applied.length} database migration(s)`,
       );
+    }
+    // Contacts stored before the search index learned new properties.
+    const reindexed = await reindexStaleAddressObjects(dataSource);
+    if (reindexed > 0) {
+      logger.info({ reindexed }, `Reindexed ${reindexed} contact(s)`);
     }
   }
 

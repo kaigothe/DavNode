@@ -81,9 +81,10 @@ individually triaged; the causes that were examined are these.
 - **No VTODO/VJOURNAL** (planning/03-open-questions.md), so every test that
   writes a task fails, and DavNode has no `tasks` collection.
 - **`addressbook-query` filters only the indexed properties** (`FN`, `N`,
-  `EMAIL`, `TEL`, `ORG`, `NICKNAME`); other properties such as `NOTE` or
-  `PHOTO`, and `is-not-defined`, answer `403 supported-filter` (RFC 6352
-  permits this). Extending the index is the fix.
+  `EMAIL`, `TEL`, `ORG`, `NICKNAME`, `NOTE`, `ADR`, `TITLE`, `ROLE`, `URL`,
+  `BDAY`, `CATEGORIES`, and `PHOTO` for presence only); other properties
+  and every `param-filter` answer `403 supported-filter` (RFC 6352 permits
+  this). Contacts stored before the index grew are reindexed at startup.
 - **URL scheme.** Principals are addressed by principal id, never by user
   name (`/principals/users/user01` does not exist); principal hrefs have no
   trailing slash; an addressbook is addressed by its display name, not by

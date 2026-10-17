@@ -38,6 +38,30 @@ export interface ParsedVCard {
   /** `NICKNAME` occurrences. */
   nickname: string[];
 
+  /** `NOTE` occurrences. */
+  note: string[];
+
+  /** `ADR` (address) occurrences, each the raw semicolon-separated component string. */
+  adr: string[];
+
+  /** `TITLE` occurrences. */
+  title: string[];
+
+  /** `ROLE` occurrences. */
+  role: string[];
+
+  /** `URL` occurrences. */
+  url: string[];
+
+  /** `BDAY` occurrences. */
+  bday: string[];
+
+  /** `CATEGORIES` occurrences. */
+  categories: string[];
+
+  /** One entry per `PHOTO` occurrence — an empty string, as the image data itself is never indexed (only its presence is searchable). */
+  photo: string[];
+
   /**
    * Every occurrence of the indexed properties with its `TYPE`
    * parameter normalized, in document order — the one representation
@@ -246,6 +270,14 @@ export function parseVCard(raw: string): ParsedVCard {
     tel: toStringArray(card.data.tel),
     org: toStringArray(card.data.org),
     nickname: toStringArray(card.data.nickname),
+    note: toStringArray(card.data.note),
+    adr: toStringArray(card.data.adr),
+    title: toStringArray(card.data.title),
+    role: toStringArray(card.data.role),
+    url: toStringArray(card.data.url),
+    bday: toStringArray(card.data.bday),
+    categories: toStringArray(card.data.categories),
+    photo: toProperties(card.data.photo).map(() => ''),
     typed: (['fn', 'n', 'email', 'tel', 'org', 'nickname'] as const).flatMap(
       (field) =>
         toProperties(card.data[field]).map((property) => ({

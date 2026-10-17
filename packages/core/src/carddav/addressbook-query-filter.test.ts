@@ -31,15 +31,15 @@ describe('findUnsupportedFilterParts', () => {
 
   it('reports non-indexed properties (as sent, once), every param-filter, and unsupported collations', () => {
     const filter = filterOf(
-      `<C:prop-filter name="Bday"><C:is-not-defined/></C:prop-filter>
-       <C:prop-filter name="Bday"/>
+      `<C:prop-filter name="Gender"><C:is-not-defined/></C:prop-filter>
+       <C:prop-filter name="Gender"/>
        <C:prop-filter name="item1.EMAIL"/>
        <C:prop-filter name="TEL"><C:param-filter name="type"/><C:param-filter name="type"/></C:prop-filter>
        <C:prop-filter name="FN"><C:text-match collation="i;octet">x</C:text-match></C:prop-filter>`,
     );
 
     expect(findUnsupportedFilterParts(filter)).toEqual({
-      propFilters: ['Bday', 'item1.EMAIL'],
+      propFilters: ['Gender', 'item1.EMAIL'],
       paramFilters: ['type'],
       collations: ['i;octet'],
     });
@@ -59,7 +59,7 @@ describe('unsupportedFilterResult', () => {
 
   it('is a 403 whose body names the offending prop-filters and param-filters under CARDDAV:supported-filter', () => {
     const result = unsupportedFilterResult({
-      propFilters: ['BDAY'],
+      propFilters: ['GENDER'],
       paramFilters: ['TYPE'],
       collations: [],
     });
@@ -79,14 +79,14 @@ describe('unsupportedFilterResult', () => {
       });
     expect(found).toEqual([
       ['urn:ietf:params:xml:ns:carddav', 'supported-filter', null],
-      ['urn:ietf:params:xml:ns:carddav', 'prop-filter', 'BDAY'],
+      ['urn:ietf:params:xml:ns:carddav', 'prop-filter', 'GENDER'],
       ['urn:ietf:params:xml:ns:carddav', 'param-filter', 'TYPE'],
     ]);
   });
 
   it('adds CARDDAV:supported-collation for an unsupported collation, next to supported-filter when both apply', () => {
     const both = unsupportedFilterResult({
-      propFilters: ['BDAY'],
+      propFilters: ['GENDER'],
       paramFilters: [],
       collations: ['i;octet'],
     });

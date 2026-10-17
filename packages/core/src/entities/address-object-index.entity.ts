@@ -24,9 +24,10 @@ import { AddressObject } from './address-object.entity.js';
  * for search, never as a source of truth.
  *
  * `propertyName` is a plain string, not a database-level enum: which
- * vCard properties get indexed is `indexVCard`'s decision (currently
- * `FN`, `N`, `EMAIL`, `TEL`, `ORG`, `NICKNAME`), and extending that set
- * later shouldn't require a schema migration here.
+ * vCard properties get indexed is `indexVCard`'s decision (see
+ * `INDEXED_PROPERTY_NAMES`), and extending that set later shouldn't
+ * require a schema migration here — bumping `INDEX_VERSION` makes the
+ * server reindex existing contacts at startup.
  */
 @Entity('address_object_indexes')
 @Index(['addressObjectId'])

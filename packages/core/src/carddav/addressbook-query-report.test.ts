@@ -589,20 +589,20 @@ describe('AddressbookQueryReportHandler', () => {
 
   describe('unsupported filters', () => {
     it('refuses a prop-filter on a property that is not indexed with 403 and CARDDAV:supported-filter naming it', async () => {
-      const result = await query(queryBody(textFilter('BDAY', '1980')));
+      const result = await query(queryBody(textFilter('GENDER', '1980')));
 
       expect(result.status).toBe(403);
       expect(errorNames(result.body)).toEqual({
         root: 'DAV:error',
         conditions: [`${CARDDAV}supported-filter`],
       });
-      expect(result.body).toContain('name="BDAY"');
+      expect(result.body).toContain('name="GENDER"');
     });
 
     it('refuses is-not-defined on a non-indexed property instead of matching every contact', async () => {
       const result = await query(
         queryBody(
-          '<C:filter><C:prop-filter name="BDAY"><C:is-not-defined/></C:prop-filter></C:filter>',
+          '<C:filter><C:prop-filter name="GENDER"><C:is-not-defined/></C:prop-filter></C:filter>',
         ),
       );
 

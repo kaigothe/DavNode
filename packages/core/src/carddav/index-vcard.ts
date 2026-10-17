@@ -1,6 +1,10 @@
-import type { EntityManager } from 'typeorm';
+import type { DataSource, EntityManager } from 'typeorm';
 import { AddressObjectIndex } from '../entities/address-object-index.entity.js';
-import type { ParsedVCard } from './vcard-parser.js';
+import {
+  parseVCard,
+  VCardParseError,
+  type ParsedVCard,
+} from './vcard-parser.js';
 
 /**
  * The vCard properties indexed into {@link AddressObjectIndex} rows,
@@ -19,7 +23,27 @@ const INDEXED_PROPERTIES: ReadonlyArray<{
   { propertyName: 'TEL', values: (parsed) => parsed.tel },
   { propertyName: 'ORG', values: (parsed) => parsed.org },
   { propertyName: 'NICKNAME', values: (parsed) => parsed.nickname },
+  { propertyName: 'NOTE', values: (parsed) => parsed.note },
+  { propertyName: 'ADR', values: (parsed) => parsed.adr },
+  { propertyName: 'TITLE', values: (parsed) => parsed.title },
+  { propertyName: 'ROLE', values: (parsed) => parsed.role },
+  { propertyName: 'URL', values: (parsed) => parsed.url },
+  { propertyName: 'BDAY', values: (parsed) => parsed.bday },
+  { propertyName: 'CATEGORIES', values: (parsed) => parsed.categories },
+  { propertyName: 'PHOTO', values: (parsed) => parsed.photo },
 ];
+
+/**
+ * Bumped whenever {@link INDEXED_PROPERTIES} changes. Every object's
+ * index carries one marker row (`INDEX_VERSION_PROPERTY`) with this
+ * value; {@link reindexStaleAddressObjects} rebuilds the objects whose
+ * marker is missing or older, so contacts stored before a change become
+ * searchable by the new properties.
+ */
+export const INDEX_VERSION = '2';
+
+/** The `propertyName` of the version marker row; not a vCard property, never queryable. */
+export const INDEX_VERSION_PROPERTY = '_INDEX_VERSION';
 
 /**
  * The vCard property names that have {@link AddressObjectIndex} rows —
@@ -81,7 +105,67 @@ export async function indexVCard(
     ),
   );
 
-  if (rows.length > 0) {
-    await repository.save(rows);
+  rows.push(
+    repository.create({
+      addressObjectId,
+      propertyName: INDEX_VERSION_PROPERTY,
+      propertyValue: INDEX_VERSION,
+    }),
+  );
+  await repository.save(rows);
+}
+
+/**
+ * Rebuilds the index of every address object whose version marker is
+ * missing or not {@link INDEX_VERSION}, from the stored vCard text.
+ * Idempotent; objects whose vCard no longer parses get just the marker,
+ * so they are not retried on every start.
+ *
+ * @returns The number of objects reindexed.
+ */
+export async function reindexStaleAddressObjects(
+  dataSource: DataSource,
+): Promise<number> {
+  const rows: { id: string; vcard: string }[] = await dataSource
+    // Entities are named by string: the server may load them through a
+    // different module instance than the one this file imports.
+    .createQueryBuilder()
+    .select('o.id', 'id')
+    .addSelect('c.vcardData', 'vcard')
+    .from('AddressObject', 'o')
+    .innerJoin('AddressObjectContent', 'c', 'c.addressObjectId = o.id')
+    .where((qb) => {
+      const sub = qb
+        .subQuery()
+        .select('1')
+        .from('AddressObjectIndex', 'i')
+        .where('i.addressObjectId = o.id')
+        .andWhere('i.propertyName = :marker')
+        .andWhere('i.propertyValue = :version')
+        .getQuery();
+      return `NOT EXISTS ${sub}`;
+    })
+    .setParameters({ marker: INDEX_VERSION_PROPERTY, version: INDEX_VERSION })
+    .getRawMany();
+
+  for (const { id, vcard } of rows) {
+    await dataSource.transaction(async (manager) => {
+      try {
+        await indexVCard(manager, id, parseVCard(vcard));
+      } catch (error) {
+        if (!(error instanceof VCardParseError)) {
+          throw error;
+        }
+        await manager.getRepository(AddressObjectIndex).delete({
+          addressObjectId: id,
+        });
+        await manager.getRepository(AddressObjectIndex).save({
+          addressObjectId: id,
+          propertyName: INDEX_VERSION_PROPERTY,
+          propertyValue: INDEX_VERSION,
+        });
+      }
+    });
   }
+  return rows.length;
 }

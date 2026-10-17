@@ -334,6 +334,7 @@ export {
   indexVCard,
   INDEXED_PROPERTY_NAMES,
   normalizeIndexValue,
+  reindexStaleAddressObjects,
 } from './carddav/index-vcard.js';
 export { CARDDAV_NAMESPACE } from './carddav/carddav-namespace.js';
 export { toAddressbookHomeUrl } from './carddav/addressbook-home-url.js';

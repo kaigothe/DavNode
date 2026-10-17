@@ -175,14 +175,14 @@ describe('CardDAV addressbook-query REPORT', () => {
   it('refuses a filter on a property outside the index with 403 supported-filter', async () => {
     const response = await report(
       query(
-        '<C:filter><C:prop-filter name="BDAY"><C:is-not-defined/></C:prop-filter></C:filter>',
+        '<C:filter><C:prop-filter name="GENDER"><C:is-not-defined/></C:prop-filter></C:filter>',
       ),
     );
 
     expect(response.status).toBe(403);
     const body = await response.text();
     expect(body).toContain('supported-filter');
-    expect(body).toContain('name="BDAY"');
+    expect(body).toContain('name="GENDER"');
   });
 
   it('is 404 for an unknown addressbook and 400 for a body without a filter', async () => {
