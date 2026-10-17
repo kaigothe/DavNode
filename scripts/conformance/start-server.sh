@@ -15,6 +15,10 @@
 #   CONFORMANCE_USER      admin username           (default ci)
 #   CONFORMANCE_PASSWORD  admin password           (default ci-password)
 #   DAVNODE_AUTH_PROVIDERS  passed through to the server
+#
+# The failed-login rate limit is switched off here (unless the caller sets
+# DAVNODE_AUTH_RATE_LIMIT_MAX): the suites send wrong credentials on purpose,
+# all from one address, and would otherwise be answered 429.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -31,6 +35,7 @@ export DAVNODE_DB_TYPE=better-sqlite3
 export DAVNODE_DB_FILE="$workdir/davnode.sqlite"
 export DAVNODE_HTTP_PORT="$port"
 export DAVNODE_HTTP_HOST=0.0.0.0
+export DAVNODE_AUTH_RATE_LIMIT_MAX="${DAVNODE_AUTH_RATE_LIMIT_MAX:-0}"
 
 cd "$root"
 npm run migration:run --workspace=@davnode/core >"$workdir/migrate.log" 2>&1
