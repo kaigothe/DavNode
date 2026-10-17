@@ -1,0 +1,73 @@
+# Production overlay (M12, milestones/M12-hardening/01-health-and-production-
+# deployment). Use it on top of the development file:
+#
+#   cp .env.prod.example .env.prod      # then edit: DOMAIN, POSTGRES_PASSWORD, ...
+#   docker compose --env-file .env.prod \
+#     -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# What changes compared with docker-compose.yml:
+#   - Caddy sits in front, terminates TLS and gets a Let's Encrypt
+#     certificate for $DOMAIN by itself. DavNode does not do TLS.
+#   - The app and the database publish no ports; only Caddy is reachable.
+#   - The database password comes from the environment.
+#   - Services restart unless stopped, and the app has a healthcheck against
+#     /healthz.
+#
+# The mem_limit / cpus values are starting points, not tuned limits: raise
+# them for large mailboxes or many users, and override them in a further
+# overlay file or by editing this one.
+services:
+  app:
+    restart: unless-stopped
+    # Reachable by Caddy on the compose network only.
+    ports: !reset []
+    expose:
+      - '8080'
+    env_file:
+      - .env.prod
+    environment:
+      DAVNODE_DB_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}
+      # Behind Caddy: send HSTS and take the client address from
+      # X-Forwarded-For (needed for per-IP rate limiting).
+      DAVNODE_BEHIND_TLS_PROXY: 'true'
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8080/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    mem_limit: 512m
+    cpus: 1.0
+
+  postgres:
+    restart: unless-stopped
+    ports: !reset []
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}
+    mem_limit: 1g
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env.prod}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    mem_limit: 128m
+
+volumes:
+  caddy-data:
+  caddy-config:

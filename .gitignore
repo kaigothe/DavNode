@@ -42,3 +42,6 @@ npm-debug.log*
 
 # Scratch space of scripts/conformance (database, logs, test reports)
 .conformance/
+
+# Production secrets (see .env.prod.example)
+.env.prod

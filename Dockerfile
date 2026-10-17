@@ -35,8 +35,18 @@ COPY --from=build /app/packages/admin-api/dist packages/admin-api/dist
 # a SQLite file under a writable data directory. createDataSource() would
 # fall back to an in-memory SQLite database even without these, but a
 # real container should persist across restarts rather than start empty.
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data && chown node:node /app/data
 ENV DAVNODE_DB_TYPE=better-sqlite3
 ENV DAVNODE_DB_FILE=/app/data/davnode.sqlite
+
+# The server needs no privileges: run as the unprivileged `node` user the
+# base image provides.
+USER node
+
+# Reports "unhealthy" when /healthz does not answer 200 (the database is
+# unreachable, or the process hangs). The slim image has no curl, so node
+# itself makes the request.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:' + (process.env.DAVNODE_HTTP_PORT || 8080) + '/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
 
 CMD ["node", "packages/server/dist/index.js"]
