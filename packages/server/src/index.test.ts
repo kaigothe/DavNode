@@ -66,6 +66,26 @@ describe('startServer', () => {
       ).rejects.toThrow();
     });
 
+    it('applies pending migrations at startup, so a fresh database works', async () => {
+      running = await startServer({ env: { DAVNODE_HTTP_PORT: '0' } });
+
+      const rows = await running.dataSource.query(
+        'SELECT COUNT(*) AS n FROM tenants',
+      );
+
+      expect(Number(rows[0].n)).toBe(0);
+    });
+
+    it('leaves the schema alone with DAVNODE_RUN_MIGRATIONS=false', async () => {
+      running = await startServer({
+        env: { DAVNODE_HTTP_PORT: '0', DAVNODE_RUN_MIGRATIONS: 'false' },
+      });
+
+      await expect(
+        running.dataSource.query('SELECT COUNT(*) AS n FROM tenants'),
+      ).rejects.toThrow(/no such table/i);
+    });
+
     it('rejects startup, before opening any database, when oauth2 is enabled without issuers', async () => {
       await expect(
         startServer({

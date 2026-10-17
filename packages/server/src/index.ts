@@ -46,6 +46,9 @@ export interface RunningServer {
  * `DAVNODE_QUOTA_RECONCILE_CRON` overrides its schedule (default daily),
  * read as a plain cron expression rather than parsed any further here.
  *
+ * Pending database migrations are applied at startup unless
+ * `DAVNODE_RUN_MIGRATIONS=false`.
+ *
  * `DAVNODE_DEFAULT_TENANT` names the tenant RFC 6764 discovery
  * (`/.well-known/caldav`) resolves plain usernames against.
  *
@@ -69,6 +72,18 @@ export async function startServer(
   const auth = parseAuthConfig(env);
   const dataSource = createDataSource(env);
   await dataSource.initialize();
+  // A fresh database has no tables; without this a container started
+  // against an empty Postgres would answer every request with a 500.
+  // Disable with DAVNODE_RUN_MIGRATIONS=false when migrations are applied
+  // out of band, or when several instances share one database.
+  if (env.DAVNODE_RUN_MIGRATIONS?.trim().toLowerCase() !== 'false') {
+    const applied = await dataSource.runMigrations();
+    if (applied.length > 0) {
+      console.log(
+        `Applied ${applied.length} database migration(s): ${applied.map((m) => m.name).join(', ')}.`,
+      );
+    }
+  }
 
   const app = createApp(dataSource, {
     auth,
