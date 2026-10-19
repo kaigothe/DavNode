@@ -37,6 +37,7 @@ import { createRequestLoggingMiddleware } from './http/request-logging.middlewar
 import { createAuthMiddlewares } from './http/auth-stack.js';
 import { errorHandlerMiddleware } from './http/error-handler.middleware.js';
 import { registerAclRoute } from './http/routes/acl.route.js';
+import { registerAddMemberRoute } from './http/routes/add-member.route.js';
 import { registerAddressbookHomeRoute } from './http/routes/addressbook-home.route.js';
 import { registerAddressbookMkcolRoute } from './http/routes/addressbook-mkcol.route.js';
 import { registerCalendarHomeRoute } from './http/routes/calendar-home.route.js';
@@ -235,6 +236,8 @@ export function createApp(
   // come first.
   registerInboxRoute(app, dataSource);
   registerOutboxRoute(app, dataSource);
+  // RFC 5995 add-member rewrites into the PUT routes below.
+  registerAddMemberRoute(app);
   registerCalendarHomeRoute(app, dataSource);
   registerMkcalendarRoute(app, dataSource);
   registerCaldavGetRoute(app, dataSource);

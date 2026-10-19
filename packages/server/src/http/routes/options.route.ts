@@ -37,13 +37,19 @@ const TREES: Record<string, TreeCapabilities> = {
     methods: [...READ, 'PUT', 'DELETE', 'MKCALENDAR', 'LOCK', 'UNLOCK', 'POST'],
     compliance: [
       ...BASE_COMPLIANCE,
+      'add-member',
       'calendar-access',
       'calendar-auto-schedule',
     ],
   },
   addressbooks: {
-    methods: [...READ, 'PUT', 'DELETE', 'MKCOL', 'LOCK', 'UNLOCK'],
-    compliance: [...BASE_COMPLIANCE, 'addressbook', 'extended-mkcol'],
+    methods: [...READ, 'PUT', 'DELETE', 'MKCOL', 'LOCK', 'UNLOCK', 'POST'],
+    compliance: [
+      ...BASE_COMPLIANCE,
+      'add-member',
+      'addressbook',
+      'extended-mkcol',
+    ],
   },
   principals: {
     methods: ['OPTIONS', 'PROPFIND', 'REPORT'],

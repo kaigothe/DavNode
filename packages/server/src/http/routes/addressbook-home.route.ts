@@ -7,6 +7,7 @@ import {
   PropertyProviderRegistry,
   CollectionSyncProperties,
   DiscoveryPropertiesProvider,
+  AddMemberProvider,
   GetctagProvider,
   QuotaPropertiesProvider,
   type AddressbookHomeTreeResource,
@@ -154,6 +155,7 @@ export function registerAddressbookHomeRoute(
   registry.register(new AddressbookLiveProperties());
   registry.register(new QuotaPropertiesProvider<AddressbookHomeTreeResource>());
   registry.register(new GetctagProvider<AddressbookHomeTreeResource>());
+  registry.register(new AddMemberProvider<AddressbookHomeTreeResource>());
   registry.register(
     new CollectionSyncProperties<AddressbookHomeTreeResource>(),
   );
