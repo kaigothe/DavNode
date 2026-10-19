@@ -1,3 +1,10 @@
+# [1.28.0](https://github.com/kaigothe/DavNode/compare/v1.27.0...v1.28.0) (2026-10-19)
+
+
+### Features
+
+* **carddav:** index more vCard properties for addressbook-query ([c562a2d](https://github.com/kaigothe/DavNode/commit/c562a2d112c12473959a0d43cb616feb1bb1434e))
+
 # [1.27.0](https://github.com/kaigothe/DavNode/compare/v1.26.0...v1.27.0) (2026-10-17)
 
 
