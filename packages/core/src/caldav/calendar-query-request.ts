@@ -4,6 +4,10 @@ import {
   getAttributeValue,
   type XmlNode,
 } from '../webdav/xml/xml-value.js';
+import {
+  CALENDAR_COMPONENT_TYPES,
+  type CalendarComponentType,
+} from '../entities/calendar-collection.entity.js';
 import { CALDAV_NAMESPACE } from './caldav-namespace.js';
 import {
   parseCalendarReportPropertySelection,
@@ -47,7 +51,7 @@ export interface CalendarPropFilter {
 
 /**
  * What a `<C:filter>` asks for, reduced to what a single-component-type
- * (`VEVENT`-only) store can decide — see {@link classifyCalendarFilter}'s
+ * store can decide — see {@link classifyCalendarFilter}'s
  * doc comment.
  */
 export type CalendarFilter =
@@ -55,10 +59,13 @@ export type CalendarFilter =
   | { kind: 'match-all' }
   /** No calendar object matches (a condition that can only ever be false here). */
   | { kind: 'match-none' }
-  /** The `VEVENT` a calendar object holds must satisfy this. */
+  /** The calendar object must (or, with `isNotDefined`, must not) hold a component of this type, and satisfy the rest. */
   | {
-      kind: 'vevent';
-      /** The `VEVENT`-level `<C:time-range>`, if any. */
+      kind: 'component';
+      componentType: CalendarComponentType;
+      /** `<C:is-not-defined/>`: every object holding another component type matches. */
+      isNotDefined: boolean;
+      /** The component-level `<C:time-range>`, if any. */
       timeRange: CalendarTimeRangeFilter | null;
       /** The `<C:prop-filter>`s, combined by AND (RFC 4791 gives the client no combinator here, unlike CardDAV's `test`). */
       propFilters: CalendarPropFilter[];
@@ -296,18 +303,32 @@ export function classifyCalendarFilter(root: RawCompFilter): {
   }
 
   const [event] = root.compFilters;
-  if (event.name !== 'VEVENT') {
+  const componentType = CALENDAR_COMPONENT_TYPES.find(
+    (type) => type === event.name,
+  );
+  if (componentType === undefined) {
+    // A type nothing here ever holds (VFREEBUSY, ...): always decidable.
     return event.isNotDefined
       ? { filter: { kind: 'match-all' }, unsupported }
       : { filter: { kind: 'match-none' }, unsupported };
   }
   if (event.isNotDefined) {
-    // No stored calendar object lacks a VEVENT: this can never match.
-    return { filter: { kind: 'match-none' }, unsupported };
+    return {
+      filter: {
+        kind: 'component',
+        componentType,
+        isNotDefined: true,
+        timeRange: null,
+        propFilters: [],
+      },
+      unsupported,
+    };
   }
   if (event.compFilters.length > 0) {
     unsupported.names.push(
-      ...event.compFilters.map((c) => `comp-filter[VEVENT/${c.name}]`),
+      ...event.compFilters.map(
+        (c) => `comp-filter[${componentType}/${c.name}]`,
+      ),
     );
   }
 
@@ -336,7 +357,13 @@ export function classifyCalendarFilter(root: RawCompFilter): {
   }
 
   return {
-    filter: { kind: 'vevent', timeRange: event.timeRange, propFilters },
+    filter: {
+      kind: 'component',
+      componentType,
+      isNotDefined: false,
+      timeRange: event.timeRange,
+      propFilters,
+    },
     unsupported,
   };
 }

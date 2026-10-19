@@ -372,25 +372,7 @@ describe('parseCalendarObject', () => {
       );
     });
 
-    it('rejects a VTODO clearly as an unsupported component', () => {
-      const error = rejection(
-        calendar(
-          'BEGIN:VTODO\nUID:t\nDTSTAMP:20260601T000000Z\nSUMMARY:Do it\nEND:VTODO\n',
-        ),
-      );
-
-      expect(error.precondition).toBe('supported-calendar-component');
-      expect(error.message).toMatch(/VTODO is not supported/);
-    });
-
-    it('rejects VJOURNAL and VFREEBUSY the same way', () => {
-      expectRejected(
-        calendar(
-          'BEGIN:VJOURNAL\nUID:j\nDTSTAMP:20260601T000000Z\nEND:VJOURNAL\n',
-        ),
-        'supported-calendar-component',
-        /VJOURNAL/,
-      );
+    it('rejects VFREEBUSY as an unsupported component', () => {
       expectRejected(
         calendar(
           'BEGIN:VFREEBUSY\nUID:f\nDTSTAMP:20260601T000000Z\nEND:VFREEBUSY\n',

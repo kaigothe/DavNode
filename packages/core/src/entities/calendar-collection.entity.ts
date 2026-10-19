@@ -14,13 +14,16 @@ import { Tenant } from './tenant.entity.js';
 
 /**
  * The iCalendar component types a `CalendarObject` (and a calendar's
- * `supportedComponentSet`) can hold. v1 stores `VEVENT` only — `VTODO`/
- * `VJOURNAL` need their own time-range semantics (`DUE` instead of
- * `DTSTART`/`DTEND`, see planning/03-open-questions.md). Extending the
- * set later means adding a value here; see `CalendarObject.componentType`
- * for the database-level consequence.
+ * `supportedComponentSet`) can hold. `VTODO` and `VJOURNAL` have their
+ * own time semantics (see `computeTimeRangeIndex`). Extending the set
+ * means adding a value here; see `CalendarObject.componentType` for the
+ * database-level consequence.
  */
-export const CALENDAR_COMPONENT_TYPES = ['VEVENT'] as const;
+export const CALENDAR_COMPONENT_TYPES = [
+  'VEVENT',
+  'VTODO',
+  'VJOURNAL',
+] as const;
 
 /** One of {@link CALENDAR_COMPONENT_TYPES}. */
 export type CalendarComponentType = (typeof CALENDAR_COMPONENT_TYPES)[number];

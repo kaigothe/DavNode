@@ -56,10 +56,9 @@ const ALL_SUPPORTED_COMPONENTS: readonly CalendarComponentType[] =
 /**
  * The component types a calendar ends up with for a requested
  * `CALDAV:supported-calendar-component-set` (RFC 4791 §5.2.3): the
- * requested ones this server stores (today only `VEVENT`), or every
- * supported type when none of the requested ones is — v1 doesn't fail
- * `MKCALENDAR` over `VTODO`/`VJOURNAL`, it creates a `VEVENT` calendar
- * (milestones/M6-caldav/00-setting-goal.md). Names compare
+ * requested ones this server stores, or every supported type
+ * (`VEVENT`, `VTODO`, `VJOURNAL`) when none of the requested ones is or
+ * none was requested, instead of failing the `MKCALENDAR`. Names compare
  * case-insensitively; `VTIMEZONE` is never part of the set (§5.2.3:
  * only for objects holding nothing else).
  */

@@ -1,4 +1,5 @@
 import ICAL from 'ical.js';
+import type { CalendarComponentType } from '../entities/calendar-collection.entity.js';
 import type {
   CalendarStatus,
   CalendarTransparency,
@@ -84,6 +85,27 @@ export interface ParsedComponent {
 }
 
 /**
+ * A `VTODO` or `VJOURNAL`, reduced to what the time-range semantics of
+ * RFC 4791 §9.9 need. Only the master (the component without
+ * `RECURRENCE-ID`, else the first) is read: recurring tasks are stored
+ * and returned intact but not expanded.
+ */
+export interface ParsedTask {
+  /** `DTSTART`, if any. */
+  dtstart: CalendarTime | null;
+  /** `DUE` (`VTODO` only), if any. */
+  due: CalendarTime | null;
+  /** The `DURATION` text, if any. */
+  duration: string | null;
+  /** `COMPLETED` (`VTODO` only), if any. */
+  completed: CalendarTime | null;
+  /** `CREATED`, if any. */
+  created: CalendarTime | null;
+  /** `SUMMARY`, if any. */
+  summary: string | null;
+}
+
+/**
  * A calendar object resource (RFC 4791 §4.1) as plain data: the
  * components sharing one `UID` — the master recurring/one-off event
  * and/or its `RECURRENCE-ID` overrides — and the `VTIMEZONE`s they use.
@@ -91,8 +113,8 @@ export interface ParsedComponent {
 export interface ParsedCalendarObject {
   /** The `UID` all components share. */
   uid: string;
-  /** v1 stores `VEVENT`s only. */
-  componentType: 'VEVENT';
+  /** The kind of component the object holds. */
+  componentType: CalendarComponentType;
   /**
    * The component without `RECURRENCE-ID` (it defines the recurrence
    * set), or `null` for an object holding only overrides — which RFC
@@ -104,6 +126,8 @@ export interface ParsedCalendarObject {
   overrides: ParsedComponent[];
   /** The `VTIMEZONE`s the object carries. */
   timezones: ParsedTimezone[];
+  /** For a `VTODO` or `VJOURNAL` (whose `master` and `overrides` stay empty): its times; `null` for a `VEVENT`. */
+  task: ParsedTask | null;
 }
 
 /**
@@ -384,6 +408,65 @@ function timeKey(time: CalendarTime): string {
   return `${time.kind}|${time.tzid ?? ''}|${time.year}-${time.month}-${time.day}T${time.hour}:${time.minute}:${time.second}`;
 }
 
+/** Reads a `VTODO`/`VJOURNAL` into a {@link ParsedTask}. */
+function extractTask(
+  component: ICAL.Component,
+  type: 'vtodo' | 'vjournal',
+): ParsedTask {
+  const dtstart = readTime(component, 'dtstart');
+  const due = type === 'vtodo' ? readTime(component, 'due') : null;
+  const duration = readDuration(component);
+  if (due && duration !== null) {
+    throw invalidData('A VTODO must not have both DUE and DURATION.');
+  }
+  if (duration !== null && !dtstart) {
+    throw invalidData('DURATION needs a DTSTART.');
+  }
+  if (dtstart && due && (dtstart.kind === 'date') !== (due.kind === 'date')) {
+    throw invalidData('DTSTART and DUE must both be DATE or both DATE-TIME.');
+  }
+  const summary = component.getFirstPropertyValue('summary');
+  return {
+    dtstart,
+    due,
+    duration,
+    completed: type === 'vtodo' ? readTime(component, 'completed') : null,
+    created: readTime(component, 'created'),
+    summary: typeof summary === 'string' ? summary : null,
+  };
+}
+
+/** Checks that every time of `task` resolves in its zone, and that `DUE` is not before `DTSTART`. */
+function validateTaskTimes(
+  task: ParsedTask,
+  timezones: ParsedTimezone[],
+): void {
+  const resolution: TimeResolution = {
+    zones: new ZoneRegistry(timezones),
+    floatingTimeZone: null,
+  };
+  try {
+    const times = [task.dtstart, task.due, task.completed, task.created];
+    for (const time of times) {
+      if (time) {
+        toInstantMs(time, resolution);
+      }
+    }
+    if (
+      task.dtstart &&
+      task.due &&
+      toInstantMs(task.due, resolution) < toInstantMs(task.dtstart, resolution)
+    ) {
+      throw invalidData('DUE is before DTSTART.');
+    }
+  } catch (error) {
+    if (error instanceof UnknownTimezoneError) {
+      throw invalidResource(error.message);
+    }
+    throw error;
+  }
+}
+
 /**
  * Checks what only zone resolution can: every `TZID` resolves, no event
  * ends before it starts, and a recurrence rule the library can iterate.
@@ -434,10 +517,10 @@ function validateTimes(parsed: ParsedCalendarObject): void {
  * enforcing what RFC 4791 §4.1 requires of a calendar object resource:
  *
  * - one `VCALENDAR`, `VERSION:2.0`, no `METHOD`;
- * - components of a single type, all with the same `UID` — `VEVENT` is
- *   the only type v1 stores, so a lone `VTODO`/`VJOURNAL`/`VFREEBUSY` is
- *   rejected as an unsupported component, and a mix of types as an
- *   invalid resource;
+ * - components of a single type, all with the same `UID` — `VEVENT`,
+ *   `VTODO` or `VJOURNAL` (a `VFREEBUSY` is rejected as an unsupported
+ *   component, a mix of types as an invalid resource); tasks are
+ *   reduced to {@link ParsedTask};
  * - at most one master (no `RECURRENCE-ID`) and no two overrides for the
  *   same `RECURRENCE-ID`; *no* master is fine (an object of overrides
  *   only, RFC 4791 §4.1);
@@ -526,9 +609,9 @@ export function parseCalendarObject(text: string): ParsedCalendarObject {
       );
     }
     const [type] = types;
-    if (type !== 'vevent') {
+    if (type !== 'vevent' && type !== 'vtodo' && type !== 'vjournal') {
       throw new CalendarParseError(
-        `${type.toUpperCase()} is not supported; only VEVENT calendar components can be stored.`,
+        `${type.toUpperCase()} is not supported; only VEVENT, VTODO and VJOURNAL calendar components can be stored.`,
         'supported-calendar-component',
       );
     }
@@ -540,7 +623,7 @@ export function parseCalendarObject(text: string): ParsedCalendarObject {
       }),
     );
     if (uids.has('')) {
-      throw invalidResource('Every VEVENT needs a UID.');
+      throw invalidResource(`Every ${type.toUpperCase()} needs a UID.`);
     }
     if (uids.size > 1) {
       throw invalidResource(
@@ -548,6 +631,41 @@ export function parseCalendarObject(text: string): ParsedCalendarObject {
       );
     }
     const [uid] = uids;
+
+    if (type !== 'vevent') {
+      const componentType = type === 'vtodo' ? 'VTODO' : 'VJOURNAL';
+      const seenIds = new Set<string>();
+      let masterComponent: ICAL.Component | null = null;
+      for (const component of components) {
+        const recurrenceId = readTime(component, 'recurrence-id');
+        if (recurrenceId === null) {
+          if (masterComponent) {
+            throw invalidResource(
+              'A calendar object resource can hold only one master component (one without RECURRENCE-ID).',
+            );
+          }
+          masterComponent = component;
+        } else {
+          const key = timeKey(recurrenceId);
+          if (seenIds.has(key)) {
+            throw invalidResource(
+              'Two components have the same RECURRENCE-ID.',
+            );
+          }
+          seenIds.add(key);
+        }
+      }
+      const task = extractTask(masterComponent ?? components[0], type);
+      validateTaskTimes(task, timezones);
+      return {
+        uid,
+        componentType,
+        master: null,
+        overrides: [],
+        timezones,
+        task,
+      };
+    }
 
     let master: ParsedComponent | null = null;
     const overrides: ParsedComponent[] = [];
@@ -577,6 +695,7 @@ export function parseCalendarObject(text: string): ParsedCalendarObject {
       master,
       overrides,
       timezones,
+      task: null,
     };
     validateTimes(result);
     return result;

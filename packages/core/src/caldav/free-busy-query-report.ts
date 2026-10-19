@@ -305,6 +305,7 @@ export async function collectCalendarBusyIntervals(
     .getRepository(CalendarObject)
     .createQueryBuilder('co')
     .where('co.calendarId = :calendarId', { calendarId: calendar.id })
+    .andWhere("co.componentType = 'VEVENT'")
     .andWhere('co.dtstart < :rangeEnd', {
       rangeEnd: rangeEnd.getTime() + FLOATING_TIME_OFFSET_BOUNDS_MS.latest,
     })

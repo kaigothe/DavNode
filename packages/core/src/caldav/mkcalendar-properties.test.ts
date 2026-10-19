@@ -56,7 +56,7 @@ describe('interpretMkcalendarProperties', () => {
       displayName: null,
       description: null,
       timezone: null,
-      supportedComponentSet: ['VEVENT'],
+      supportedComponentSet: ['VEVENT', 'VTODO', 'VJOURNAL'],
       deadProperties: [],
     });
     expect(results).toEqual([]);
@@ -98,30 +98,35 @@ describe('interpretMkcalendarProperties', () => {
         `<C:supported-calendar-component-set>${comps}</C:supported-calendar-component-set>`,
       ).initialization.supportedComponentSet;
 
+    const all = ['VEVENT', 'VTODO', 'VJOURNAL'];
     expect(set2('<C:comp name="VEVENT"/><C:comp name="VTODO"/>')).toEqual([
       'VEVENT',
+      'VTODO',
     ]);
-    expect(set2('<C:comp name="VTODO"/>')).toEqual(['VEVENT']);
+    expect(set2('<C:comp name="VTODO"/>')).toEqual(['VTODO']);
     expect(set2('<C:comp name="VTODO"/><C:comp name="VJOURNAL"/>')).toEqual([
-      'VEVENT',
+      'VTODO',
+      'VJOURNAL',
     ]);
     expect(set2('<C:comp name="vevent"/><C:comp name="VEVENT"/>')).toEqual([
       'VEVENT',
     ]);
-    expect(set2('<C:comp name="VTIMEZONE"/>')).toEqual(['VEVENT']);
-    expect(set2('')).toEqual(['VEVENT']);
+    expect(set2('<C:comp name="VTIMEZONE"/>')).toEqual(all);
+    expect(set2('')).toEqual(all);
   });
 
   it('reports the effective component set as the value of its result', () => {
     const { results } = accepted(
-      `<C:supported-calendar-component-set><C:comp name="VTODO"/></C:supported-calendar-component-set>`,
+      `<C:supported-calendar-component-set><C:comp name="VFREEBUSY"/></C:supported-calendar-component-set>`,
     );
 
     expect(results).toEqual([
       {
         namespace: CALDAV,
         name: 'supported-calendar-component-set',
-        value: `<C:comp name="VEVENT" xmlns:C="${CALDAV}"/>`,
+        value: ['VEVENT', 'VTODO', 'VJOURNAL']
+          .map((name) => `<C:comp name="${name}" xmlns:C="${CALDAV}"/>`)
+          .join(''),
         status: 200,
       },
     ]);

@@ -37,6 +37,7 @@ import {
   resolveReportCalendar,
   toCalendarUrl,
 } from './calendar-report-support.js';
+import { taskMatchesTimeRange } from './task-time.js';
 import { resolveReportFloatingTimeZone } from './calendar-query-timezone.js';
 import {
   parseCalendarQueryRequestBody,
@@ -105,7 +106,7 @@ export function matchesPropFilters(
   parsed: ParsedCalendarObject,
   propFilters: readonly CalendarPropFilter[],
 ): boolean {
-  const summary = parsed.master?.summary ?? null;
+  const summary = (parsed.task ?? parsed.master)?.summary ?? null;
   return propFilters.every((propFilter) => {
     if (propFilter.isNotDefined) {
       return summary === null;
@@ -138,6 +139,14 @@ export function matchesTimeRange(
 ): boolean {
   if (timeRange === null) {
     return true;
+  }
+  if (parsed.task) {
+    return taskMatchesTimeRange(
+      parsed,
+      timeRange.start?.getTime() ?? null,
+      timeRange.end?.getTime() ?? null,
+      floatingTimeZone,
+    );
   }
   return (
     expandOccurrences(parsed, timeRange.start, timeRange.end, {
@@ -325,20 +334,30 @@ export class CalendarQueryReportHandler implements ReportHandler {
     floatingTimeZone: string | null,
     count: number,
   ): Promise<CalendarObject[]> {
-    const timeRange = filter.kind === 'vevent' ? filter.timeRange : null;
-    const propFilters = filter.kind === 'vevent' ? filter.propFilters : [];
+    const component = filter.kind === 'component' ? filter : null;
+    const timeRange = component?.timeRange ?? null;
+    const propFilters = component?.propFilters ?? [];
 
     const query = context.manager
       .getRepository(CalendarObject)
       .createQueryBuilder('co')
       .where('co.calendarId = :calendarId', { calendarId: calendar.id });
-    if (timeRange?.end) {
+    if (component) {
+      query.andWhere(
+        component.isNotDefined
+          ? 'co.componentType <> :componentType'
+          : 'co.componentType = :componentType',
+        { componentType: component.componentType },
+      );
+    }
+    // The indexed span only describes events; tasks are checked exactly.
+    if (timeRange?.end && component?.componentType === 'VEVENT') {
       query.andWhere('co.dtstart < :rangeEnd', {
         rangeEnd:
           timeRange.end.getTime() + FLOATING_TIME_OFFSET_BOUNDS_MS.latest,
       });
     }
-    if (timeRange?.start) {
+    if (timeRange?.start && component?.componentType === 'VEVENT') {
       query.andWhere(
         '(co.recurrenceSpanEnd IS NULL OR co.recurrenceSpanEnd >= :rangeStart)',
         {

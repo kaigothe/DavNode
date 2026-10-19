@@ -199,11 +199,11 @@ describe('CalendarObject and CalendarObjectContent entities', () => {
     expect(found.uid).toBe('the-real-uid');
   });
 
-  it('only accepts VEVENT as component type, and known transparency/status values', async () => {
+  it('only accepts known component types, and known transparency/status values', async () => {
     const objects = dataSource.getRepository(CalendarObject);
 
     await expect(
-      objects.save(newObject({ componentType: 'VTODO' as 'VEVENT' })),
+      objects.save(newObject({ componentType: 'VFREEBUSY' as 'VEVENT' })),
     ).rejects.toThrow();
     await expect(
       objects.save(

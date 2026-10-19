@@ -28,7 +28,9 @@ describe('classifyCalendarFilter', () => {
     );
 
     expect(filter).toEqual({
-      kind: 'vevent',
+      kind: 'component',
+      componentType: 'VEVENT',
+      isNotDefined: false,
       timeRange: null,
       propFilters: [],
     });
@@ -44,7 +46,7 @@ describe('classifyCalendarFilter', () => {
       '<C:comp-filter name="vcalendar"><C:comp-filter name="vevent"/></C:comp-filter>',
     );
 
-    expect(filter.kind).toBe('vevent');
+    expect(filter.kind).toBe('component');
   });
 
   it('carries a VEVENT-level time-range through', () => {
@@ -53,7 +55,9 @@ describe('classifyCalendarFilter', () => {
     );
 
     expect(filter).toEqual({
-      kind: 'vevent',
+      kind: 'component',
+      componentType: 'VEVENT',
+      isNotDefined: false,
       timeRange: {
         start: new Date('2026-01-01T00:00:00Z'),
         end: new Date('2026-02-01T00:00:00Z'),
@@ -63,7 +67,7 @@ describe('classifyCalendarFilter', () => {
   });
 
   it('a comp-filter naming a type this server never stores, without is-not-defined, matches nothing', () => {
-    for (const name of ['VTODO', 'VJOURNAL', 'VFREEBUSY']) {
+    for (const name of ['VFREEBUSY', 'VALARM']) {
       const { filter, unsupported } = filterOf(
         `<C:comp-filter name="VCALENDAR"><C:comp-filter name="${name}"/></C:comp-filter>`,
       );
@@ -74,19 +78,36 @@ describe('classifyCalendarFilter', () => {
 
   it('a comp-filter naming a type this server never stores, with is-not-defined, matches everything', () => {
     const { filter, unsupported } = filterOf(
-      '<C:comp-filter name="VCALENDAR"><C:comp-filter name="VTODO"><C:is-not-defined/></C:comp-filter></C:comp-filter>',
+      '<C:comp-filter name="VCALENDAR"><C:comp-filter name="VFREEBUSY"><C:is-not-defined/></C:comp-filter></C:comp-filter>',
     );
 
     expect(filter).toEqual({ kind: 'match-all' });
     expect(unsupported.names).toEqual([]);
   });
 
-  it('a VEVENT comp-filter with is-not-defined matches nothing (every object has a VEVENT)', () => {
+  it('a VEVENT comp-filter with is-not-defined matches the objects of other types', () => {
     const { filter } = filterOf(
       '<C:comp-filter name="VCALENDAR"><C:comp-filter name="VEVENT"><C:is-not-defined/></C:comp-filter></C:comp-filter>',
     );
 
-    expect(filter).toEqual({ kind: 'match-none' });
+    expect(filter).toEqual({
+      kind: 'component',
+      componentType: 'VEVENT',
+      isNotDefined: true,
+      timeRange: null,
+      propFilters: [],
+    });
+  });
+
+  it('a VTODO comp-filter selects the tasks', () => {
+    const { filter } = filterOf(
+      '<C:comp-filter name="VCALENDAR"><C:comp-filter name="VTODO"/></C:comp-filter>',
+    );
+
+    expect(filter).toMatchObject({
+      kind: 'component',
+      componentType: 'VTODO',
+    });
   });
 
   it('a root comp-filter with is-not-defined matches nothing (every object is a VCALENDAR)', () => {
@@ -191,8 +212,8 @@ describe('classifyCalendarFilter', () => {
           '</C:comp-filter></C:comp-filter>',
       );
 
-      expect(filter.kind).toBe('vevent');
-      if (filter.kind === 'vevent') {
+      expect(filter.kind).toBe('component');
+      if (filter.kind === 'component') {
         expect(filter.propFilters).toHaveLength(2);
       }
     });
@@ -221,7 +242,9 @@ describe('classifyCalendarFilter', () => {
 
       expect(unsupported.names).toEqual(['prop-filter[SUMMARY]/time-range']);
       expect(filter).toEqual({
-        kind: 'vevent',
+        kind: 'component',
+        componentType: 'VEVENT',
+        isNotDefined: false,
         timeRange: null,
         propFilters: [],
       });
@@ -340,7 +363,9 @@ describe('parseCalendarQueryRequestBody', () => {
     );
 
     expect(parsed.filter).toEqual({
-      kind: 'vevent',
+      kind: 'component',
+      componentType: 'VEVENT',
+      isNotDefined: false,
       timeRange: {
         start: new Date('2006-01-04T00:00:00Z'),
         end: new Date('2006-01-05T00:00:00Z'),

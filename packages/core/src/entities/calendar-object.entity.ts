@@ -116,8 +116,8 @@ export class CalendarObject {
   etag!: string;
 
   /**
-   * The kind of component this object holds. v1 stores `VEVENT` only
-   * ({@link CALENDAR_COMPONENT_TYPES}); adding a type means extending the
+   * The kind of component this object holds: one of
+   * {@link CALENDAR_COMPONENT_TYPES}; adding a type means extending the
    * database enum (an `ALTER` on Postgres and MySQL, a table rebuild on
    * SQLite) through a migration.
    */

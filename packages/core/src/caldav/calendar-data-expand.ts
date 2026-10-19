@@ -78,6 +78,10 @@ export function renderExpandedCalendarData(
   rangeEnd: Date,
   floatingTimeZone: string | null,
 ): string {
+  if (parsed.task) {
+    // Tasks and journal entries have no instances to expand.
+    return ics;
+  }
   const occurrences = expandOccurrences(parsed, rangeStart, rangeEnd, {
     floatingTimeZone,
   });

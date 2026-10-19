@@ -201,7 +201,7 @@ describe('mkcalendar route', () => {
       expect(elements.find((e) => e.name === 'displayname')?.text).toBe('work');
       expect(
         elements.filter((e) => e.name === 'comp').map((e) => e.attributes.name),
-      ).toEqual(['VEVENT']);
+      ).toEqual(['VEVENT', 'VTODO', 'VJOURNAL']);
     });
 
     it('answers 201 with Cache-Control: no-cache and a CALDAV:mkcalendar-response body', async () => {
@@ -343,7 +343,7 @@ describe('mkcalendar route', () => {
   });
 
   describe('properties', () => {
-    it('reduces an unsupported component type to VEVENT instead of failing', async () => {
+    it('creates a task calendar for a request naming VTODO only', async () => {
       const response = await mkcalendar(`${home()}/tasks`, {
         body: mkcalendarBody(
           '<C:supported-calendar-component-set><C:comp name="VTODO"/></C:supported-calendar-component-set>',
@@ -354,10 +354,10 @@ describe('mkcalendar route', () => {
       const elements = await propertiesOf(`${home()}/tasks`);
       expect(
         elements.filter((e) => e.name === 'comp').map((e) => e.attributes.name),
-      ).toEqual(['VEVENT']);
+      ).toEqual(['VTODO']);
     });
 
-    it('keeps VEVENT when VTODO is requested next to it', async () => {
+    it('keeps both when VEVENT and VTODO are requested', async () => {
       await mkcalendar(`${home()}/mixed`, {
         body: mkcalendarBody(
           '<C:supported-calendar-component-set><C:comp name="VEVENT"/><C:comp name="VTODO"/></C:supported-calendar-component-set>',
@@ -367,7 +367,7 @@ describe('mkcalendar route', () => {
       const calendar = await dataSource
         .getRepository(CalendarCollection)
         .findOneByOrFail({ name: 'mixed' });
-      expect(calendar.supportedComponentSet).toEqual(['VEVENT']);
+      expect(calendar.supportedComponentSet).toEqual(['VEVENT', 'VTODO']);
     });
 
     it('states the effective component set in the mkcalendar-response', async () => {
@@ -380,7 +380,7 @@ describe('mkcalendar route', () => {
       const comps = elementsOf(await response.text()).filter(
         (e) => e.name === 'comp',
       );
-      expect(comps.map((e) => e.attributes.name)).toEqual(['VEVENT']);
+      expect(comps.map((e) => e.attributes.name)).toEqual(['VTODO']);
     });
 
     it('stores client-defined properties and serves them back', async () => {

@@ -103,6 +103,22 @@ export function computeTimeRangeIndex(
     floatingTimeZone: options.floatingTimeZone ?? null,
   };
 
+  if (parsed.task) {
+    // Tasks are matched exactly in `taskMatchesTimeRange`; `calendar-query`
+    // never uses these columns for them, so a start (or the epoch) will do.
+    const { dtstart, due } = parsed.task;
+    const start = dtstart ?? due;
+    const startMsValue = start ? toInstantMs(start, resolution) : 0;
+    return {
+      dtstart: new Date(startMsValue),
+      dtend: new Date(due ? toInstantMs(due, resolution) : startMsValue),
+      isAllDay: start?.kind === 'date',
+      recurrenceSpanEnd: null,
+      transparency: 'opaque',
+      status: null,
+    };
+  }
+
   const components: ParsedComponent[] = [
     ...(parsed.master ? [parsed.master] : []),
     ...parsed.overrides,
