@@ -230,7 +230,7 @@ quick start.
 | WebDAV ACL, RFC 3744 and RFC 5397            | Principals, privileges, grant/deny ACEs, `ACL`, `principal-property-search`, `current-user-principal`.                                                                                                  |
 | Collection sync, RFC 6578                    | `sync-collection` and `sync-token` for files, calendars and address books; `getctag`.                                                                                                                   |
 | Quota, RFC 4331                              | `quota-used-bytes`, `quota-available-bytes`; limits per user and tenant.                                                                                                                                |
-| CalDAV, RFC 4791                             | Calendars, `calendar-query`, `calendar-multiget`, `free-busy-query`. Events only: no `VTODO`/`VJOURNAL`.                                                                                                |
+| CalDAV, RFC 4791                             | Calendars, `calendar-query`, `calendar-multiget`, `free-busy-query`. Events, tasks (`VTODO`) and journal entries (`VJOURNAL`); recurring tasks are stored but not expanded.                             |
 | CalDAV scheduling, RFC 6638 / iTIP, RFC 5546 | Invitations, replies and cancellations between local users, inbox and outbox, free/busy.                                                                                                                |
 | CardDAV, RFC 6352                            | Address books, `addressbook-query` on name, e-mail, phone, organisation, nickname, note, address, title, role, URL, birthday, categories and photo presence, `addressbook-multiget`. vCard 3.0 and 4.0. |
 | Service discovery, RFC 6764                  | `/.well-known/caldav`, `/.well-known/carddav`.                                                                                                                                                          |
@@ -240,7 +240,7 @@ quick start.
 
 All 104 tests of the [litmus](http://www.webdav.org/neon/litmus/) WebDAV
 suite pass in CI. Apple's CalDAVTester/CardDAVTester, written against
-CalendarServer, run as a regression ratchet that keeps the 219 tests passing
+CalendarServer, run as a regression ratchet that keeps the 222 tests passing
 today from breaking. What those suites expect that DavNode does differently
 is listed in [docs/conformance.md](docs/conformance.md).
 

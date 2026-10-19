@@ -93,8 +93,11 @@ CalDAV/mkcalendar.xml::MKCALENDAR supported-component-set::1
 CalDAV/mkcalendar.xml::MKCALENDAR supported-component-set::2
 CalDAV/mkcalendar.xml::MKCALENDAR supported-component-set::3
 CalDAV/mkcalendar.xml::MKCALENDAR supported-component-set::4
+CalDAV/mkcalendar.xml::MKCALENDAR supported-component-set::5
+CalDAV/mkcalendar.xml::MKCALENDAR supported-component-set::6
 CalDAV/mkcalendar.xml::MKCALENDAR supported-component-set::7
 CalDAV/mkcalendar.xml::MKCALENDAR supported-component-set::8
+CalDAV/mkcalendar.xml::MKCALENDAR supported-component-set::9
 CalDAV/mkcalendar.xml::MKCALENDAR with body::1
 CalDAV/mkcalendar.xml::MKCALENDAR with body::3
 CalDAV/mkcalendar.xml::MKCALENDAR without body::1

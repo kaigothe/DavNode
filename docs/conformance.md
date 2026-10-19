@@ -56,7 +56,7 @@ node scripts/conformance/evaluate-caldavtester.mjs .conformance/caldavtester-log
 `caldavtester-features.txt` declares which of the suite's optional features
 DavNode has; tests needing others are skipped by the suite itself.
 
-**Current result** (219 tests pass, 407 fail, 70 are skipped because a
+**Current result** (222 tests pass, 407 fail, 70 are skipped because a
 feature is not offered, and a further 110 files consist only of such
 skipped tests): the table at the end lists it per file. The failures are not
 individually triaged; the causes that were examined are these.
@@ -78,8 +78,13 @@ individually triaged; the causes that were examined are these.
   `DAV:sync-level` is `400` (RFC 6578 makes it mandatory); a `DTSTART`/`DTEND`
   with mixed value types is `403 valid-calendar-data` where CalendarServer
   silently repairs it; `Depth: infinity` on principal collections is refused.
-- **No VTODO/VJOURNAL** (planning/03-open-questions.md), so every test that
-  writes a task fails, and DavNode has no `tasks` collection.
+- **Tasks.** `VTODO` and `VJOURNAL` are stored and queried
+  (`calendar-query` by component, `SUMMARY` and the RFC 4791 §9.9 time-range
+  rules), but recurring tasks are not expanded, `VALARM` inside a task is not
+  filterable, and tasks take no part in scheduling or free-busy. A calendar
+  holds tasks only if it was created with them in its component set
+  (`MKCALENDAR` without one allows all three); calendars created before
+  this change hold events only.
 - **`addressbook-query` filters only the indexed properties** (`FN`, `N`,
   `EMAIL`, `TEL`, `ORG`, `NICKNAME`, `NOTE`, `ADR`, `TITLE`, `ROLE`, `URL`,
   `BDAY`, `CATEGORIES`, and `PHOTO` for presence only); other properties
@@ -152,7 +157,7 @@ individually triaged; the causes that were examined are these.
 | `CalDAV/implicittimezones.xml`              |       0 |       1 |
 | `CalDAV/implicittodo.xml`                   |       0 |       1 |
 | `CalDAV/implicitxdash.xml`                  |       0 |       1 |
-| `CalDAV/mkcalendar.xml`                     |      11 |       9 |
+| `CalDAV/mkcalendar.xml`                     |      14 |       6 |
 | `CalDAV/nonascii.xml`                       |       5 |       7 |
 | `CalDAV/options.xml`                        |       4 |       0 |
 | `CalDAV/pretest.xml`                        |       6 |       0 |

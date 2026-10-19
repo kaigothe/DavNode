@@ -20,8 +20,8 @@ sie beantwortet sind.
   verwalten
 - Soft-Quota/Warnschwellen (z.B. Benachrichtigung bei 80 % Auslastung,
   M8) — v1 kennt nur ein Hard-Limit mit `507`
-- `VTODO`/`VJOURNAL`-Unterstützung (nur `VEVENT` in v1, Runde 21) — DUE-
-  statt DTSTART/DTEND-Zeitsemantik bräuchte eigene Time-Range-Logik
+- Wiederkehrende `VTODO`/`VJOURNAL` expandieren — gespeichert und per
+  `calendar-query` gefunden werden sie, aber nur anhand des Masters
 - iMIP/E-Mail-Fallback für externe (nicht-lokale) Scheduling-Attendees
   (Runde 22) — v1 stellt nur an Attendees auf demselben Tenant zu
 - iTIP-Verhandlungsmethoden `COUNTER`/`DECLINECOUNTER`/`ADD` (Runde 22)
