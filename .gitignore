@@ -48,3 +48,6 @@ npm-debug.log*
 
 # Scratch space of scripts/restore-test
 .restore-test/
+.upgrade-test/
+docs/.vitepress/cache/
+docs/.vitepress/dist/

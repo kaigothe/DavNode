@@ -7,3 +7,5 @@ package-lock.json
 # not reformatted by tooling.
 planning
 milestones
+docs/.vitepress/cache
+docs/.vitepress/dist

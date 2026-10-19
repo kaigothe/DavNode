@@ -22,7 +22,12 @@ const exportedDeclarationContexts = [
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/coverage/**', 'docs/api/**'],
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      'docs/api/**',
+      'docs/.vitepress/**',
+    ],
   },
   js.configs.recommended,
   // Non-type-aware TS linting for every .ts file, including root-level
