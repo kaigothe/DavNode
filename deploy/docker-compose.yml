@@ -1,0 +1,67 @@
+# DavNode ready-to-run deployment: DavNode + PostgreSQL + Caddy (automatic
+# HTTPS). Uses the published image; nothing is built locally.
+#
+#   cp .env.example .env     # then edit DOMAIN and POSTGRES_PASSWORD
+#   docker compose up -d
+#
+# See README.md in this folder for the first administrator, backups and
+# upgrades.
+services:
+  app:
+    image: ghcr.io/kaigothe/davnode:${DAVNODE_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DAVNODE_DB_TYPE: postgres
+      DAVNODE_DB_HOST: postgres
+      DAVNODE_DB_PORT: 5432
+      DAVNODE_DB_NAME: davnode
+      DAVNODE_DB_USER: davnode
+      DAVNODE_DB_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      DAVNODE_BEHIND_TLS_PROXY: 'true'
+    expose:
+      - '8080'
+    mem_limit: 512m
+    cpus: 1.0
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: davnode
+      POSTGRES_USER: davnode
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U davnode']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    mem_limit: 1g
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    mem_limit: 128m
+
+volumes:
+  postgres-data:
+  caddy-data:
+  caddy-config:
