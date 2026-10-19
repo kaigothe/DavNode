@@ -1,3 +1,10 @@
+# [1.29.0](https://github.com/kaigothe/DavNode/compare/v1.28.0...v1.29.0) (2026-10-19)
+
+
+### Features
+
+* **caldav:** store VTODO and VJOURNAL objects ([e52a6ec](https://github.com/kaigothe/DavNode/commit/e52a6ec4ff94d5c82c3e97f2ba93f4c51a3f7cfd))
+
 # [1.28.0](https://github.com/kaigothe/DavNode/compare/v1.27.0...v1.28.0) (2026-10-19)
 
 
