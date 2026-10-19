@@ -1,3 +1,10 @@
+# [1.30.0](https://github.com/kaigothe/DavNode/compare/v1.29.0...v1.30.0) (2026-10-19)
+
+
+### Features
+
+* **dav:** support RFC 5995 add-member on calendars and address books ([374634b](https://github.com/kaigothe/DavNode/commit/374634b6cd6e524c8f3e1478f8a83878eddfe93f))
+
 # [1.29.0](https://github.com/kaigothe/DavNode/compare/v1.28.0...v1.29.0) (2026-10-19)
 
 
