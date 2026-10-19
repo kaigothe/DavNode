@@ -1,0 +1,48 @@
+name: Client compatibility report
+description: Tell us whether a CalDAV/CardDAV/WebDAV client works with DavNode, or how it fails.
+labels: [client-compat]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Working reports are just as valuable as failures. They feed the
+        compatibility matrix in `docs/client-compatibility.md`.
+  - type: input
+    id: client
+    attributes:
+      label: Client and version
+      placeholder: e.g. Thunderbird 140, macOS 15 Calendar, Windows 11 Explorer
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: DavNode version
+    validations:
+      required: true
+  - type: checkboxes
+    id: worked
+    attributes:
+      label: What worked
+      options:
+        - label: Account setup / discovery
+        - label: 'Contacts: read, create, edit, delete'
+        - label: 'Calendar: read, create, edit, delete'
+        - label: Changes made on another device appeared (sync)
+        - label: Invitations and replies
+        - label: Files
+  - type: textarea
+    id: problems
+    attributes:
+      label: What did not work, and how did it fail?
+  - type: textarea
+    id: logs
+    attributes:
+      label: Server log or screenshots
+      description: Remove passwords and personal data first.
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Permission
+      options:
+        - label: You may quote this report (and my GitHub name) in the compatibility matrix.

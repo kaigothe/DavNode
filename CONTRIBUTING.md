@@ -153,6 +153,15 @@ semantic-release derives the version, `CHANGELOG.md`, tag and GitHub release
 from this history on every push to `main`, so a `feat` or `fix` commit is a
 release note: describe the user-visible effect.
 
+## Developer Certificate of Origin (sign-off)
+
+Every commit in a pull request must carry a `Signed-off-by: Your Name
+<you@example.com>` line, which you add with `git commit -s`. It states that
+you wrote the change or have the right to submit it under the project's
+licence ([developercertificate.org](https://developercertificate.org/)).
+CI checks it on pull requests (merge commits and bot commits are exempt).
+Forgot it? `git rebase --signoff main` and force-push your branch.
+
 ## Pull requests
 
 1. Open an issue or comment on an existing one for anything beyond a small

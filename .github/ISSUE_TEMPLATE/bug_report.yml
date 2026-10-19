@@ -1,0 +1,42 @@
+name: Bug report
+description: Something does not work as documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Commands or client steps; a failing `curl` request is ideal.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: DavNode version
+      description: Image tag or `GET /healthz` output.
+    validations:
+      required: true
+  - type: dropdown
+    id: db
+    attributes:
+      label: Database
+      options: [PostgreSQL, MySQL, SQLite]
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: Client and version (if a client is involved)
+      placeholder: e.g. DAVx5 4.4 on Android 15
+  - type: textarea
+    id: logs
+    attributes:
+      label: Server log excerpt
+      description: Remove passwords, tokens and personal data first.
+      render: text
