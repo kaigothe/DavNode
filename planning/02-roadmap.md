@@ -113,3 +113,13 @@ Hardening).
 - Security-Review
 - Dokumentation
 
+
+## M13 — Open-Source-Launch & Sichtbarkeit
+- Repo-Auftritt/Positionierung, SECURITY/CoC/Templates, Dependabot/CodeQL
+- Docker-Image (GHCR, multi-arch, signiert), Compose-Release-Asset
+- Reale Client-Tests + Kompatibilitätsmatrix
+- Demo, OpenAPI, ggf. minimale Admin-UI
+- Doku-Seite, Upgrade-/Migrationsanleitungen
+- Lizenz-FAQ, Faktenblatt, Wartungspolitik, Support-Modell
+- Gezielte Ankündigung (Veröffentlichung durch den Maintainer)
+- Details: [milestones/M13-open-source-launch](../milestones/M13-open-source-launch/00-setting-goal.md)
