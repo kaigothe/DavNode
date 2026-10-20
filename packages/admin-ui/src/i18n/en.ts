@@ -271,6 +271,7 @@ export const en = {
     address: 'Address',
     birthday: 'Birthday',
     notes: 'Notes',
+    card: 'Business card',
     photo: 'Photo',
     searchContacts: 'Search by name, e-mail, phone or organization',
   },

@@ -7,7 +7,9 @@ import { takeViolations } from './contract';
 // which needs computed styles; jsdom is very slow at that on Ant Design's
 // large stylesheets (seconds per query on a busy machine). The tests assert
 // visibility where it matters; the browser tests check the real tree.
-configure({ defaultHidden: true });
+// A page's code is loaded on first use, which is slow in jsdom: waiting a
+// second for the first element is too tight on a busy machine.
+configure({ defaultHidden: true, asyncUtilTimeout: 8000 });
 
 // Ant Design reads these from the browser; jsdom does not implement them.
 Object.defineProperty(window, 'matchMedia', {

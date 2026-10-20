@@ -276,6 +276,7 @@ export const de: Translation = {
     address: 'Adresse',
     birthday: 'Geburtstag',
     notes: 'Notizen',
+    card: 'Visitenkarte',
     photo: 'Foto',
     searchContacts: 'Nach Name, E-Mail, Telefon oder Organisation suchen',
   },

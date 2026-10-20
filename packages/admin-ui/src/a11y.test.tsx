@@ -212,6 +212,16 @@ describe.each(['light', 'dark'] as const)(
       expect(await accessibilityProblems()).toEqual([]);
     });
 
+    it('has no violations in the contact drawer with its business card', async () => {
+      await open(`/users/${alice.id}/content`, 'Standup');
+      const u = userEvent.setup();
+      await u.click(screen.getByRole('tab', { name: 'Contacts' }));
+      await u.click(await screen.findByText('Ada Lovelace'));
+      await screen.findByRole('article', { name: 'Business card' });
+
+      expect(await accessibilityProblems()).toEqual([]);
+    });
+
     it('has no violations in the create-user dialog', async () => {
       await open('/users', 'alice');
       await userEvent

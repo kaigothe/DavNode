@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { createUser, signIn } from './support';
+import { createUser, dav, signIn } from './support';
 
 /** Every violation axe finds, rendered for the failure message. */
 async function violations(page: Page) {
@@ -66,6 +66,33 @@ for (const scheme of ['light', 'dark'] as const) {
       await page.getByRole('button', { name: /New user/ }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       expect(await violations(page), 'create user dialog').toEqual([]);
+    });
+
+    test('contact drawer with its business card', async ({ page, request }) => {
+      const user = await createUser(
+        request,
+        `a11y-card-${scheme}-${Date.now().toString(36)}`,
+      );
+      const book = `/addressbooks/${user.principalId}/contacts/`;
+      await dav(request, user, 'MKCOL', book, {
+        contentType: 'application/xml',
+        body: '<?xml version="1.0"?><D:mkcol xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav"><D:set><D:prop><D:resourcetype><D:collection/><C:addressbook/></D:resourcetype><D:displayname>People</D:displayname></D:prop></D:set></D:mkcol>',
+      });
+      await dav(request, user, 'PUT', `${book}ada.vcf`, {
+        contentType: 'text/vcard',
+        body: 'BEGIN:VCARD\r\nVERSION:3.0\r\nUID:ada\r\nFN:Ada Lovelace\r\nTITLE:Programmer\r\nORG:Analytical Engines\r\nEMAIL;TYPE=WORK:ada@analytical.example\r\nTEL;TYPE=CELL:+49 170 1234567\r\nADR;TYPE=HOME:;;1 Main St;London;;N1;UK\r\nEND:VCARD\r\n',
+      });
+      await signIn(page);
+      await page.goto(`/admin-ui/users/${user.id}/content`);
+      await page.getByRole('tab', { name: 'Contacts' }).click();
+      await page.getByText('Ada Lovelace').click();
+      const card = page.getByRole('article', { name: 'Business card' });
+      await expect(card.getByText('Analytical Engines')).toBeVisible();
+      await expect(
+        card.getByText('ada@analytical.example (work)'),
+      ).toBeVisible();
+      await page.waitForLoadState('networkidle');
+      expect(await violations(page), 'contact drawer').toEqual([]);
     });
 
     test('calendar and contacts of a user', async ({ page, request }) => {

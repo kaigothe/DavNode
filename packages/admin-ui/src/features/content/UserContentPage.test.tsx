@@ -397,7 +397,11 @@ describe('contacts', () => {
       within(drawer).getByText('ada@analytical.example'),
     ).toBeInTheDocument();
     expect(within(drawer).getByText('work')).toBeInTheDocument();
-    expect(within(drawer).getByText('1 Main St, London')).toBeInTheDocument();
+    // Once on the business card, once in the property list.
+    expect(within(drawer).getAllByText('1 Main St, London')).toHaveLength(2);
+    expect(
+      within(drawer).getByRole('article', { name: 'Business card' }),
+    ).toBeInTheDocument();
     expect(within(drawer).getByText(/Second <b>line<\/b>/)).toBeInTheDocument();
     expect(drawer.querySelector('b')).toBeNull();
   });
