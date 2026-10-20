@@ -20,7 +20,8 @@ backup, without a full groupware suite].
 - Files over WebDAV, calendars over CalDAV (including invitations and
   free/busy), contacts over CardDAV, plus a read-only `.ics` feed for
   Outlook.
-- Tenants, users and groups with ACLs, quotas, and a REST admin API.
+- Tenants, users and groups with ACLs, quotas, a REST admin API and an
+  optional web admin UI (English and German, light and dark).
 - PostgreSQL, MySQL or SQLite; everything in the database, so a database
   backup is a complete backup (with a runbook and a weekly automated restore
   test).

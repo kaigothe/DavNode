@@ -55,6 +55,9 @@ PostgreSQL) are starting values.
 `user@tenant` unless `DAVNODE_DEFAULT_TENANT` is set. Digest users need their
 password set again after enabling Digest or changing the realm.
 
+**`/admin-ui/` answers `404`.** The [admin UI](../admin-ui.md) is off by
+default; set `DAVNODE_ADMIN_UI_ENABLED=true`.
+
 **`429 Too Many Requests`.** Too many failed logins from one address
 (`DAVNODE_AUTH_RATE_LIMIT_*`). Behind a proxy set `DAVNODE_BEHIND_TLS_PROXY`
 so the real client address is used instead of the proxy's.

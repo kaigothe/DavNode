@@ -9,6 +9,17 @@ documented and vice versa.
 - Paths live under `/admin/{tenant}`; authentication is the same as for the
   DAV endpoints. Server-wide operations need the `server_admin` role.
 - Errors are `{"error": {"code": "...", "message": "..."}}`.
+- The lists of tenants, users and groups accept `limit` (1–500), `offset` and
+  `q` (a case-insensitive search) and answer with a `total`; without them the
+  whole list is returned.
+- `GET /admin/{tenant}/me` tells a client who it is (role, tenant and which
+  optional features are on) and works for every role; `GET …/providers` shows
+  the configured authentication providers.
+- With `DAVNODE_ADMIN_UI_CONTENT_VIEW=true` read-only routes list the
+  calendars, events (in a time window of at most a year), address books and
+  contacts of a user. Every read is logged. They do not exist otherwise.
+
+The [Admin UI](admin-ui.md) is a browser front end for this API.
 
 Example:
 

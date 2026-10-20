@@ -33,7 +33,8 @@ DavNode is licensed under the
 > [compatibility matrix](docs/client-compatibility.md).
 
 **Is it for you?** DavNode is a server, not a groupware suite: there is no
-web calendar or mail, and no admin web interface yet (REST API only). It
+web calendar or mail and no web interface for end users; administrators get a
+small [admin UI](docs/admin-ui.md) (off by default) next to the REST API. It
 runs as one instance. See [how it compares](docs/comparison.md) with
 Nextcloud, Radicale, Baïkal and DAViCal, and
 [who it is for](docs/positioning.md).
@@ -67,8 +68,10 @@ curl -u admin:choose-a-password http://localhost:8080/dav/demo/files/hello.txt
 ```
 
 **Just want to look around?** `docker compose -f docker-compose.demo.yml up --build`
-starts a throw-away instance with sample users (alice, bob), a calendar,
-an address book and a file; the credentials are printed in the compose file.
+starts a throw-away instance with sample users, groups, calendars, contacts
+and the [admin UI](docs/admin-ui.md) at <http://localhost:8080/admin-ui/>
+(tenant `demo`, user `admin`, password `demo-admin-password`); the other
+credentials are printed in the compose file.
 For a real server use the [deployment bundle](deploy/README.md) (published
 image, PostgreSQL and automatic HTTPS) or the
 [production setup](#production-deployment). The documentation is also
@@ -156,7 +159,13 @@ A browser interface for the [Admin API](docs/admin-api.md): tenants, users,
 groups, quotas and, optionally, a read-only view of users' calendars and
 contacts. It is part of the image but **off by default**. When enabled it is
 served at `/admin-ui/` and signs in with the same credentials as the DAV
-endpoints; use it over HTTPS.
+endpoints; use it over HTTPS. English and German, light and dark. The
+[admin UI guide](docs/admin-ui.md) has the details.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/admin-ui/users-dark-en.png">
+  <img alt="The admin UI: the user list with roles and storage use" src="docs/assets/admin-ui/users-light-en.png">
+</picture>
 
 | Variable                        | Default  | Meaning                                                                                                                                                                                        |
 | ------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

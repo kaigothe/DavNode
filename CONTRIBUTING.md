@@ -42,17 +42,18 @@ that creates a first tenant and administrator; run it with the same
 
 ## How the code is organised
 
-An npm-workspaces monorepo with three packages:
+An npm-workspaces monorepo with four packages:
 
 | Package                                     | Role                                                                                                                                                                                                                            |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `packages/core` (`@davnode/core`)           | Everything that is not HTTP: TypeORM entities and migrations, services (tenants, users, groups), the ACL engine, locking, sync, the CalDAV/CardDAV/WebDAV logic, authentication providers, quota. **No dependency on Express.** |
 | `packages/server` (`@davnode/server`)       | The Express application: tenant resolution, authentication middleware, one route file per DAV method and resource family, request logging, metrics, the process entry point. Calls into `core`.                                 |
 | `packages/admin-api` (`@davnode/admin-api`) | An Express `Router` for the REST admin API; `server` mounts it under `/admin/{tenant}` in the same process.                                                                                                                     |
+| `packages/admin-ui` (`@davnode/admin-ui`)   | The admin web interface (React, Vite, Ant Design): a static build that `server` serves at `/admin-ui` when enabled. Uses the admin API only; see [docs/admin-ui.md](docs/admin-ui.md).                                          |
 
 Dependencies point one way: `server` and `admin-api` depend on `core`,
 never the reverse, and share its services instead of duplicating business
-logic.
+logic. `admin-ui` depends on none of them: it only calls the HTTP API.
 
 Ideas that recur throughout the code:
 
@@ -136,7 +137,7 @@ anything else. Avoid body lines that start with a word and a colon
 (`Note: ...`): commitlint reads them as footers and warns.
 
 The scope in parentheses is typically a package name without the `@davnode/`
-prefix (`core`, `server`, `admin-api`) or another area (`repo` for tooling).
+prefix (`core`, `server`, `admin-api`, `admin-ui`) or another area (`repo` for tooling).
 
 ```
 feat(core): add tenant entity

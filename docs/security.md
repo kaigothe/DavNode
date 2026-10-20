@@ -31,6 +31,17 @@ operator. Report problems as described in [SECURITY.md](../SECURITY.md).
 - Calendar feed URLs (`.ics`) contain a secret token and need no login;
   treat them like passwords and rotate by requesting a new token.
 
+## Admin UI
+
+- The [admin UI](admin-ui.md) is off by default (`DAVNODE_ADMIN_UI_ENABLED`).
+  It is served by the server itself on the same origin, so CORS stays off; it
+  sends the user's credentials with every request and keeps them in the tab's
+  session storage, with no cookies and no server-side session.
+- A Content Security Policy applies to `/admin-ui/` only.
+- Reading users' calendars and contacts needs a second switch
+  (`DAVNODE_ADMIN_UI_CONTENT_VIEW`); every such read is written to the log
+  with the administrator and the user, never the content.
+
 ## Data
 
 - All content lives in one database; the backup runbook is in

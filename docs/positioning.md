@@ -39,10 +39,13 @@ Nutzer und Gruppe, Mandanten und Quotas, alles in einer Datenbank._
   use a CalDAV/CardDAV/WebDAV client. If you want that, use Nextcloud.
 - **One server instance.** Rate limiting and Digest nonces are in memory;
   there is no clustering.
-- **No admin web interface yet** (REST API only).
+- **Only a small admin interface.** Users, groups, quotas and tenants can be
+  managed in a [web UI](admin-ui.md) (off by default); there is no web
+  interface for end users.
 - **Client compatibility is being verified.** See the
   [compatibility matrix](client-compatibility.md) for what is confirmed.
-- **No encryption at rest, no audit log** of administrative actions yet.
+- **No encryption at rest, no audit log** of administrative actions yet
+  (apart from the log of an administrator reading a user's data).
 
 ## Wording rules
 

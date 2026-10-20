@@ -66,6 +66,7 @@ export default defineConfig({
       {
         text: 'Reference',
         items: [
+          { text: 'Admin UI', link: '/admin-ui' },
           { text: 'Admin API (OpenAPI)', link: '/admin-api' },
           { text: 'Conformance', link: '/conformance' },
           { text: 'Roadmap', link: '/roadmap' },

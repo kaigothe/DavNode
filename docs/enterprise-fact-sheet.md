@@ -29,10 +29,12 @@ github.com/kaigothe/DavNode. One maintainer.
 
 ## Known gaps (as of this review)
 
-- **No audit log** of administrative actions.
+- **No audit log** of administrative actions (an administrator reading a
+  user's data through the admin UI is logged, nothing else is).
 - **No encryption at rest** by DavNode (use database/disk encryption).
 - **No clustering**; rate limiter and Digest nonces are in memory.
-- **No web interface** for users or administrators (REST API only).
+- **No web interface for end users.** Administrators get an optional
+  [admin UI](admin-ui.md) for tenants, users, groups and quotas.
 - **Throughput** is bounded by per-request password hashing: about 20–35
   requests/s on a laptop (see [handbook](operations/handbook.md#sizing)).
 - Brute-force protection is per address, not distributed.
