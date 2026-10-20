@@ -55,6 +55,10 @@ import { registerCarddavUnlockRoute } from './http/routes/carddav/unlock.route.j
 import { registerCopyRoute } from './http/routes/copy.route.js';
 import { registerDeleteRoute } from './http/routes/delete.route.js';
 import { registerGetRoute } from './http/routes/get.route.js';
+import {
+  registerAdminUiRoute,
+  type AdminUiRouteOptions,
+} from './http/routes/admin-ui.route.js';
 import { registerHealthRoute } from './http/routes/health.route.js';
 import { registerIcsFeedRoute } from './http/routes/ics-feed.route.js';
 import { registerLockRoute } from './http/routes/lock.route.js';
@@ -89,6 +93,16 @@ export interface CreateAppOptions {
   logger?: Logger;
   /** Rate limit and proxy settings; defaults to the built-in limit, no proxy. */
   security?: SecurityConfig;
+  /**
+   * Enables the Admin API's read-only calendar/contact inspection routes
+   * (`DAVNODE_ADMIN_UI_CONTENT_VIEW`); every read is logged. Off by default.
+   */
+  adminContentView?: boolean;
+  /**
+   * Serves the admin UI at `/admin-ui` (`DAVNODE_ADMIN_UI_ENABLED`). Absent
+   * means the UI does not exist: the path answers 404.
+   */
+  adminUi?: AdminUiRouteOptions;
 }
 
 /**
@@ -146,6 +160,11 @@ export function createApp(
   // Liveness probe: no tenant, no credentials (M12).
   registerHealthRoute(app, dataSource);
 
+  // The admin UI's static files need no tenant and no credentials (M14).
+  if (options.adminUi) {
+    registerAdminUiRoute(app, options.adminUi);
+  }
+
   registerIcsFeedRoute(app, dataSource);
 
   // RFC 6764 discovery lives outside /dav/{tenantSlug}, so it brings its
@@ -198,6 +217,10 @@ export function createApp(
         ? authConfig.realm
         : undefined,
       oauth2Issuers: authConfig.oauth2Issuers.map((issuer) => issuer.issuer),
+      authProviders: authConfig.providers,
+      contentView: options.adminContentView === true,
+      onContentAccess: (access) =>
+        logger.info(access, 'Admin read user content'),
       metrics,
     }),
   );

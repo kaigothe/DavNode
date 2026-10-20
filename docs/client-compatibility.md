@@ -81,3 +81,25 @@ to offer editing. Remaining problems are on the Windows side:
 If the native redirector keeps misbehaving, use a dedicated WebDAV client
 (for example WinSCP, Cyberduck or rclone) instead of Explorer's built-in
 one; for calendars and contacts on Android use DAVx5.
+
+## Compatibility matrix
+
+Results from real installations, produced with the checklist in
+[client-testing.md](client-testing.md). **Nothing has been verified on real
+devices yet**; every cell below is "not tested" until a dated report
+exists. The server-side behaviour described above is covered by automated
+tests and the conformance suites regardless.
+
+| Client                           | Version / OS | Discovery  | Contacts   | Calendar   | Sync       | Invitations | Files      | Report |
+| -------------------------------- | ------------ | ---------- | ---------- | ---------- | ---------- | ----------- | ---------- | ------ |
+| Apple Calendar & Contacts        | macOS / iOS  | not tested | not tested | not tested | not tested | not tested  | —          | —      |
+| Thunderbird                      | —            | not tested | not tested | not tested | not tested | not tested  | —          | —      |
+| DAVx5 + Android apps             | —            | not tested | not tested | not tested | not tested | not tested  | —          | —      |
+| Windows Explorer (network drive) | Windows 11   | —          | —          | —          | —          | —           | not tested | —      |
+| Outlook (`.ics` subscription)    | —            | —          | —          | not tested | not tested | —           | —          | —      |
+| GNOME Evolution / KDE KOrganizer | —            | not tested | not tested | not tested | not tested | not tested  | —          | —      |
+| `rclone`, `cadaver`, Cyberduck   | —            | —          | —          | —          | —          | —           | not tested | —      |
+
+Legend: ✅ works · ⚠️ works with a workaround · ❌ fails · — not applicable.
+Want to add a row? Open a
+[client compatibility report](https://github.com/kaigothe/DavNode/issues/new?template=client_compatibility.yml).

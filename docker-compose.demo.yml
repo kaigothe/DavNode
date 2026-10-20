@@ -1,0 +1,62 @@
+# One-command demo (M13): DavNode with SQLite and sample data.
+#
+#   docker compose -f docker-compose.demo.yml up --build
+#
+# Then open the admin interface at http://localhost:8080/admin-ui/
+#   tenant  demo   user  admin   password  demo-admin-password
+# or point any DAV client at http://localhost:8080
+#   user  alice   password  demo-password-1   (so do bob, carol and dave)
+# Set DEMO_PORT to use another port.
+#
+# For trying things out only: well-known passwords, no HTTPS, data in a
+# throw-away volume. Never expose this to a network.
+services:
+  app:
+    build: .
+    ports:
+      - '${DEMO_PORT:-8080}:8080'
+    environment:
+      DAVNODE_DB_TYPE: better-sqlite3
+      DAVNODE_DB_FILE: /app/data/demo.sqlite
+      DAVNODE_DEFAULT_TENANT: demo
+      # The admin interface, including the read-only view of calendars and
+      # contacts (every read is logged). Both are off by default.
+      DAVNODE_ADMIN_UI_ENABLED: 'true'
+      DAVNODE_ADMIN_UI_CONTENT_VIEW: 'true'
+    volumes:
+      - demo-data:/app/data
+    # Start the server (it creates the schema), then create the demo tenant
+    # and administrator once it is up; on later starts they already exist.
+    command:
+      - sh
+      - -c
+      - |
+        node packages/server/dist/index.js &
+        server=$$!
+        trap 'kill $$server' TERM INT
+        until node -e "fetch('http://127.0.0.1:8080/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"; do sleep 1; done
+        node packages/core/dist/cli/bootstrap.js --tenant-slug=demo --tenant-name=Demo \
+          --username=admin --email=admin@example.com --password=demo-admin-password || true
+        wait $$server
+
+  seed:
+    build: .
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - ./scripts/demo:/demo:ro
+    # Fills the running server over HTTP; safe to run again.
+    command:
+      [
+        'node',
+        '/demo/seed.mjs',
+        'http://app:8080',
+        'demo',
+        'admin',
+        'demo-admin-password',
+      ]
+    restart: 'no'
+
+volumes:
+  demo-data:

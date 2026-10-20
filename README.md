@@ -1,27 +1,43 @@
 # DavNode
 
-DavNode is an open-source **WebDAV, CalDAV and CardDAV server** with
-per-user and per-group access control, multiple tenants, quotas and a REST
-admin API. It stores everything in one database (PostgreSQL, MySQL or
-SQLite), so a database backup is a complete backup.
+[![CI](https://github.com/kaigothe/DavNode/actions/workflows/ci.yml/badge.svg)](https://github.com/kaigothe/DavNode/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/kaigothe/DavNode)](https://github.com/kaigothe/DavNode/releases)
+[![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+
+**A self-hosted WebDAV, CalDAV and CardDAV server for files, calendars and
+contacts — with per-user and per-group access control, multiple tenants,
+quotas and a REST admin API. Everything lives in one database, so one
+database backup is a complete backup.**
 
 - **Files** over WebDAV (locking, ACLs, incremental sync).
 - **Calendars** over CalDAV, including invitations and replies between
   users (scheduling), free/busy, and a read-only `.ics` feed for clients
   that cannot speak CalDAV, such as Outlook.
 - **Contacts** over CardDAV.
-- Works with HTTP Basic, Digest or OAuth2 bearer tokens (from your own
-  OpenID Connect provider).
+- PostgreSQL, MySQL or SQLite; HTTP Basic, Digest or OAuth2 bearer tokens
+  (from your own OpenID Connect provider).
+- Health check, Prometheus metrics, rate limiting, a tested backup and
+  restore runbook, and a reference deployment with automatic HTTPS.
 
 DavNode is licensed under the
 [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only).
 
-> **Status.** All planned milestones are implemented and covered by
-> automated tests and by the litmus and CalDAVTester conformance suites
-> (see [Conformance](#conformance)). It has **not yet been tried with real
+> **Status.** All planned features are implemented and covered by automated
+> tests and by the litmus and CalDAVTester conformance suites (see
+> [Conformance](#conformance)). It has **not yet been tried with real
 > Apple, Windows, Thunderbird or DAVx5 installations**; the client
 > instructions below follow the standards and are untested on devices.
-> Please report what you find.
+> Please report what you find with the
+> [client compatibility report](https://github.com/kaigothe/DavNode/issues/new?template=client_compatibility.yml);
+> verified results are collected in the
+> [compatibility matrix](docs/client-compatibility.md).
+
+**Is it for you?** DavNode is a server, not a groupware suite: there is no
+web calendar or mail and no web interface for end users; administrators get a
+small [admin UI](docs/admin-ui.md) (off by default) next to the REST API. It
+runs as one instance. See [how it compares](docs/comparison.md) with
+Nextcloud, Radicale, Baïkal and DAViCal, and
+[who it is for](docs/positioning.md).
 
 ## Quick start
 
@@ -50,6 +66,16 @@ Try it:
 curl -u admin:choose-a-password -X PUT -d 'hello' http://localhost:8080/dav/demo/files/hello.txt
 curl -u admin:choose-a-password http://localhost:8080/dav/demo/files/hello.txt
 ```
+
+**Just want to look around?** `docker compose -f docker-compose.demo.yml up --build`
+starts a throw-away instance with sample users, groups, calendars, contacts
+and the [admin UI](docs/admin-ui.md) at <http://localhost:8080/admin-ui/>
+(tenant `demo`, user `admin`, password `demo-admin-password`); the other
+credentials are printed in the compose file.
+For a real server use the [deployment bundle](deploy/README.md) (published
+image, PostgreSQL and automatic HTTPS) or the
+[production setup](#production-deployment). The documentation is also
+available as a [searchable site](https://kaigothe.github.io/DavNode/).
 
 A _tenant_ is an independent organisation on the same server; all URLs
 start with `/dav/{tenant}/`. The administrator created above can create more
@@ -126,6 +152,26 @@ variable.
 | `DAVNODE_HTTP_HOST`        | `0.0.0.0` | Address to listen on.                                                                                                                                                                                                                                                                                                                   |
 | `DAVNODE_BEHIND_TLS_PROXY` | `false`   | Set `true` when exactly one reverse proxy terminates HTTPS in front of DavNode (the production compose file does). DavNode then sends `Strict-Transport-Security` and takes the client address from the proxy's `X-Forwarded-For`; without that, rate limiting would see only the proxy's address. DavNode never terminates TLS itself. |
 | `DAVNODE_DEFAULT_TENANT`   | unset     | Tenant slug that `/.well-known/caldav` and `/carddav` resolve plain user names to. Unset: users log in as `user@tenant`.                                                                                                                                                                                                                |
+
+### Admin UI
+
+A browser interface for the [Admin API](docs/admin-api.md): tenants, users,
+groups, quotas and, optionally, a read-only view of users' calendars and
+contacts. It is part of the image but **off by default**. When enabled it is
+served at `/admin-ui/` and signs in with the same credentials as the DAV
+endpoints; use it over HTTPS. English and German, light and dark. The
+[admin UI guide](docs/admin-ui.md) has the details.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/admin-ui/users-dark-en.png">
+  <img alt="The admin UI: the user list with roles and storage use" src="docs/assets/admin-ui/users-light-en.png">
+</picture>
+
+| Variable                        | Default  | Meaning                                                                                                                                                                                        |
+| ------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DAVNODE_ADMIN_UI_ENABLED`      | `false`  | Serve the admin UI at `/admin-ui/`.                                                                                                                                                            |
+| `DAVNODE_ADMIN_UI_CONTENT_VIEW` | `false`  | Let administrators read users' calendars and contacts through the Admin API and the UI. Every read is logged. Requires `DAVNODE_ADMIN_UI_ENABLED=true`; the server refuses to start otherwise. |
+| `DAVNODE_ADMIN_UI_DIR`          | built-in | Directory with the built UI, if you serve your own build. The server refuses to start when it is enabled but the directory has no `index.html`.                                                |
 
 ### Authentication
 
@@ -208,7 +254,8 @@ the quick start, prefixing `docker compose` with the same `--env-file` and
 REST and JSON under `/admin/{tenant}/`, HTTP Basic (or the other enabled
 schemes). A `tenant_admin` manages their own tenant; operations on tenants
 themselves are for `server_admin`s. Deletions require a confirmation field in
-the body.
+the body. The full specification is
+[docs/admin-api.openapi.yaml](docs/admin-api.openapi.yaml) (OpenAPI 3).
 
 | Area                     | Endpoints                                                                                                                                                         |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -252,112 +299,21 @@ npm run build --workspaces
 npm test                 # unit and integration tests (SQLite, in memory)
 npm run lint
 npm run docs             # API documentation (TypeDoc) into docs/api
+npm run docs:site        # the documentation site (VitePress) into docs/.vitepress/dist
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the architecture overview, code
-conventions and the pull request process. Planning documents (German) live
+conventions and the pull request process, [SECURITY.md](SECURITY.md) to report
+a vulnerability and [docs/security.md](docs/security.md) for the security
+model. Planning documents (German) live
 in [planning/](planning/) and the task breakdown in [milestones/](milestones/).
 
 ## Roadmap
 
-DavNode is built incrementally, one milestone at a time, with each
-milestone shipping a runnable, testable increment. Full task
-breakdowns live under [milestones/](milestones/); design rationale,
-architecture, and data model live under [planning/](planning/).
-
-| Milestone                                  | Task                                  | Description                                                                 | Status  |
-| ------------------------------------------ | ------------------------------------- | --------------------------------------------------------------------------- | ------- |
-| **M0 — Project Foundation**                |                                       | Repo, tooling, and infrastructure scaffolding — no runtime behavior yet     | ✅ Done |
-|                                            | Monorepo scaffold                     | npm workspaces layout (core/server/admin-api)                               | ✅ Done |
-|                                            | TypeScript, linting, testing          | Strict TS, ESLint/Prettier, Vitest                                          | ✅ Done |
-|                                            | TypeORM & database setup              | DB-agnostic DataSource (Postgres/SQLite/MySQL) + migrations                 | ✅ Done |
-|                                            | Docker setup                          | Dockerfile + Docker Compose                                                 | ✅ Done |
-|                                            | CI pipeline                           | GitHub Actions: lint, build, tests                                          | ✅ Done |
-|                                            | Code documentation                    | TSDoc → TypeDoc API docs                                                    | ✅ Done |
-|                                            | Changelog & release automation        | Conventional Commits → semantic-release                                     | ✅ Done |
-| **M1 — Core Data Model & Tenancy**         |                                       | Tenant/user/group data model and the first (Basic Auth) auth provider       | ✅ Done |
-|                                            | Core entities                         | Tenant, User, Group, Principal                                              | ✅ Done |
-|                                            | Credential & auth interface           | Basic Auth + pluggable provider interface                                   | ✅ Done |
-|                                            | Principal URL schema                  | Principal ↔ DAV URL mapping                                                 | ✅ Done |
-|                                            | Repository/service layer              | Shared Tenant/User/Group services                                           | ✅ Done |
-|                                            | Seed/bootstrap tooling                | CLI to create first tenant + admin                                          | ✅ Done |
-| **M2 — WebDAV Core (Class 1)**             |                                       | First runnable server — full WebDAV Class 1 file operations                 | ✅ Done |
-|                                            | WebDAV domain entities                | Collection, FileResource, FileContent                                       | ✅ Done |
-|                                            | Express server bootstrap              | Real HTTP server in `@davnode/server`                                       | ✅ Done |
-|                                            | XML & property infrastructure         | Shared multistatus/property XML plumbing                                    | ✅ Done |
-|                                            | PROPFIND                              | Read collection/resource metadata                                           | ✅ Done |
-|                                            | PROPPATCH                             | Set/remove dead properties                                                  | ✅ Done |
-|                                            | Resource CRUD                         | MKCOL/GET/PUT/DELETE + ETags                                                | ✅ Done |
-|                                            | COPY/MOVE                             | Copy/move files and collections                                             | ✅ Done |
-| **M3 — WebDAV ACL (RFC 3744)**             |                                       | Real per-user/group access control, replacing the M2 owner-only placeholder | ✅ Done |
-|                                            | ACE entities & privileges             | ACE tables + privilege vocabulary                                           | ✅ Done |
-|                                            | Group membership reverse lookup       | Resolve a principal's (transitive) groups                                   | ✅ Done |
-|                                            | ACL evaluation engine                 | Grant/deny privilege resolution                                             | ✅ Done |
-|                                            | ACL HTTP method                       | Set access rights via `ACL` method                                          | ✅ Done |
-|                                            | ACL properties                        | RFC 3744/5397 live properties on PROPFIND                                   | ✅ Done |
-|                                            | Principals & REPORT infrastructure    | Principals collection + generic REPORT dispatcher                           | ✅ Done |
-|                                            | Replace placeholder authorization     | Swap M2's owner-only rule for real ACL checks                               | ✅ Done |
-| **M4 — Locking (Class 2) & Sync**          |                                       | WebDAV Class 2 locking plus efficient incremental client sync               | ✅ Done |
-|                                            | Lock entities                         | `collection_locks`/`file_locks` tables                                      | ✅ Done |
-|                                            | Lock evaluation                       | Effective-lock resolution incl. inheritance                                 | ✅ Done |
-|                                            | LOCK method                           | Create/refresh locks                                                        | ✅ Done |
-|                                            | UNLOCK method                         | Release a held lock                                                         | ✅ Done |
-|                                            | Lock enforcement middleware           | Mutating methods honor lock tokens                                          | ✅ Done |
-|                                            | Lock properties                       | `supportedlock`/`lockdiscovery`                                             | ✅ Done |
-|                                            | sync-collection REPORT                | Incremental client sync (RFC 6578)                                          | ✅ Done |
-| **M5 — CardDAV (RFC 6352)**                |                                       | Contact/addressbook synchronization                                         | ✅ Done |
-|                                            | Addressbook domain entities           | Addressbook/AddressObject entities                                          | ✅ Done |
-|                                            | vCard parsing & index                 | Parse vCards into a searchable index                                        | ✅ Done |
-|                                            | Addressbook home & extended MKCOL     | Per-user addressbook home collection                                        | ✅ Done |
-|                                            | AddressObject CRUD                    | GET/PUT/DELETE for individual contacts                                      | ✅ Done |
-|                                            | ACL/lock/sync reuse                   | Wire addressbooks into M3/M4 infrastructure                                 | ✅ Done |
-|                                            | CardDAV REPORTs                       | `addressbook-query`/`-multiget`                                             | ✅ Done |
-| **M6 — CalDAV (RFC 4791)**                 |                                       | Calendar synchronization (excluding scheduling)                             | ✅ Done |
-|                                            | Calendar domain entities              | Calendar/CalendarObject entities                                            | ✅ Done |
-|                                            | iCalendar parsing & time-range index  | Parse events incl. recurrence                                               | ✅ Done |
-|                                            | Calendar home & MKCALENDAR            | Per-user calendar home collection                                           | ✅ Done |
-|                                            | CalendarObject CRUD                   | GET/PUT/DELETE for individual events                                        | ✅ Done |
-|                                            | ACL/lock/sync reuse                   | Wire calendars into M3/M4 infrastructure                                    | ✅ Done |
-|                                            | CalDAV REPORTs                        | `calendar-query`/`-multiget`, free-busy-query                               | ✅ Done |
-|                                            | ICS feed export                       | Read-only `.ics` subscription feed per calendar                             | ✅ Done |
-| **M7 — CalDAV Scheduling (RFC 6638)**      |                                       | Meeting invitations and free/busy via iTIP                                  | ✅ Done |
-|                                            | Scheduling data model                 | Scheduling inbox/outbox entities                                            | ✅ Done |
-|                                            | iTIP message generation               | Build REQUEST/REPLY/CANCEL messages                                         | ✅ Done |
-|                                            | Organizer invite workflow             | Deliver invites to attendees                                                | ✅ Done |
-|                                            | Attendee reply workflow               | Deliver PARTSTAT replies to organizer                                       | ✅ Done |
-|                                            | Cancel workflow                       | Deliver cancellations, clean up copies                                      | ✅ Done |
-|                                            | Scheduling outbox / free-busy         | Bulk free/busy queries via POST                                             | ✅ Done |
-|                                            | Scheduling privileges & routes        | Inbox/outbox collections + privileges                                       | ✅ Done |
-| **M8 — Quota Enforcement**                 |                                       | Per-user/tenant storage limits                                              | ✅ Done |
-|                                            | Quota counter utility                 | Atomic, race-free user/tenant counters                                      | ✅ Done |
-|                                            | WebDAV quota integration              | Enforce limits on PUT/DELETE                                                | ✅ Done |
-|                                            | CardDAV/CalDAV quota integration      | Same enforcement for contacts/events                                        | ✅ Done |
-|                                            | Quota properties                      | `quota-available-bytes`/`quota-used-bytes`                                  | ✅ Done |
-|                                            | Quota recompute                       | Periodic reconciliation job                                                 | ✅ Done |
-| **M9 — Admin/Management API**              |                                       | REST API for managing tenants, users, groups, and quota                     | ✅ Done |
-|                                            | Role model                            | Real `server_admin`/`tenant_admin`/user roles                               | ✅ Done |
-|                                            | Admin API scaffold                    | Express router mounted in `@davnode/server`                                 | ✅ Done |
-|                                            | Tenant management                     | CRUD for tenants + quota limits                                             | ✅ Done |
-|                                            | User management                       | CRUD for users within a tenant                                              | ✅ Done |
-|                                            | Group management                      | CRUD for groups + membership                                                | ✅ Done |
-|                                            | Quota management                      | Full admin route replacing the M8 stopgap                                   | ✅ Done |
-| **M10 — Extended Auth Providers**          |                                       | Digest Auth and OAuth2/Bearer support                                       | ✅ Done |
-|                                            | Credential entity retrofit            | Add Digest/OAuth2 columns                                                   | ✅ Done |
-|                                            | Digest Auth core                      | HA1-based verification                                                      | ✅ Done |
-|                                            | Digest Auth HTTP                      | Challenge/response handling                                                 | ✅ Done |
-|                                            | OAuth2 core                           | JWT/JWKS validation against an OIDC provider                                | ✅ Done |
-|                                            | OAuth2 HTTP                           | Bearer token handling (RFC 6750)                                            | ✅ Done |
-|                                            | Provider management                   | Enable/configure auth providers per tenant                                  | ✅ Done |
-| **M11 — Client Compatibility**             |                                       | Fixes for real-world Apple/Google/Microsoft client quirks                   | ✅ Done |
-|                                            | Well-known discovery                  | `/.well-known/caldav` and `/carddav` (RFC 6764)                             | ✅ Done |
-|                                            | Apple compatibility                   | `getctag` and other Apple client quirks                                     | ✅ Done |
-|                                            | vCard 3.0 compatibility               | Accept vCard 3.0 alongside 4.0                                              | ✅ Done |
-|                                            | Windows mini-redirector compatibility | Explorer WebDAV client support                                              | ✅ Done |
-|                                            | Google compatibility                  | Fixes found via real-world testing                                          | ✅ Done |
-|                                            | Conformance suite in CI               | litmus/CalDAVtester/CardDAVtester in CI                                     | ✅ Done |
-| **M12 — Hardening & Production Readiness** |                                       | Deployment, observability, backups, and security review                     | ✅ Done |
-|                                            | Health checks & production deployment | Health endpoint + production Compose reference                              | ✅ Done |
-|                                            | Observability                         | Structured logs + metrics endpoint                                          | ✅ Done |
-|                                            | Security hardening                    | Rate limiting and related fixes                                             | ✅ Done |
-|                                            | Backup & restore                      | Tested backup/restore runbook per DB engine                                 | ✅ Done |
-|                                            | Documentation                         | Standalone English user/contributor docs                                    | ✅ Done |
+DavNode was built milestone by milestone (M0–M12, all done): file access,
+ACLs, locking and sync, CardDAV, CalDAV with scheduling, quotas, the admin
+API, extra authentication methods, client compatibility and production
+hardening. The current milestone, **M13**, prepares the public launch:
+release images, real-client verification and documentation. The full table
+is in [docs/roadmap.md](docs/roadmap.md); task breakdowns live in
+[milestones/](milestones/), design rationale in [planning/](planning/).

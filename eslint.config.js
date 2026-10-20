@@ -3,6 +3,8 @@ import tseslint from 'typescript-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier';
 import tsdocPlugin from 'eslint-plugin-tsdoc';
 import jsdocPlugin from 'eslint-plugin-jsdoc';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
+import reactHooks from 'eslint-plugin-react-hooks';
 
 // Exported declaration shapes that make up a package's public API and
 // therefore require a TSDoc comment, per planning/07-coding-conventions.md:
@@ -22,7 +24,12 @@ const exportedDeclarationContexts = [
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/coverage/**', 'docs/api/**'],
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      'docs/api/**',
+      'docs/.vitepress/**',
+    ],
   },
   js.configs.recommended,
   // Non-type-aware TS linting for every .ts file, including root-level
@@ -36,11 +43,11 @@ export default tseslint.config(
   ...tseslint.configs.recommendedTypeChecked.map((config) => ({
     ...config,
     files: ['packages/*/src/**/*.ts'],
-    ignores: ['packages/*/src/**/*.test.ts'],
+    ignores: ['packages/*/src/**/*.test.ts', 'packages/admin-ui/**'],
   })),
   {
     files: ['packages/*/src/**/*.ts'],
-    ignores: ['packages/*/src/**/*.test.ts'],
+    ignores: ['packages/*/src/**/*.test.ts', 'packages/admin-ui/**'],
     languageOptions: {
       parserOptions: {
         projectService: true,
@@ -74,7 +81,7 @@ export default tseslint.config(
   // not part of a package's public API.
   {
     files: ['packages/*/src/**/*.ts'],
-    ignores: ['packages/*/src/**/*.test.ts'],
+    ignores: ['packages/*/src/**/*.test.ts', 'packages/admin-ui/**'],
     plugins: {
       tsdoc: tsdocPlugin,
       jsdoc: jsdocPlugin,
@@ -108,6 +115,48 @@ export default tseslint.config(
           contexts: exportedDeclarationContexts,
         },
       ],
+    },
+  },
+  // The admin UI (M14) is a browser app: React hooks and accessibility rules
+  // instead of the Node packages' type-aware and TSDoc rules.
+  {
+    files: ['packages/admin-ui/**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks, 'jsx-a11y': jsxA11y },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      ...jsxA11y.flatConfigs.recommended.rules,
+      // The UI shows other people's calendar and contact text: it is always
+      // rendered as text, never as markup (M14, 07-quality).
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+          message:
+            'Never inject HTML: event and contact text must be rendered as text.',
+        },
+        {
+          selector: "MemberExpression[property.name='innerHTML']",
+          message:
+            'Never assign innerHTML: event and contact text must be rendered as text.',
+        },
+      ],
+      // Credentials live in the session; nothing may end up in a console.
+      'no-console': 'error',
+    },
+    languageOptions: { ...jsxA11y.flatConfigs.recommended.languageOptions },
+  },
+  // Node scripts of the admin UI package (end-to-end server, bundle budget).
+  {
+    files: ['packages/admin-ui/{e2e,scripts}/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        Buffer: 'readonly',
+        // Code passed to page.evaluate() runs in the browser.
+        document: 'readonly',
+      },
     },
   },
   eslintConfigPrettier,

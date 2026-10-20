@@ -10,6 +10,7 @@ COPY package.json package-lock.json ./
 COPY packages/core/package.json packages/core/package.json
 COPY packages/server/package.json packages/server/package.json
 COPY packages/admin-api/package.json packages/admin-api/package.json
+COPY packages/admin-ui/package.json packages/admin-ui/package.json
 RUN npm ci
 
 COPY tsconfig.json tsconfig.base.json ./
@@ -25,11 +26,17 @@ COPY package.json package-lock.json ./
 COPY packages/core/package.json packages/core/package.json
 COPY packages/server/package.json packages/server/package.json
 COPY packages/admin-api/package.json packages/admin-api/package.json
-RUN npm ci --omit=dev
+COPY packages/admin-ui/package.json packages/admin-ui/package.json
+# Only the server and the packages it needs: the admin UI is a prebuilt
+# static bundle, its React/Ant Design dependencies are not needed at runtime.
+RUN npm ci --omit=dev --workspace=@davnode/server --include-workspace-root=false
 
 COPY --from=build /app/packages/core/dist packages/core/dist
 COPY --from=build /app/packages/server/dist packages/server/dist
 COPY --from=build /app/packages/admin-api/dist packages/admin-api/dist
+# The built admin UI; the server serves it only when
+# DAVNODE_ADMIN_UI_ENABLED=true (off by default).
+COPY --from=build /app/packages/admin-ui/dist packages/admin-ui/dist
 
 # Sensible defaults so the container runs with zero extra configuration:
 # a SQLite file under a writable data directory. createDataSource() would

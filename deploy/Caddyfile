@@ -1,0 +1,12 @@
+# Reverse proxy for docker-compose.prod.yml. Caddy obtains and renews a
+# Let's Encrypt certificate for $DOMAIN automatically (the domain must
+# resolve to this host and ports 80 and 443 must be reachable). For a local
+# trial use DOMAIN=localhost: Caddy then issues a certificate from its own
+# internal CA instead.
+{$DOMAIN} {
+	reverse_proxy app:8080 {
+		# Stop sending requests to an instance that reports itself down.
+		health_uri /healthz
+		health_interval 10s
+	}
+}

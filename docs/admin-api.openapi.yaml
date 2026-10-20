@@ -1,0 +1,987 @@
+openapi: 3.0.3
+info:
+  title: DavNode Admin API
+  version: 1.1.0
+  description: |
+    REST API to manage tenants, users, groups and quotas of a DavNode server.
+
+    Every path is below `/admin/{tenantSlug}` and is authenticated with the
+    same scheme(s) as the DAV endpoints (HTTP Basic, Digest or an OAuth2
+    bearer token). `{tenantSlug}` is the tenant of the *authenticated user*;
+    server-wide operations (tenants, metrics, quota limits) need the
+    `server_admin` role, everything else at least `tenant_admin`.
+
+    Errors are always `{"error": {"code": "...", "message": "..."}}`.
+  license:
+    name: AGPL-3.0-only
+    url: https://www.gnu.org/licenses/agpl-3.0.html
+servers:
+  - url: https://dav.example.com/admin/{tenantSlug}
+    variables:
+      tenantSlug:
+        default: demo
+security:
+  - basic: []
+  - bearer: []
+paths:
+  /me:
+    get:
+      summary: The authenticated user
+      description: |
+        Open to every role. Tells a client who it is talking as, so it can
+        distinguish wrong credentials (`401`) from a valid user without admin
+        rights (`role: member`), and which optional features are enabled.
+      operationId: getMe
+      tags: [Session]
+      responses:
+        '200':
+          description: The authenticated user.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /providers:
+    get:
+      summary: Authentication providers of the server
+      description: Read-only; providers are configured on the server. Contains no secrets.
+      operationId: listProviders
+      tags: [Session]
+      responses:
+        '200':
+          description: The providers and their state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Providers' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /users/{userId}/calendars:
+    get:
+      summary: Calendars of a user (read-only)
+      description: |
+        Only present when the server runs with the admin content view enabled
+        (`DAVNODE_ADMIN_UI_CONTENT_VIEW`); otherwise `404`. Every request is
+        written to the server log.
+      operationId: listUserCalendars
+      tags: [Content]
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: The calendars.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  calendars:
+                    type: array
+                    items: { $ref: '#/components/schemas/Calendar' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users/{userId}/calendars/{calendarId}/events:
+    get:
+      summary: Event instances of a calendar in a time window (read-only)
+      description: |
+        Recurring events are expanded. Only `VEVENT`s are listed. The window
+        may span at most 366 days; at most 5000 instances are returned
+        (`truncated`). Only present with the admin content view enabled.
+      operationId: listUserCalendarEvents
+      tags: [Content]
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - name: calendarId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          required: true
+          description: Exclusive end, after `from`.
+          schema: { type: string, format: date-time }
+        - $ref: '#/components/parameters/raw'
+      responses:
+        '200':
+          description: The event instances, ordered by start.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: '#/components/schemas/Event' }
+                  truncated: { type: boolean }
+                  skipped:
+                    type: integer
+                    description: Objects that could not be read or expand too densely.
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users/{userId}/addressbooks:
+    get:
+      summary: Address books of a user (read-only)
+      description: Only present with the admin content view enabled.
+      operationId: listUserAddressbooks
+      tags: [Content]
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: The address books.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  addressbooks:
+                    type: array
+                    items: { $ref: '#/components/schemas/Addressbook' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users/{userId}/addressbooks/{addressbookId}/contacts:
+    get:
+      summary: Contacts of an address book (read-only)
+      description: |
+        Paged (default `limit` 50, ordered by resource name). `q` searches
+        name, e-mail, phone and organization. Only present with the admin
+        content view enabled.
+      operationId: listUserContacts
+      tags: [Content]
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - name: addressbookId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/q'
+        - $ref: '#/components/parameters/raw'
+      responses:
+        '200':
+          description: One page of contacts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  contacts:
+                    type: array
+                    items: { $ref: '#/components/schemas/Contact' }
+                  total: { type: integer }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /tenants:
+    get:
+      summary: List all tenants
+      description: Requires `server_admin`.
+      operationId: listTenants
+      tags: [Tenants]
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/q'
+      responses:
+        '200':
+          description: All tenants.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenants:
+                    type: array
+                    items: { $ref: '#/components/schemas/Tenant' }
+                  total:
+                    type: integer
+                    description: Number of matches before `limit`/`offset` were applied.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Create a tenant
+      description: Requires `server_admin`.
+      operationId: createTenant
+      tags: [Tenants]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slug, name]
+              properties:
+                slug:
+                  type: string
+                  maxLength: 63
+                  pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
+                name: { type: string, minLength: 1 }
+                quotaLimitBytes: { $ref: '#/components/schemas/QuotaLimit' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tenant' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /tenants/{targetSlug}:
+    parameters:
+      - $ref: '#/components/parameters/targetSlug'
+    get:
+      summary: Get a tenant
+      operationId: getTenant
+      tags: [Tenants]
+      responses:
+        '200':
+          description: The tenant.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tenant' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      summary: Rename a tenant or change its quota limit
+      operationId: updateTenant
+      tags: [Tenants]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, minLength: 1 }
+                quotaLimitBytes: { $ref: '#/components/schemas/QuotaLimit' }
+      responses:
+        '200':
+          description: The updated tenant.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tenant' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: Delete a tenant with all its data
+      description: Irreversible. The body must repeat the slug.
+      operationId: deleteTenant
+      tags: [Tenants]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmSlug]
+              properties:
+                confirmSlug: { type: string }
+      responses:
+        '204': { description: Deleted. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users:
+    get:
+      summary: List the users of the tenant
+      operationId: listUsers
+      tags: [Users]
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/q'
+      responses:
+        '200':
+          description: The users.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items: { $ref: '#/components/schemas/User' }
+                  total:
+                    type: integer
+                    description: Number of matches before `limit`/`offset` were applied.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Create a user
+      description: Only a `server_admin` may create a `server_admin`.
+      operationId: createUser
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password]
+              properties:
+                username:
+                  type: string
+                  maxLength: 255
+                  description: No `:`, `/`, `\` or control characters.
+                email: { type: string, format: email }
+                password: { type: string, minLength: 1 }
+                role: { $ref: '#/components/schemas/Role' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /users/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/userId'
+    get:
+      summary: Get a user
+      operationId: getUser
+      tags: [Users]
+      responses:
+        '200':
+          description: The user.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      summary: Change e-mail, quota limit or role
+      description: The last `server_admin` cannot be demoted (409).
+      operationId: updateUser
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email }
+                quotaLimitBytes: { $ref: '#/components/schemas/QuotaLimit' }
+                role: { $ref: '#/components/schemas/Role' }
+      responses:
+        '200':
+          description: The updated user.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      summary: Delete a user and their data
+      description: >
+        The body must repeat the username. The last `server_admin` and the
+        owner of the tenant's root collection cannot be deleted (409).
+      operationId: deleteUser
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmUsername]
+              properties:
+                confirmUsername: { type: string }
+      responses:
+        '204': { description: Deleted. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /users/{userId}/password:
+    parameters:
+      - $ref: '#/components/parameters/userId'
+    post:
+      summary: Set a user's password
+      description: Also (re)creates the Digest credential when Digest is enabled.
+      operationId: setUserPassword
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, minLength: 1 }
+      responses:
+        '204': { description: Password set. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users/{userId}/oauth2-link:
+    parameters:
+      - $ref: '#/components/parameters/userId'
+    post:
+      summary: Link a user to an OpenID Connect identity
+      description: The issuer must be one of the server's trusted issuers.
+      operationId: linkOAuth2Identity
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [issuer, subject]
+              properties:
+                issuer: { type: string }
+                subject: { type: string }
+      responses:
+        '201':
+          description: Linked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issuer: { type: string }
+                  subject: { type: string }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: Remove the linked identity
+      operationId: unlinkOAuth2Identity
+      tags: [Users]
+      responses:
+        '204': { description: Unlinked. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /groups:
+    get:
+      summary: List the groups of the tenant
+      operationId: listGroups
+      tags: [Groups]
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/q'
+      responses:
+        '200':
+          description: The groups.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groups:
+                    type: array
+                    items: { $ref: '#/components/schemas/Group' }
+                  total:
+                    type: integer
+                    description: Number of matches before `limit`/`offset` were applied.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Create a group
+      operationId: createGroup
+      tags: [Groups]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1 }
+                description: { type: string, nullable: true }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Group' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /groups/{groupId}:
+    parameters:
+      - $ref: '#/components/parameters/groupId'
+    get:
+      summary: Get a group
+      operationId: getGroup
+      tags: [Groups]
+      responses:
+        '200':
+          description: The group.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Group' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: Delete a group
+      operationId: deleteGroup
+      tags: [Groups]
+      responses:
+        '204': { description: Deleted. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /groups/{groupId}/members:
+    parameters:
+      - $ref: '#/components/parameters/groupId'
+    get:
+      summary: List the direct members
+      operationId: listGroupMembers
+      tags: [Groups]
+      responses:
+        '200': { $ref: '#/components/responses/Members' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      summary: Add a user or group as member
+      operationId: addGroupMember
+      tags: [Groups]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [principalId]
+              properties:
+                principalId: { type: string, format: uuid }
+      responses:
+        '204': { description: Added. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /groups/{groupId}/members/effective:
+    parameters:
+      - $ref: '#/components/parameters/groupId'
+    get:
+      summary: List members including those of nested groups
+      operationId: listEffectiveGroupMembers
+      tags: [Groups]
+      responses:
+        '200': { $ref: '#/components/responses/Members' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /groups/{groupId}/members/{principalId}:
+    parameters:
+      - $ref: '#/components/parameters/groupId'
+      - name: principalId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      summary: Remove a member
+      operationId: removeGroupMember
+      tags: [Groups]
+      responses:
+        '204': { description: Removed (also when it was not a member). }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /quota:
+    get:
+      summary: Quota overview of the tenant and its users
+      operationId: getQuota
+      tags: [Quota]
+      responses:
+        '200':
+          description: Limits and usage.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuotaOverview' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    patch:
+      summary: Set the tenant's quota limit
+      description: Requires `server_admin`.
+      operationId: setTenantQuota
+      tags: [Quota]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quotaLimitBytes]
+              properties:
+                quotaLimitBytes: { $ref: '#/components/schemas/QuotaLimit' }
+      responses:
+        '200':
+          description: Updated overview.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuotaOverview' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /quota/recompute:
+    post:
+      summary: Recompute usage from the stored data
+      operationId: recomputeQuota
+      tags: [Quota]
+      responses:
+        '200':
+          description: Recomputed overview.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuotaOverview' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      description: Requires `server_admin`; absent when metrics are disabled.
+      operationId: getMetrics
+      tags: [Operations]
+      responses:
+        '200':
+          description: Prometheus text exposition format.
+          content:
+            text/plain:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+components:
+  securitySchemes:
+    basic: { type: http, scheme: basic }
+    bearer: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    limit:
+      name: limit
+      in: query
+      description: Page size, 1 to 500. Without it the whole list is returned.
+      schema: { type: integer, minimum: 1, maximum: 500 }
+    offset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    q:
+      name: q
+      in: query
+      description: Case-insensitive search text.
+      schema: { type: string }
+    raw:
+      name: raw
+      in: query
+      description: Include the stored iCalendar/vCard text.
+      schema: { type: boolean, default: false }
+    targetSlug:
+      name: targetSlug
+      in: path
+      required: true
+      schema: { type: string }
+    userId:
+      name: userId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    groupId:
+      name: groupId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    BadRequest:
+      description: Invalid input.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Missing or wrong credentials.
+    Forbidden:
+      description: The role is not sufficient.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Not found.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: The change would break an invariant (for example the last server_admin).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Members:
+      description: Members as users and groups.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [members]
+            properties:
+              members:
+                type: array
+                items: { $ref: '#/components/schemas/Member' }
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string, example: invalid_quota }
+            message: { type: string }
+    QuotaLimit:
+      type: integer
+      nullable: true
+      minimum: 0
+      description: Limit in bytes; `null` means unlimited.
+    Role:
+      type: string
+      enum: [server_admin, tenant_admin, member]
+    Me:
+      type: object
+      required:
+        [
+          id,
+          principalId,
+          username,
+          email,
+          role,
+          tenant,
+          anchorTenant,
+          capabilities,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        principalId: { type: string, format: uuid }
+        username: { type: string }
+        email: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        tenant:
+          type: object
+          required: [id, slug, name]
+          properties:
+            id: { type: string, format: uuid }
+            slug: { type: string }
+            name: { type: string }
+        anchorTenant:
+          type: string
+          description: Slug of the tenant the request URL addressed.
+        capabilities:
+          type: object
+          required: [contentView]
+          properties:
+            contentView:
+              type: boolean
+              description: The read-only calendar/contact routes exist.
+    Providers:
+      type: object
+      required: [providers, oauth2Issuers]
+      properties:
+        providers:
+          type: array
+          items:
+            type: object
+            required: [id, enabled]
+            properties:
+              id: { type: string, enum: [basic, digest, oauth2] }
+              enabled: { type: boolean }
+        oauth2Issuers:
+          type: array
+          items: { type: string }
+    Calendar:
+      type: object
+      required:
+        [id, name, displayName, description, timezone, objectCount, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        displayName: { type: string }
+        description: { type: string, nullable: true }
+        timezone: { type: string, nullable: true }
+        objectCount: { type: integer }
+        updatedAt: { type: string, format: date-time }
+    Event:
+      type: object
+      required:
+        [
+          objectId,
+          uid,
+          name,
+          summary,
+          location,
+          description,
+          start,
+          end,
+          isAllDay,
+          isRecurring,
+          isOverride,
+          status,
+          transparency,
+        ]
+      properties:
+        objectId: { type: string, format: uuid }
+        uid: { type: string }
+        name: { type: string }
+        summary: { type: string, nullable: true }
+        location: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time }
+        isAllDay: { type: boolean }
+        isRecurring: { type: boolean }
+        isOverride: { type: boolean }
+        status:
+          type: string
+          nullable: true
+          enum: [tentative, confirmed, cancelled, null]
+        transparency: { type: string, enum: [opaque, transparent] }
+        raw: { type: string, description: Only with `raw=true`. }
+    Addressbook:
+      type: object
+      required: [id, displayName, description, contactCount, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string }
+        description: { type: string, nullable: true }
+        contactCount: { type: integer }
+        updatedAt: { type: string, format: date-time }
+    ContactValue:
+      type: object
+      required: [value, types]
+      properties:
+        value: { type: string }
+        types: { type: array, items: { type: string } }
+    Contact:
+      type: object
+      required:
+        [
+          id,
+          uid,
+          name,
+          displayName,
+          organization,
+          title,
+          emails,
+          phones,
+          addresses,
+          birthday,
+          notes,
+          hasPhoto,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        uid: { type: string }
+        name: { type: string }
+        displayName: { type: string }
+        organization: { type: string, nullable: true }
+        title: { type: string, nullable: true }
+        emails:
+          type: array
+          items: { $ref: '#/components/schemas/ContactValue' }
+        phones:
+          type: array
+          items: { $ref: '#/components/schemas/ContactValue' }
+        addresses: { type: array, items: { type: string } }
+        birthday: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+        hasPhoto: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+        raw: { type: string, description: Only with `raw=true`. }
+    Tenant:
+      type: object
+      required: [id, slug, name, quotaLimitBytes, quotaUsedBytes, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        quotaLimitBytes: { $ref: '#/components/schemas/QuotaLimit' }
+        quotaUsedBytes: { type: integer }
+        createdAt: { type: string, format: date-time }
+    User:
+      type: object
+      required:
+        [
+          id,
+          principalId,
+          username,
+          email,
+          role,
+          quotaLimitBytes,
+          quotaUsedBytes,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        principalId: { type: string, format: uuid }
+        username: { type: string }
+        email: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        quotaLimitBytes: { $ref: '#/components/schemas/QuotaLimit' }
+        quotaUsedBytes: { type: integer }
+        createdAt: { type: string, format: date-time }
+    Member:
+      type: object
+      required: [principalId, kind, name]
+      properties:
+        principalId: { type: string, format: uuid }
+        kind: { type: string, enum: [user, group, special] }
+        name:
+          type: string
+          nullable: true
+          description: The user name or group name; `null` for a special principal.
+    Group:
+      type: object
+      required: [id, principalId, name, description]
+      properties:
+        id: { type: string, format: uuid }
+        principalId: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string, nullable: true }
+    QuotaOverview:
+      type: object
+      required: [tenant, users]
+      properties:
+        tenant:
+          type: object
+          required: [id, slug, quotaLimitBytes, quotaUsedBytes]
+          properties:
+            id: { type: string, format: uuid }
+            slug: { type: string }
+            quotaLimitBytes: { $ref: '#/components/schemas/QuotaLimit' }
+            quotaUsedBytes: { type: integer }
+        users:
+          type: array
+          items:
+            type: object
+            required: [id, username, quotaLimitBytes, quotaUsedBytes]
+            properties:
+              id: { type: string, format: uuid }
+              username: { type: string }
+              quotaLimitBytes: { $ref: '#/components/schemas/QuotaLimit' }
+              quotaUsedBytes: { type: integer }

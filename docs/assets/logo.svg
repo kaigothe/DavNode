@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="DavNode">
+  <rect width="256" height="256" rx="48" fill="#0f172a"/>
+  <g fill="none" stroke="#38bdf8" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M72 84h56a44 44 0 0 1 0 88H72z"/>
+  </g>
+  <g fill="#38bdf8">
+    <circle cx="190" cy="84" r="14"/>
+    <circle cx="190" cy="172" r="14"/>
+  </g>
+  <path d="M128 128h48M176 128l14-44M176 128l14 44" stroke="#e2e8f0" stroke-width="8" stroke-linecap="round" fill="none"/>
+</svg>

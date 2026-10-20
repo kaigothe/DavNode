@@ -5,6 +5,28 @@ on:
   pull_request:
 
 jobs:
+  # Developer Certificate of Origin: every non-merge, non-bot commit of a
+  # pull request needs a Signed-off-by trailer (see CONTRIBUTING.md).
+  dco:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check Signed-off-by trailers
+        run: |
+          missing=0
+          for sha in $(git rev-list --no-merges "origin/${{ github.base_ref }}..HEAD"); do
+            author=$(git log -1 --format=%ae "$sha")
+            case "$author" in *'[bot]'*) continue ;; esac
+            if ! git log -1 --format=%B "$sha" | grep -qiE '^Signed-off-by: .+ <.+>'; then
+              echo "::error::Commit $sha has no Signed-off-by line (use git commit -s)"
+              missing=1
+            fi
+          done
+          exit $missing
+
   lint-and-build:
     runs-on: ubuntu-latest
     steps:
@@ -16,6 +38,15 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build --workspaces
+      # The admin UI's API types are generated from the OpenAPI document and
+      # checked in; a change to the spec without regenerating them fails here.
+      - name: Admin UI API types are up to date
+        run: |
+          npm run generate:api -w @davnode/admin-ui
+          git diff --exit-code packages/admin-ui/src/api/schema.d.ts
+      # The admin UI must stay within its download budget (gzip).
+      - name: Admin UI stays within its bundle budget
+        run: npm run check:budget -w @davnode/admin-ui
 
   test:
     needs: lint-and-build
@@ -86,6 +117,31 @@ jobs:
       - run: npm run build --workspaces
       - run: npm test --workspaces
 
+  # The admin UI in a real browser against a real server (M14): the
+  # management and calendar/contact flows, axe accessibility checks with
+  # colour contrast in both themes, the keyboard and the XSS case.
+  admin-ui-e2e:
+    needs: lint-and-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspaces
+      - run: npx playwright install --with-deps chromium
+        working-directory: packages/admin-ui
+      - run: npm run test:e2e -w @davnode/admin-ui
+      - name: Upload the traces of failed tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-ui-e2e-traces
+          path: packages/admin-ui/test-results
+          if-no-files-found: ignore
+
   # WebDAV conformance (M11, milestones/M11-client-compatibility/
   # 06-conformance-suite-ci): the litmus suites run against a real server
   # started from the build. The result is evaluated differentially by
@@ -150,8 +206,72 @@ jobs:
             .conformance/server.log
           if-no-files-found: warn
 
+  # Data written by the previous release must survive the migrations of this
+  # commit (M13, scripts/upgrade-test/run.sh).
+  upgrade-test:
+    needs: lint-and-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspaces
+      - run: scripts/upgrade-test/run.sh
+
+  # The container image must build, become healthy and serve a file round
+  # trip (M13, 03-distribution/01-docker-image-release).
+  docker-smoke:
+    needs: lint-and-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t davnode:ci .
+      - name: Start, bootstrap and talk to the container
+        run: |
+          docker run -d --name davnode -p 8080:8080 davnode:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8080/healthz && break
+            sleep 2
+          done
+          docker exec davnode node packages/core/dist/cli/bootstrap.js \
+            --tenant-slug=ci --tenant-name=CI --username=admin \
+            --email=admin@example.com --password=ci-password-123
+          curl -fsS -u admin:ci-password-123 -X PUT -d hello http://127.0.0.1:8080/dav/ci/files/hello.txt
+          test "$(curl -fsS -u admin:ci-password-123 http://127.0.0.1:8080/dav/ci/files/hello.txt)" = hello
+      # The admin UI (M14) is shipped in the image but off by default.
+      - name: Admin UI is off by default and served when enabled
+        run: |
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/admin-ui/)" = 404
+          docker run -d --name davnode-ui -p 8081:8080 -e DAVNODE_ADMIN_UI_ENABLED=true davnode:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8081/healthz && break
+            sleep 2
+          done
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8081/admin-ui/)" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8081/admin-ui/users)" = 200
+          curl -fsS http://127.0.0.1:8081/admin-ui/ | grep -q 'DavNode Admin'
+      - name: Container log on failure
+        if: failure()
+        run: |
+          docker logs davnode
+          docker logs davnode-ui || true
+
   release:
-    needs: [lint-and-build, test, litmus, caldavtester]
+    needs:
+      [
+        lint-and-build,
+        test,
+        admin-ui-e2e,
+        litmus,
+        caldavtester,
+        docker-smoke,
+        upgrade-test,
+      ]
     # Only push events to main create releases — pull_request runs (and
     # pushes to any other branch) skip this job. .releaserc.json's own
     # `branches: ["main"]` would refuse a release anyway, but gating here
@@ -174,6 +294,36 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Remember the latest tag
+        id: before
+        run: echo "tag=$(git describe --tags --abbrev=0 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
       - run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Events created with GITHUB_TOKEN do not trigger other workflows, so
+      # the image job below is chained to this one instead of to the tag.
+      - name: Detect a new release
+        id: version
+        run: |
+          git fetch --tags --force
+          after=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -n "$after" ] && [ "$after" != "${{ steps.before.outputs.tag }}" ]; then
+            echo "tag=$after" >> "$GITHUB_OUTPUT"
+          fi
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+
+  # Container image and deployment bundle for a new release (M13,
+  # milestones/M13-open-source-launch/03-distribution). The `container-release`
+  # environment lets the maintainer require a manual approval for publishing.
+  publish-image:
+    needs: release
+    if: needs.release.outputs.tag != ''
+    uses: ./.github/workflows/release-image.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write

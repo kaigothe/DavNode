@@ -6,6 +6,7 @@ import {
   isQuotaLimit,
   parseJsonBody,
 } from './request-body.util.js';
+import { paginate, parseListQuery } from './pagination.util.js';
 import { requireAdminRole } from './require-admin-role.middleware.js';
 
 /** The JSON representation of a tenant in Admin API responses. */
@@ -89,9 +90,17 @@ export function registerTenantRoutes(
     res.status(201).json(toTenantBody(tenant));
   });
 
-  router.get('/tenants', serverAdmin, async (_req, res) => {
-    const all = await tenants.listTenants();
-    res.json({ tenants: all.map(toTenantBody) });
+  router.get('/tenants', serverAdmin, async (req, res) => {
+    const query = parseListQuery(req, res);
+    if (!query) {
+      return;
+    }
+    const { items, total } = paginate(
+      await tenants.listTenants(),
+      query,
+      (tenant) => [tenant.slug, tenant.name],
+    );
+    res.json({ tenants: items.map(toTenantBody), total });
   });
 
   router.get('/tenants/:targetSlug', serverAdmin, async (req, res) => {

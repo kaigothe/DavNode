@@ -1,0 +1,45 @@
+{
+  "name": "@davnode/admin-ui",
+  "version": "1.29.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "generate:api": "openapi-typescript ../../docs/admin-api.openapi.yaml -o src/api/schema.d.ts",
+    "test": "vitest run --root ../.. --project \"$npm_package_name\"",
+    "check:budget": "node scripts/check-bundle-size.mjs",
+    "test:e2e": "playwright test",
+    "screenshots": "node scripts/screenshots.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.64.1",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "axe-core": "^4.14.0",
+    "jsdom": "^29.1.1",
+    "openapi-typescript": "^7.13.0",
+    "vite": "^8.3.4",
+    "yaml": "^2.9.1"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6.3.4",
+    "@tanstack/react-query": "^5.104.5",
+    "antd": "^6.6.7",
+    "dayjs": "^1.11.23",
+    "i18next": "^26.5.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-i18next": "^17.1.0",
+    "react-router": "^7.18.4"
+  }
+}

@@ -1,0 +1,101 @@
+name: Release image
+
+# Builds, scans, signs and publishes the container image and attaches the
+# deployment bundle to the GitHub release. Called by ci.yml after
+# semantic-release created a release; can also be run by hand for a tag.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag, e.g. v1.30.0
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, e.g. v1.30.0
+        required: true
+        type: string
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    # Configure required reviewers on this environment in the repository
+    # settings to approve every publication manually.
+    environment: container-release
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ inputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.tag }}
+            type=semver,pattern={{major}},value=${{ inputs.tag }},enable=${{ !startsWith(inputs.tag, 'v0.') }}
+            type=raw,value=latest
+          labels: |
+            org.opencontainers.image.title=DavNode
+            org.opencontainers.image.description=WebDAV, CalDAV and CardDAV server with ACLs, tenants and quotas
+            org.opencontainers.image.licenses=AGPL-3.0-only
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - uses: sigstore/cosign-installer@v3
+      - name: Sign the image (keyless)
+        run: cosign sign --yes "ghcr.io/${GITHUB_REPOSITORY,,}@${{ steps.build.outputs.digest }}"
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+      # Scan after publishing so the report covers exactly what was shipped;
+      # a finding blocks the next release's approval, not this signed image.
+      - name: Scan the image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+
+  bundle:
+    needs: image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - name: Build and attach the deployment bundle
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          sed -i "s|^DAVNODE_VERSION=.*|DAVNODE_VERSION=${TAG#v}|" deploy/.env.example
+          zip -j "davnode-deploy-${TAG}.zip" deploy/docker-compose.yml deploy/.env.example deploy/Caddyfile deploy/README.md
+          gh release upload "$TAG" "davnode-deploy-${TAG}.zip" --clobber

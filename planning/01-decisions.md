@@ -739,4 +739,21 @@ durcharbeiten.
 
 ---
 
+## 2026-10-20 — Admin-UI (M14)
+
+**Umfang**: React-SPA (Vite, Ant Design) als Paket `packages/admin-ui`,
+Umfang M13 + lesende Kalender-/Kontakte-Ansicht, Sprachen de/en, Theme
+System/Hell/Dunkel.
+**Auslieferung**: durch den Express-Server unter `/admin-ui`, gleicher
+Origin (kein CORS), per Env-Flag `DAVNODE_ADMIN_UI_ENABLED` abschaltbar,
+Default aus.
+**Login**: Basic-Credentials nur in `sessionStorage`, keine Cookies/Sessions.
+**Backend**: Admin-API wird erweitert (`/me`, Pagination, `/providers`,
+Inhalts-Endpoints hinter eigenem Flag), alles in der OpenAPI-Spec.
+
+*Status: entschieden* — Aufgaben in
+[milestones/M14-admin-ui](../milestones/M14-admin-ui/00-setting-goal.md).
+
+---
+
 <!-- Weitere Einträge werden hier ergänzt -->

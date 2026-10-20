@@ -18,6 +18,8 @@ import {
   type Logger,
   type LogLevel,
 } from './logging/logger.js';
+import { parseAdminUiConfig } from './admin-ui-config.js';
+import { defaultAdminUiDirectory } from './http/routes/admin-ui.route.js';
 import { parseAuthConfig } from './auth-config.js';
 import { parseSecurityConfig } from './security/security-config.js';
 
@@ -84,6 +86,7 @@ export async function startServer(
   // unknown provider, oauth2 without issuers) fails fast and clearly.
   const auth = parseAuthConfig(env);
   const security = parseSecurityConfig(env);
+  const adminUi = parseAdminUiConfig(env);
   const logger =
     options.logger ?? createLogger(parseLogLevel(env.DAVNODE_LOG_LEVEL));
   // Messages from @davnode/core and the error handlers go to the same log.
@@ -114,6 +117,10 @@ export async function startServer(
     security,
     logger,
     defaultTenant: env.DAVNODE_DEFAULT_TENANT?.trim() || undefined,
+    adminContentView: adminUi.contentView,
+    adminUi: adminUi.enabled
+      ? { directory: adminUi.directory ?? defaultAdminUiDirectory() }
+      : undefined,
   });
   const port = env.DAVNODE_HTTP_PORT
     ? Number(env.DAVNODE_HTTP_PORT)

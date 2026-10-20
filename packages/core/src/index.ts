@@ -211,6 +211,19 @@ export {
   GroupService,
 } from './services/group.service.js';
 export { GroupMembershipService } from './services/group-membership.service.js';
+export {
+  ContentInspectionService,
+  MAX_EVENT_INSTANCES,
+  MAX_EVENT_OBJECTS,
+  MAX_EVENT_WINDOW_MS,
+  type InspectedAddressbook,
+  type InspectedCalendar,
+  type InspectedContact,
+  type InspectedContactValue,
+  type InspectedEvent,
+  type InspectedEvents,
+  type ListContactsOptions,
+} from './services/content-inspection.service.js';
 export { requireRole } from './services/authorization/require-role.js';
 
 export {

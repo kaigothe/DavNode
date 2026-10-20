@@ -1,0 +1,19 @@
+/* Screenshots come in a light and a dark variant; show the one that matches
+   the theme the reader picked on the site. */
+.dark .only-light,
+:root:not(.dark) .only-dark {
+  display: none;
+}
+
+.screenshot {
+  margin: 16px 0;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.screenshot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
