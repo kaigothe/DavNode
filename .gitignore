@@ -51,3 +51,7 @@ npm-debug.log*
 .upgrade-test/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
+
+# Playwright (admin UI end-to-end tests)
+test-results/
+playwright-report/
