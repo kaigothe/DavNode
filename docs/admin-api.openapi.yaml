@@ -763,6 +763,17 @@ components:
       enum: [server_admin, tenant_admin, member]
     Me:
       type: object
+      required:
+        [
+          id,
+          principalId,
+          username,
+          email,
+          role,
+          tenant,
+          anchorTenant,
+          capabilities,
+        ]
       properties:
         id: { type: string, format: uuid }
         principalId: { type: string, format: uuid }
@@ -771,6 +782,7 @@ components:
         role: { $ref: '#/components/schemas/Role' }
         tenant:
           type: object
+          required: [id, slug, name]
           properties:
             id: { type: string, format: uuid }
             slug: { type: string }
@@ -780,17 +792,20 @@ components:
           description: Slug of the tenant the request URL addressed.
         capabilities:
           type: object
+          required: [contentView]
           properties:
             contentView:
               type: boolean
               description: The read-only calendar/contact routes exist.
     Providers:
       type: object
+      required: [providers, oauth2Issuers]
       properties:
         providers:
           type: array
           items:
             type: object
+            required: [id, enabled]
             properties:
               id: { type: string, enum: [basic, digest, oauth2] }
               enabled: { type: boolean }
@@ -799,6 +814,8 @@ components:
           items: { type: string }
     Calendar:
       type: object
+      required:
+        [id, name, displayName, description, timezone, objectCount, updatedAt]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -809,6 +826,22 @@ components:
         updatedAt: { type: string, format: date-time }
     Event:
       type: object
+      required:
+        [
+          objectId,
+          uid,
+          name,
+          summary,
+          location,
+          description,
+          start,
+          end,
+          isAllDay,
+          isRecurring,
+          isOverride,
+          status,
+          transparency,
+        ]
       properties:
         objectId: { type: string, format: uuid }
         uid: { type: string }
@@ -829,6 +862,7 @@ components:
         raw: { type: string, description: Only with `raw=true`. }
     Addressbook:
       type: object
+      required: [id, displayName, description, contactCount, updatedAt]
       properties:
         id: { type: string, format: uuid }
         displayName: { type: string }
@@ -837,11 +871,28 @@ components:
         updatedAt: { type: string, format: date-time }
     ContactValue:
       type: object
+      required: [value, types]
       properties:
         value: { type: string }
         types: { type: array, items: { type: string } }
     Contact:
       type: object
+      required:
+        [
+          id,
+          uid,
+          name,
+          displayName,
+          organization,
+          title,
+          emails,
+          phones,
+          addresses,
+          birthday,
+          notes,
+          hasPhoto,
+          updatedAt,
+        ]
       properties:
         id: { type: string, format: uuid }
         uid: { type: string }
@@ -863,6 +914,7 @@ components:
         raw: { type: string, description: Only with `raw=true`. }
     Tenant:
       type: object
+      required: [id, slug, name, quotaLimitBytes, quotaUsedBytes, createdAt]
       properties:
         id: { type: string, format: uuid }
         slug: { type: string }
@@ -872,6 +924,17 @@ components:
         createdAt: { type: string, format: date-time }
     User:
       type: object
+      required:
+        [
+          id,
+          principalId,
+          username,
+          email,
+          role,
+          quotaLimitBytes,
+          quotaUsedBytes,
+          createdAt,
+        ]
       properties:
         id: { type: string, format: uuid }
         principalId: { type: string, format: uuid }
@@ -883,6 +946,7 @@ components:
         createdAt: { type: string, format: date-time }
     Group:
       type: object
+      required: [id, principalId, name, description]
       properties:
         id: { type: string, format: uuid }
         principalId: { type: string, format: uuid }
@@ -890,9 +954,11 @@ components:
         description: { type: string, nullable: true }
     QuotaOverview:
       type: object
+      required: [tenant, users]
       properties:
         tenant:
           type: object
+          required: [id, slug, quotaLimitBytes, quotaUsedBytes]
           properties:
             id: { type: string, format: uuid }
             slug: { type: string }
@@ -902,6 +968,7 @@ components:
           type: array
           items:
             type: object
+            required: [id, username, quotaLimitBytes, quotaUsedBytes]
             properties:
               id: { type: string, format: uuid }
               username: { type: string }
