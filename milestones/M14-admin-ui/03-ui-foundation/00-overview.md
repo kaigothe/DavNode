@@ -7,9 +7,9 @@ Repo-Konventionen entspricht (siehe
 
 ## Sub-Tasks
 1. **Paket anlegen**: `packages/admin-ui` (private, AGPL-3.0-only, ESM),
-   Vite + React 18/19 + TypeScript strict, `base: '/admin-ui/'`. Anbindung an
+   Vite + React 19 + TypeScript strict, `base: '/admin-ui/'`. Anbindung an
    Root-`tsconfig`, ESLint (react-hooks, jsx-a11y), Prettier, Vitest-Projekt.
-2. **Bibliotheken**: Ant Design 5 (`ConfigProvider`, `theme.darkAlgorithm`),
+2. **Bibliotheken**: Ant Design 6 (`ConfigProvider`, `theme.darkAlgorithm`),
    React Router, TanStack Query, `react-i18next` (oder `lingui`; Entscheidung
    im Sub-Task begründen), `dayjs` (Ant-Design-kompatibel) für Datumsformate.
 3. **API-Client**: Typen aus der OpenAPI-Spec generieren

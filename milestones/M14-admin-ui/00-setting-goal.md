@@ -4,7 +4,7 @@
 M9 lieferte die Admin-REST-API, M13 stellte die Admin-UI zurück
 ([M13/05-demo-and-admin-ui/03-admin-ui.md](../M13-open-source-launch/05-demo-and-admin-ui/03-admin-ui.md)).
 M14 baut sie: eine React-SPA im neuen Workspace-Paket
-`packages/admin-ui` (Vite, TypeScript, Ant Design 5), die **ausschließlich**
+`packages/admin-ui` (Vite, TypeScript, Ant Design 6), die **ausschließlich**
 die dokumentierte Admin-API nutzt und vom Express-Server selbst
 ausgeliefert wird.
 
@@ -44,6 +44,13 @@ Ein `server_admin` bzw. `tenant_admin` verwaltet Tenants, Nutzer, Gruppen
 und Quota komplett im Browser, sieht Provider-Status und (optional)
 Kalender/Kontakte eines Nutzers — ohne `curl`. Die UI ist zweisprachig,
 barrierearm, mit System/Hell/Dunkel-Theme und standardmäßig abgeschaltet.
+
+## Stand
+- ✅ 1 Backend-Ergänzungen, ✅ 2 Auslieferung & Flag, ✅ 3 UI-Fundament
+- 🔶 4 Shell/Auth/i18n/Theme: Login, rollenabhängige Shell, de/en,
+  System/Hell/Dunkel und Übersichtsseite sind fertig; die Seiten kommen
+  mit Aufgabe 5 und 6.
+- ⏳ 5–8 offen.
 
 ## Große Aufgaben (Übersicht)
 1. [Backend-Ergänzungen](01-backend-additions/00-overview.md)
