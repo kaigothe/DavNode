@@ -159,6 +159,7 @@ const routes: Routes = {
           displayName: 'Work',
           description: null,
           timezone: null,
+          color: null,
           objectCount: 1,
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -270,9 +271,7 @@ describe.each(['light', 'dark'] as const)(
 
     it('has no violations in the event drawer', async () => {
       await open(`/users/${alice.id}/content`, 'Standup');
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: 'Details: Standup' }));
+      await userEvent.setup().click(screen.getByLabelText(/^Standup, /));
       await screen.findByRole('dialog');
 
       expect(await accessibilityProblems()).toEqual([]);

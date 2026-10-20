@@ -303,6 +303,23 @@ export const en = {
       'Showing {{shown}} of {{buffered}} lines in the buffer, which keeps at most {{capacity}}.',
     empty: 'No lines match.',
   },
+  calendar: {
+    today: 'Today',
+    view: 'View',
+    views: { day: 'Day', week: 'Week', month: 'Month' },
+    previous: {
+      day: 'Previous day',
+      week: 'Previous week',
+      month: 'Previous month',
+    },
+    next: { day: 'Next day', week: 'Next week', month: 'Next month' },
+    calendars: 'Calendars',
+    miniMonth: 'Month navigation',
+    sidebar: 'Calendar list and month',
+    eventLabel: '{{title}}, {{when}}, calendar {{calendar}}',
+    eventLabelWithPlace:
+      '{{title}}, {{when}}, {{place}}, calendar {{calendar}}',
+  },
   errors: {
     unauthorized: 'The username or password is wrong.',
     forbidden: 'You are not allowed to do this.',

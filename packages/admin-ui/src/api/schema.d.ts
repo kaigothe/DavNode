@@ -527,6 +527,8 @@ export interface components {
       displayName: string;
       description: string | null;
       timezone: string | null;
+      /** @description The colour a client gave the calendar (Apple's `calendar-color`), or `null`. */
+      color: string | null;
       objectCount: number;
       /** Format: date-time */
       updatedAt: string;

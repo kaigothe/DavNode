@@ -308,6 +308,27 @@ export const de: Translation = {
       'Zeigt {{shown}} von {{buffered}} Zeilen im Puffer, der höchstens {{capacity}} hält.',
     empty: 'Keine Zeile passt.',
   },
+  calendar: {
+    today: 'Heute',
+    view: 'Ansicht',
+    views: { day: 'Tag', week: 'Woche', month: 'Monat' },
+    previous: {
+      day: 'Voriger Tag',
+      week: 'Vorige Woche',
+      month: 'Voriger Monat',
+    },
+    next: {
+      day: 'Nächster Tag',
+      week: 'Nächste Woche',
+      month: 'Nächster Monat',
+    },
+    calendars: 'Kalender',
+    miniMonth: 'Monatsnavigation',
+    sidebar: 'Kalenderliste und Monat',
+    eventLabel: '{{title}}, {{when}}, Kalender {{calendar}}',
+    eventLabelWithPlace:
+      '{{title}}, {{when}}, {{place}}, Kalender {{calendar}}',
+  },
   errors: {
     unauthorized: 'Benutzername oder Passwort ist falsch.',
     forbidden: 'Dafür fehlt dir die Berechtigung.',

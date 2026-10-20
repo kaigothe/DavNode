@@ -17,6 +17,13 @@ import { useAuth } from '../../auth/AuthContext';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatWhen } from '../../lib/events';
 
+/** An event as the drawer shows it: the calendar it is in, and optionally that calendar's name and colour. */
+export type DrawerEvent = CalendarEvent & {
+  calendarId: string;
+  calendarName?: string;
+  color?: string;
+};
+
 /** The window that contains exactly this instance, so the server can return its stored text. */
 function instanceWindow(event: CalendarEvent) {
   const start = dayjs(event.start);
@@ -31,12 +38,10 @@ function instanceWindow(event: CalendarEvent) {
 export function EventDrawer({
   event,
   userId,
-  calendarId,
   onClose,
 }: {
-  event: CalendarEvent | null;
+  event: DrawerEvent | null;
   userId: string;
-  calendarId: string;
   onClose: () => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -47,14 +52,14 @@ export function EventDrawer({
     queryKey: [
       session?.tenantSlug,
       'event-raw',
-      calendarId,
+      event?.calendarId,
       event?.objectId,
       event?.start,
     ],
     enabled: showRaw && event !== null,
     queryFn: async () => {
       const result = await request<{ events: CalendarEvent[] }>(
-        `/users/${userId}/calendars/${calendarId}/events`,
+        `/users/${userId}/calendars/${event?.calendarId}/events`,
         { query: { ...instanceWindow(event as CalendarEvent), raw: true } },
       );
       return (
@@ -66,6 +71,7 @@ export function EventDrawer({
   return (
     <Drawer
       open={event !== null}
+      placement="right"
       onClose={() => {
         setShowRaw(false);
         onClose();
@@ -77,6 +83,22 @@ export function EventDrawer({
       {event && (
         <Flex vertical gap={16}>
           <Descriptions column={1} size="small" bordered>
+            {event.calendarName && (
+              <Descriptions.Item label={t('content.calendar')}>
+                <Flex align="center" gap={8}>
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      background: event.color ?? 'currentColor',
+                    }}
+                  />
+                  {event.calendarName}
+                </Flex>
+              </Descriptions.Item>
+            )}
             <Descriptions.Item label={t('content.when')}>
               {formatWhen(event, i18n.language)}
             </Descriptions.Item>

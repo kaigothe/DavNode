@@ -1,11 +1,18 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { createUser, dav, signIn } from './support';
+import { createUser, dav, seedCalendar, signIn, ymd } from './support';
 
 /** Every violation axe finds, rendered for the failure message. */
 async function violations(page: Page) {
   // A component that is still fading in has a blended colour; measure it
   // once every animation and transition has finished.
+  // Let a component that has just opened start its animation first.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   await page.evaluate(() =>
     Promise.all(
       document
@@ -96,18 +103,71 @@ for (const scheme of ['light', 'dark'] as const) {
       expect(await violations(page), 'contact drawer').toEqual([]);
     });
 
-    test('calendar and contacts of a user', async ({ page, request }) => {
+    test('calendar in every view, with coloured events and the drawer', async ({
+      page,
+      request,
+    }) => {
       const user = await createUser(
         request,
         `a11y-cal-${scheme}-${Date.now().toString(36)}`,
       );
+      const today = ymd(new Date());
+      // Every default colour, and light ones that need the darkened text.
+      const colors = [
+        '#1badf8',
+        '#63da38',
+        '#ff9500',
+        '#cc73e1',
+        '#ff2968',
+        '#ffcc00',
+        '#a2845e',
+        '#7d7d7d',
+      ];
+      for (const [i, color] of colors.entries()) {
+        await seedCalendar(
+          request,
+          user,
+          { path: `c${i}`, name: `Calendar ${i}`, color },
+          [
+            {
+              uid: `t${i}@e2e`,
+              summary: `Timed ${i}`,
+              start: `${today}T${String(8 + i).padStart(2, '0')}0000Z`,
+              end: `${today}T${String(9 + i).padStart(2, '0')}0000Z`,
+              location: 'Room 1',
+            },
+            {
+              uid: `d${i}@e2e`,
+              summary: `All day ${i}`,
+              start: today,
+              end: ymd(new Date(Date.now() + 2 * 86_400_000)),
+              allDay: true,
+            },
+          ],
+        );
+      }
       await signIn(page);
       await page.goto(`/admin-ui/users/${user.id}/content`);
-      await expect(
-        page.getByText(`Calendars and contacts of ${user.username}`),
-      ).toBeVisible();
+      await expect(page.getByLabel(/(^|, )Timed 0, /).first()).toBeVisible();
+      expect(await violations(page), 'week view').toEqual([]);
+
+      await page.getByText('Day', { exact: true }).click();
+      await expect(page.getByLabel(/(^|, )Timed 3, /).first()).toBeVisible();
+      expect(await violations(page), 'day view').toEqual([]);
+
+      await page.getByText('Month', { exact: true }).click();
+      await expect(page.getByLabel(/(^|, )Timed 3, /).first()).toBeVisible();
+      expect(await violations(page), 'month view').toEqual([]);
+
+      await page
+        .getByLabel(/(^|, )Timed 3, /)
+        .first()
+        .click();
+      await expect(page.getByRole('dialog')).toBeVisible();
       await page.waitForLoadState('networkidle');
-      expect(await violations(page), 'calendar tab').toEqual([]);
+      expect(await violations(page), 'event drawer').toEqual([]);
+      await page.keyboard.press('Escape');
+
       await page.getByRole('tab', { name: 'Contacts' }).click();
       await page.waitForLoadState('networkidle');
       expect(await violations(page), 'contacts tab').toEqual([]);

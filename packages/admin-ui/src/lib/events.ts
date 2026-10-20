@@ -60,7 +60,7 @@ export function formatTimeRange(
   }
   const { start, end } = span(event);
   const time = new Intl.DateTimeFormat(locale, {
-    hour: '2-digit',
+    hour: 'numeric',
     minute: '2-digit',
   });
   // On a later day of a multi-day event the start is not today's.
@@ -86,7 +86,7 @@ export function formatWhen(event: CalendarEvent, locale: string): string {
     ...(event.isAllDay ? { timeZone: 'UTC' } : {}),
   });
   const clock = new Intl.DateTimeFormat(locale, {
-    hour: '2-digit',
+    hour: 'numeric',
     minute: '2-digit',
   });
   const lastDay = end.isAfter(start) ? end.subtract(1, 'millisecond') : start;
