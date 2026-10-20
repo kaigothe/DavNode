@@ -19,11 +19,12 @@ services:
       DAVNODE_DB_USER: davnode
       DAVNODE_DB_PASSWORD: davnode
       # Local development: serve the admin UI at http://localhost:8080/admin-ui/
-      # (off by default in the image) and let admins inspect calendars and
-      # contacts. Do not copy these two lines to a real deployment unless
-      # you want exactly that.
+      # (off by default in the image), let admins inspect calendars and
+      # contacts and read the recent server log. Do not copy these three lines
+      # to a real deployment unless you want exactly that.
       DAVNODE_ADMIN_UI_ENABLED: 'true'
       DAVNODE_ADMIN_UI_CONTENT_VIEW: 'true'
+      DAVNODE_ADMIN_UI_LOG_VIEW: 'true'
 
   postgres:
     image: postgres:17-alpine

@@ -10,7 +10,7 @@ const me = {
   role: 'tenant_admin',
   tenant: { id, slug: 'acme', name: 'Acme' },
   anchorTenant: 'acme',
-  capabilities: { contentView: false },
+  capabilities: { contentView: false, logView: false },
 };
 
 describe('the contract check of the fake API', () => {
@@ -32,7 +32,7 @@ describe('the contract check of the fake API', () => {
     const violations = responseViolations('GET', '/me', 200, {
       ...me,
       role: 'boss',
-      capabilities: { contentView: 'yes' },
+      capabilities: { contentView: 'yes', logView: false },
     });
 
     expect(violations.join('\n')).toMatch(/role must be equal to one of/);

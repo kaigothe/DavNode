@@ -45,6 +45,8 @@ export const en = {
     groups: 'Groups',
     quota: 'Storage',
     tenants: 'Tenants',
+    logs: 'Server log',
+    menu: 'Menu',
   },
   role: {
     server_admin: 'Server administrator',
@@ -274,6 +276,32 @@ export const en = {
     card: 'Business card',
     photo: 'Photo',
     searchContacts: 'Search by name, e-mail, phone or organization',
+  },
+  logs: {
+    title: 'Server log',
+    hint: 'The most recent lines the server logged, kept in memory: empty after a restart and only for this instance. For a lasting record use the container log or a log service.',
+    notEnabledTitle: 'Not enabled',
+    notEnabledText:
+      'This server does not show its log here. The operator can switch it on with DAVNODE_ADMIN_UI_LOG_VIEW.',
+    time: 'Time',
+    level: 'Level',
+    message: 'Message',
+    details: 'Details',
+    levelFrom: {
+      error: 'Errors',
+      warn: 'Warnings and above',
+      info: 'Info and above',
+      debug: 'Everything',
+    },
+    search: 'Search the log',
+    adminReads: 'Reads of user data',
+    limit: 'How many lines',
+    lastN: 'Latest {{count}}',
+    refresh: 'Refresh',
+    live: 'Live',
+    buffer:
+      'Showing {{shown}} of {{buffered}} lines in the buffer, which keeps at most {{capacity}}.',
+    empty: 'No lines match.',
   },
   errors: {
     unauthorized: 'The username or password is wrong.',

@@ -147,7 +147,12 @@ test.describe('calendars and contacts of a user', () => {
     await expect(page.getByText('Grace Hopper')).toHaveCount(0);
     await page.getByText('Ada Lovelace').click();
     const drawer = page.getByRole('dialog');
-    await expect(drawer.getByText('ada@analytical.example')).toBeVisible();
+    const card = drawer.getByRole('article', { name: 'Business card' });
+    await expect(card.getByText('Ada Lovelace')).toBeVisible();
+    await expect(card.getByText('ada@analytical.example (work)')).toBeVisible();
+    await expect(
+      drawer.getByText('ada@analytical.example').first(),
+    ).toBeVisible();
     await expect(drawer.getByText('<b>not bold</b>')).toBeVisible();
     await expect(drawer.locator('b')).toHaveCount(0);
     await drawer.getByRole('button', { name: 'Show the stored vCard' }).click();

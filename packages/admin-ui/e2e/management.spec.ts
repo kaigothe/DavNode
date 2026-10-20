@@ -57,7 +57,7 @@ test.describe('managing the server', () => {
     await page
       .getByRole('link', { name: new RegExp(`team-${suffix}`) })
       .click();
-    await page.getByRole('combobox', { name: 'Add a member' }).click();
+    await page.getByRole('combobox', { name: 'Add a member' }).fill(member);
     await page
       .locator('.ant-select-item-option-content', { hasText: member })
       .click();
@@ -97,7 +97,7 @@ test.describe('managing the server', () => {
     ]) {
       await page.getByRole('menuitem', { name: 'Groups' }).click();
       await page.getByRole('link', { name: new RegExp(group) }).click();
-      await page.getByRole('combobox', { name: 'Add a member' }).click();
+      await page.getByRole('combobox', { name: 'Add a member' }).fill(member);
       await page
         .locator('.ant-select-item-option-content', { hasText: member })
         .first()

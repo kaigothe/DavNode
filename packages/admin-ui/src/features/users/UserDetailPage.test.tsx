@@ -216,7 +216,12 @@ describe('user detail page', () => {
 
   it('offers the calendars and contacts when the content view is on', async () => {
     signedInAs();
-    stubApi(detailRoutes({}, { ...me, capabilities: { contentView: true } }));
+    stubApi(
+      detailRoutes(
+        {},
+        { ...me, capabilities: { contentView: true, logView: false } },
+      ),
+    );
     await renderApp(`/users/${alice.id}`);
 
     expect(

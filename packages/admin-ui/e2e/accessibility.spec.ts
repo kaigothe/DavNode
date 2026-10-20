@@ -22,7 +22,7 @@ async function violations(page: Page) {
         .slice(0, 4)
         .map(
           (n) =>
-            `${n.target.join(' ')} [${n.any.map((c) => c.message).join('; ')}]`,
+            `${n.target.join(' ')} ${n.html.slice(0, 140)} [${n.any.map((c) => c.message).join('; ')}]`,
         )
         .join(', ')}`,
   );
@@ -54,6 +54,7 @@ for (const scheme of ['light', 'dark'] as const) {
         ['Groups', 'Groups'],
         ['Storage', 'Used storage'],
         ['Tenants', 'Short name'],
+        ['Server log', 'Showing'],
       ];
       for (const [menu, ready] of pages) {
         await page.getByRole('menuitem', { name: menu }).click();

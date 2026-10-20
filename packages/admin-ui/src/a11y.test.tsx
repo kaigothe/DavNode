@@ -18,7 +18,10 @@ afterEach(() => vi.unstubAllGlobals());
 const id = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const GB = 1024 ** 3;
-const me = { ...serverAdminMe, capabilities: { contentView: true } };
+const me = {
+  ...serverAdminMe,
+  capabilities: { contentView: true, logView: true },
+};
 const alice = user({
   id: id(2),
   principalId: id(22),
@@ -99,6 +102,28 @@ const routes: Routes = {
         },
       ],
     }),
+  'GET /logs': () =>
+    Response.json({
+      entries: [
+        {
+          seq: 2,
+          timestamp: '2026-10-21T10:00:00.000Z',
+          level: 'warn',
+          message: 'slow request',
+          fields: { method: 'GET', path: '/dav/acme/files', status: 200 },
+        },
+        {
+          seq: 1,
+          timestamp: '2026-10-21T09:59:00.000Z',
+          level: 'info',
+          message: 'request completed',
+          fields: {},
+        },
+      ],
+      newest: 2,
+      buffered: 2,
+      capacity: 2000,
+    }),
   'GET /groups': () => Response.json({ groups: [group], total: 1 }),
   [`GET /groups/${group.id}`]: () => Response.json(group),
   [`GET /groups/${group.id}/members`]: () =>
@@ -161,6 +186,7 @@ const PAGES: { name: string; path: string; ready: string | RegExp }[] = [
   { name: 'overview', path: '/', ready: 'Your account' },
   { name: 'users', path: '/users', ready: 'alice' },
   { name: 'user detail', path: `/users/${alice.id}`, ready: 'Direct member' },
+  { name: 'server log', path: '/logs', ready: 'slow request' },
   { name: 'groups', path: '/groups', ready: 'Sales' },
   {
     name: 'group detail',

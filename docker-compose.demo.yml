@@ -20,9 +20,11 @@ services:
       DAVNODE_DB_FILE: /app/data/demo.sqlite
       DAVNODE_DEFAULT_TENANT: demo
       # The admin interface, including the read-only view of calendars and
-      # contacts (every read is logged). Both are off by default.
+      # contacts (every read is logged) and the recent server log. All three
+      # are off by default.
       DAVNODE_ADMIN_UI_ENABLED: 'true'
       DAVNODE_ADMIN_UI_CONTENT_VIEW: 'true'
+      DAVNODE_ADMIN_UI_LOG_VIEW: 'true'
     volumes:
       - demo-data:/app/data
     # Start the server (it creates the schema), then create the demo tenant

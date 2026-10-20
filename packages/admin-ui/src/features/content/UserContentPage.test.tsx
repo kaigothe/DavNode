@@ -16,7 +16,10 @@ import {
 
 afterEach(() => vi.unstubAllGlobals());
 
-const withContent = { ...adminMe, capabilities: { contentView: true } };
+const withContent = {
+  ...adminMe,
+  capabilities: { contentView: true, logView: false },
+};
 const alice = user();
 
 const today = () => dayjs().startOf('day');

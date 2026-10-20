@@ -30,7 +30,7 @@ const server = spawn(
       E2E_PORT: PORT,
       E2E_TENANT: 'demo',
       E2E_TENANT_NAME: 'Demo Company',
-      DAVNODE_LOG_LEVEL: 'error',
+      DAVNODE_LOG_LEVEL: 'info',
     },
     stdio: 'inherit',
   },

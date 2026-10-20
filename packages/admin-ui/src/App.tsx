@@ -112,6 +112,9 @@ const UserDetailPage = lazy(() =>
     default: m.UserDetailPage,
   })),
 );
+const LogsPage = lazy(() =>
+  import('./features/logs/LogsPage').then((m) => ({ default: m.LogsPage })),
+);
 const UserContentPage = lazy(() =>
   import('./features/content/UserContentPage').then((m) => ({
     default: m.UserContentPage,
@@ -161,6 +164,7 @@ export function App() {
             <Route path="quota" element={<QuotaPage />} />
             <Route element={<RequireServerAdmin />}>
               <Route path="tenants" element={<TenantsPage />} />
+              <Route path="logs" element={<LogsPage />} />
             </Route>
             <Route path="*" element={<NotFoundPage />} />
           </Route>
