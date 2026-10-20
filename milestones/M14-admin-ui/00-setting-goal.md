@@ -50,7 +50,9 @@ barrierearm, mit System/Hell/Dunkel-Theme und standardmäßig abgeschaltet.
 - 🔶 4 Shell/Auth/i18n/Theme: Login, rollenabhängige Shell, de/en,
   System/Hell/Dunkel und Übersichtsseite sind fertig; die Seiten kommen
   mit Aufgabe 5 und 6.
-- ⏳ 5–8 offen.
+- ✅ 5 Verwaltungsansichten (Nutzer, Gruppen, Speicher, Tenants; die
+  Provider-Anzeige liegt auf der Übersichtsseite)
+- ⏳ 6–8 offen.
 
 ## Große Aufgaben (Übersicht)
 1. [Backend-Ergänzungen](01-backend-additions/00-overview.md)
