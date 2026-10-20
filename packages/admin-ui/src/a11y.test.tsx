@@ -18,7 +18,10 @@ afterEach(() => vi.unstubAllGlobals());
 const id = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const GB = 1024 ** 3;
-const me = { ...serverAdminMe, capabilities: { contentView: true } };
+const me = {
+  ...serverAdminMe,
+  capabilities: { contentView: true, logView: true },
+};
 const alice = user({
   id: id(2),
   principalId: id(22),
@@ -80,6 +83,47 @@ const routes: Routes = {
   ...baseRoutes(me),
   'GET /users': () => Response.json({ users: [boss, alice], total: 2 }),
   [`GET /users/${alice.id}`]: () => Response.json(alice),
+  [`GET /users/${alice.id}/groups`]: () =>
+    Response.json({
+      groups: [
+        {
+          id: group.id,
+          name: 'Sales',
+          description: 'The sales team',
+          direct: true,
+          via: [],
+        },
+        {
+          id: id(9),
+          name: 'Company',
+          description: null,
+          direct: false,
+          via: ['Sales'],
+        },
+      ],
+    }),
+  'GET /logs': () =>
+    Response.json({
+      entries: [
+        {
+          seq: 2,
+          timestamp: '2026-10-21T10:00:00.000Z',
+          level: 'warn',
+          message: 'slow request',
+          fields: { method: 'GET', path: '/dav/acme/files', status: 200 },
+        },
+        {
+          seq: 1,
+          timestamp: '2026-10-21T09:59:00.000Z',
+          level: 'info',
+          message: 'request completed',
+          fields: {},
+        },
+      ],
+      newest: 2,
+      buffered: 2,
+      capacity: 2000,
+    }),
   'GET /groups': () => Response.json({ groups: [group], total: 1 }),
   [`GET /groups/${group.id}`]: () => Response.json(group),
   [`GET /groups/${group.id}/members`]: () =>
@@ -115,6 +159,7 @@ const routes: Routes = {
           displayName: 'Work',
           description: null,
           timezone: null,
+          color: null,
           objectCount: 1,
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -141,6 +186,8 @@ const routes: Routes = {
 const PAGES: { name: string; path: string; ready: string | RegExp }[] = [
   { name: 'overview', path: '/', ready: 'Your account' },
   { name: 'users', path: '/users', ready: 'alice' },
+  { name: 'user detail', path: `/users/${alice.id}`, ready: 'Direct member' },
+  { name: 'server log', path: '/logs', ready: 'slow request' },
   { name: 'groups', path: '/groups', ready: 'Sales' },
   {
     name: 'group detail',
@@ -192,6 +239,16 @@ describe.each(['light', 'dark'] as const)(
       expect(await accessibilityProblems()).toEqual([]);
     });
 
+    it('has no violations in the contact drawer with its business card', async () => {
+      await open(`/users/${alice.id}/content`, 'Standup');
+      const u = userEvent.setup();
+      await u.click(screen.getByRole('tab', { name: 'Contacts' }));
+      await u.click(await screen.findByText('Ada Lovelace'));
+      await screen.findByRole('article', { name: 'Business card' });
+
+      expect(await accessibilityProblems()).toEqual([]);
+    });
+
     it('has no violations in the create-user dialog', async () => {
       await open('/users', 'alice');
       await userEvent
@@ -214,9 +271,7 @@ describe.each(['light', 'dark'] as const)(
 
     it('has no violations in the event drawer', async () => {
       await open(`/users/${alice.id}/content`, 'Standup');
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: 'Details: Standup' }));
+      await userEvent.setup().click(screen.getByLabelText(/^Standup, /));
       await screen.findByRole('dialog');
 
       expect(await accessibilityProblems()).toEqual([]);

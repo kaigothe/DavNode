@@ -109,7 +109,7 @@ describe('groupByDay', () => {
 
 describe('formatTimeRange', () => {
   it('formats start and end', () => {
-    expect(formatTimeRange(event(), 'en-GB')).toBe('09:00 – 10:00');
+    expect(formatTimeRange(event(), 'en-GB')).toBe('9:00 – 10:00');
   });
 
   it('is empty for an all-day event', () => {
@@ -124,15 +124,13 @@ describe('formatTimeRange', () => {
 
     expect(formatTimeRange(multi, 'en-GB', '2026-10-26')).toBe('22:00 – …');
     expect(formatTimeRange(multi, 'en-GB', '2026-10-27')).toBe('');
-    expect(formatTimeRange(multi, 'en-GB', '2026-10-28')).toBe('… – 01:00');
+    expect(formatTimeRange(multi, 'en-GB', '2026-10-28')).toBe('… – 1:00');
   });
 });
 
 describe('formatWhen', () => {
   it('names the date and the times', () => {
-    expect(formatWhen(event(), 'en-GB')).toBe(
-      'Mon, 26 Oct 2026, 09:00 – 10:00',
-    );
+    expect(formatWhen(event(), 'en-GB')).toBe('Mon, 26 Oct 2026, 9:00 – 10:00');
   });
 
   it('names just the date for an all-day event', () => {

@@ -2,6 +2,7 @@ import {
   ApartmentOutlined,
   CloudOutlined,
   DashboardOutlined,
+  FileTextOutlined,
   LogoutOutlined,
   MenuOutlined,
   TeamOutlined,
@@ -51,6 +52,9 @@ export function AppShell() {
             label: t('nav.tenants'),
           },
         ]
+      : []),
+    ...(me?.role === 'server_admin' && me.capabilities.logView
+      ? [{ key: '/logs', icon: <FileTextOutlined />, label: t('nav.logs') }]
       : []),
   ];
   const selected = items
@@ -112,7 +116,7 @@ export function AppShell() {
               <Button
                 type="text"
                 icon={<MenuOutlined />}
-                aria-label={t('nav.overview')}
+                aria-label={t('nav.menu')}
                 onClick={() => setDrawerOpen(true)}
               />
             )}

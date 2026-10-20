@@ -213,6 +213,7 @@ export {
 export { GroupMembershipService } from './services/group-membership.service.js';
 export {
   ContentInspectionService,
+  normalizeCalendarColor,
   MAX_EVENT_INSTANCES,
   MAX_EVENT_OBJECTS,
   MAX_EVENT_WINDOW_MS,

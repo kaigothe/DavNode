@@ -2,6 +2,7 @@ import type { DataSource } from '@davnode/core';
 import express, { type Router } from 'express';
 import { adminErrorHandler } from './admin-error-handler.middleware.js';
 import { registerContentRoutes, type ContentAccess } from './content-routes.js';
+import { registerLogRoutes, type LogSource } from './logs-routes.js';
 import { registerGroupRoutes } from './group-routes.js';
 import { registerMetricsRoute, type MetricsSource } from './metrics-routes.js';
 import { registerQuotaRoutes } from './quota-routes.js';
@@ -40,6 +41,11 @@ export interface AdminRouterOptions {
    * `contentView`), so the server can write an audit log entry.
    */
   onContentAccess?: (access: ContentAccess) => void;
+  /**
+   * The server's recent log lines; with it `GET /logs` exists (server
+   * administrators only). Leave unset to keep the log out of the API.
+   */
+  logs?: LogSource;
 }
 
 /**
@@ -77,6 +83,9 @@ export function createAdminRouter(
   registerQuotaRoutes(router, dataSource);
   if (options.contentView) {
     registerContentRoutes(router, dataSource, options);
+  }
+  if (options.logs) {
+    registerLogRoutes(router, dataSource, options.logs);
   }
   if (options.metrics) {
     registerMetricsRoute(router, dataSource, options.metrics);

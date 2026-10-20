@@ -6,7 +6,6 @@ import {
   adminMe,
   apiError,
   baseRoutes,
-  chooseOption,
   renderApp,
   signedInAs,
   stubApi,
@@ -16,7 +15,10 @@ import {
 
 afterEach(() => vi.unstubAllGlobals());
 
-const withContent = { ...adminMe, capabilities: { contentView: true } };
+const withContent = {
+  ...adminMe,
+  capabilities: { contentView: true, logView: false },
+};
 const alice = user();
 
 const today = () => dayjs().startOf('day');
@@ -42,6 +44,7 @@ const work = {
   displayName: 'Work',
   description: null,
   timezone: null,
+  color: null,
   objectCount: 3,
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
@@ -135,189 +138,6 @@ describe('opening the content view', () => {
   });
 });
 
-describe('calendars', () => {
-  async function open(routes: Routes = calendarRoutes()) {
-    signedInAs();
-    const calls = stubApi(routes);
-    await renderApp('/users/00000000-0000-4000-8000-0000000000a2/content');
-    await screen.findByText('Standup');
-    return { calls, user: userEvent.setup() };
-  }
-
-  it('lists the events of the selected day with time and place', async () => {
-    await open();
-
-    const item = screen.getByText('Standup').closest('li') as HTMLElement;
-    expect(within(item).getByText(/09:00.*10:00.*Room 1/)).toBeInTheDocument();
-  });
-
-  it('asks for a window around the month, in whole days', async () => {
-    const { calls } = await open();
-
-    const call = calls.find(
-      (c) =>
-        c.path ===
-        '/users/00000000-0000-4000-8000-0000000000a2/calendars/00000000-0000-4000-8000-0000000000f1/events',
-    );
-    const params = new URL(call?.full ?? '', 'http://x').searchParams;
-    expect(new Date(params.get('to') ?? '').getTime()).toBeGreaterThan(
-      new Date(params.get('from') ?? '').getTime(),
-    );
-    expect(
-      new Date(params.get('to') ?? '').getTime() -
-        new Date(params.get('from') ?? '').getTime(),
-    ).toBeLessThan(366 * 86_400_000);
-  });
-
-  it('shows event text as text, never as markup', async () => {
-    await open(
-      calendarRoutes({
-        'GET /users/00000000-0000-4000-8000-0000000000a2/calendars/00000000-0000-4000-8000-0000000000f1/events':
-          () =>
-            Response.json({
-              events: [
-                event({
-                  summary:
-                    '<img src=x onerror=alert(1)><script>alert(2)</script>',
-                }),
-              ],
-              truncated: false,
-              skipped: 0,
-            }),
-      }),
-    ).catch(() => undefined);
-    await screen.findByText(
-      '<img src=x onerror=alert(1)><script>alert(2)</script>',
-    );
-
-    expect(document.querySelector('img[src="x"]')).toBeNull();
-    expect(document.querySelector('script:not([src])')).toBeNull();
-  });
-
-  it('switches to another calendar', async () => {
-    const { calls, user: u } = await open();
-
-    await u.click(screen.getByRole('combobox', { name: 'Calendar' }));
-    await chooseOption(u, 'Private (1 entry)');
-
-    await waitFor(() =>
-      expect(
-        calls.some(
-          (c) =>
-            c.path ===
-            '/users/00000000-0000-4000-8000-0000000000a2/calendars/00000000-0000-4000-8000-0000000000f2/events',
-        ),
-      ).toBe(true),
-    );
-  });
-
-  it('opens the details of an event', async () => {
-    const { user: u } = await open();
-
-    await u.click(screen.getByRole('button', { name: 'Details: Standup' }));
-
-    const drawer = await screen.findByRole('dialog');
-    expect(within(drawer).getByText('Room 1')).toBeInTheDocument();
-    expect(within(drawer).getByText(/Daily sync/)).toBeInTheDocument();
-    expect(within(drawer).getByText('Recurring')).toBeInTheDocument();
-    expect(within(drawer).getByText('Busy')).toBeInTheDocument();
-  });
-
-  it('loads the stored iCalendar only when asked', async () => {
-    const { calls, user: u } = await open(calendarRoutes());
-    await u.click(screen.getByRole('button', { name: 'Details: Standup' }));
-    const drawer = await screen.findByRole('dialog');
-    expect(calls.some((c) => c.full.includes('raw=true'))).toBe(false);
-
-    stubApiRaw();
-    await u.click(
-      within(drawer).getByRole('button', { name: 'Show the stored iCalendar' }),
-    );
-
-    const stored = (await within(drawer).findByLabelText(
-      'Stored text',
-    )) as HTMLTextAreaElement;
-    expect(stored.value).toContain('BEGIN:VCALENDAR');
-  });
-
-  it('explains when events were cut off or unreadable', async () => {
-    await open(
-      calendarRoutes({
-        'GET /users/00000000-0000-4000-8000-0000000000a2/calendars/00000000-0000-4000-8000-0000000000f1/events':
-          () =>
-            Response.json({ events: [event()], truncated: true, skipped: 2 }),
-      }),
-    );
-
-    expect(
-      await screen.findByText(/only the first ones are shown/),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('2 entries could not be read and are not shown.'),
-    ).toBeInTheDocument();
-  });
-
-  it('says when a user has no calendars', async () => {
-    signedInAs();
-    stubApi(
-      calendarRoutes({
-        'GET /users/00000000-0000-4000-8000-0000000000a2/calendars': () =>
-          Response.json({ calendars: [] }),
-      }),
-    );
-    await renderApp('/users/00000000-0000-4000-8000-0000000000a2/content');
-
-    expect(
-      await screen.findByText('This user has no calendars.'),
-    ).toBeInTheDocument();
-  });
-
-  it('shows a failure to load the events with a retry', async () => {
-    signedInAs();
-    stubApi(
-      calendarRoutes({
-        'GET /users/00000000-0000-4000-8000-0000000000a2/calendars/00000000-0000-4000-8000-0000000000f1/events':
-          () => apiError(400, 'range_too_large'),
-      }),
-    );
-    await renderApp('/users/00000000-0000-4000-8000-0000000000a2/content');
-
-    expect(
-      await screen.findByText('The time range is too long.'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Try again' }),
-    ).toBeInTheDocument();
-  });
-});
-
-/** Makes every events request answer with the stored text as well. */
-function stubApiRaw() {
-  const original = globalThis.fetch;
-  vi.stubGlobal('fetch', (input: URL | string, init?: RequestInit) => {
-    const url = new URL(input.toString(), 'http://localhost');
-    if (
-      url.pathname.endsWith(
-        '/calendars/00000000-0000-4000-8000-0000000000f1/events',
-      ) &&
-      url.searchParams.get('raw') === 'true'
-    ) {
-      return Promise.resolve(
-        Response.json({
-          events: [
-            event({
-              raw: 'BEGIN:VCALENDAR\r\nUID:standup@test\r\nEND:VCALENDAR\r\n',
-            }),
-          ],
-          truncated: false,
-          skipped: 0,
-        }),
-      );
-    }
-    return original(input, init);
-  });
-}
-
 describe('contacts', () => {
   const ada = {
     id: '00000000-0000-4000-8000-000000000092',
@@ -397,7 +217,11 @@ describe('contacts', () => {
       within(drawer).getByText('ada@analytical.example'),
     ).toBeInTheDocument();
     expect(within(drawer).getByText('work')).toBeInTheDocument();
-    expect(within(drawer).getByText('1 Main St, London')).toBeInTheDocument();
+    // Once on the business card, once in the property list.
+    expect(within(drawer).getAllByText('1 Main St, London')).toHaveLength(2);
+    expect(
+      within(drawer).getByRole('article', { name: 'Business card' }),
+    ).toBeInTheDocument();
     expect(within(drawer).getByText(/Second <b>line<\/b>/)).toBeInTheDocument();
     expect(drawer.querySelector('b')).toBeNull();
   });

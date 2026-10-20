@@ -132,6 +132,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The most recent server log lines (in-memory buffer)
+         * @description Requires `server_admin`, and only exists when the server runs with the
+         *     admin log view (`DAVNODE_ADMIN_UI_LOG_VIEW`); otherwise `404`. The log
+         *     spans all tenants and holds user names, paths and client addresses.
+         *     The buffer lives in the server process: it is empty after a restart and
+         *     covers this instance only.
+         */
+        get: operations["listLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tenants": {
         parameters: {
             query?: never;
@@ -226,6 +250,28 @@ export interface paths {
          * @description The last `server_admin` cannot be demoted (409).
          */
         patch: operations["updateUser"];
+        trace?: never;
+    };
+    "/users/{userId}/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The groups a user is a member of
+         * @description Direct memberships and those through other groups (a group inside a
+         *     group the user belongs to). `via` names the user's own groups that
+         *     lead there.
+         */
+        get: operations["listUserGroups"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/users/{userId}/password": {
@@ -462,6 +508,8 @@ export interface components {
             capabilities: {
                 /** @description The read-only calendar/contact routes exist. */
                 contentView: boolean;
+                /** @description `GET /logs` exists (it also needs the `server_admin` role). */
+                logView: boolean;
             };
         };
         Providers: {
@@ -479,6 +527,8 @@ export interface components {
             displayName: string;
             description: string | null;
             timezone: string | null;
+            /** @description The colour a client gave the calendar (Apple's `calendar-color`), or `null`. */
+            color: string | null;
             objectCount: number;
             /** Format: date-time */
             updatedAt: string;
@@ -567,6 +617,38 @@ export interface components {
             kind: "user" | "group" | "special";
             /** @description The user name or group name; `null` for a special principal. */
             name: string | null;
+        };
+        LogEntry: {
+            /** @description Counts up from 1 for the lifetime of the server process. */
+            seq: number;
+            /** Format: date-time */
+            timestamp: string;
+            /** @example info */
+            level: string;
+            message: string;
+            /** @description Everything else of the line (method, path, status, requestId, …). */
+            fields: {
+                [key: string]: unknown;
+            };
+        };
+        LogPage: {
+            entries: components["schemas"]["LogEntry"][];
+            /** @description The `seq` of the newest entry in the buffer, 0 when it is empty. */
+            newest: number;
+            /** @description How many entries the buffer holds now. */
+            buffered: number;
+            /** @description How many it holds at most. */
+            capacity: number;
+        };
+        UserGroup: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            description: string | null;
+            /** @description The user is a member of this group itself. */
+            direct: boolean;
+            /** @description Names of the user's own groups that sit inside this one. */
+            via: string[];
         };
         Group: {
             /** Format: uuid */
@@ -839,6 +921,38 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listLogs: {
+        parameters: {
+            query?: {
+                /** @description At most this many entries (default 200). */
+                limit?: number;
+                /** @description Only entries at this level or more severe. */
+                level?: "error" | "warn" | "info" | "debug";
+                /** @description Only entries containing this text in the message or the fields. */
+                q?: string;
+                /** @description Only entries with a `seq` greater than this, to fetch what is new. */
+                after?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The entries, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listTenants: {
@@ -1148,6 +1262,33 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    listUserGroups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: components["parameters"]["userId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The groups, ordered by name. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        groups: components["schemas"]["UserGroup"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     setUserPassword: {

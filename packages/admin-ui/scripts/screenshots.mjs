@@ -30,7 +30,7 @@ const server = spawn(
       E2E_PORT: PORT,
       E2E_TENANT: 'demo',
       E2E_TENANT_NAME: 'Demo Company',
-      DAVNODE_LOG_LEVEL: 'error',
+      DAVNODE_LOG_LEVEL: 'info',
     },
     stdio: 'inherit',
   },
@@ -93,6 +93,9 @@ const TEXT = {
     tenants: 'Tenants',
     contacts: 'Contacts',
     calendar: 'Calendar',
+    serverLog: 'Server log',
+    adminReads: 'Reads of user data',
+    month: 'Month',
     account: 'Your account',
     details: /Details: Design review/,
   },
@@ -107,6 +110,9 @@ const TEXT = {
     tenants: 'Tenants',
     contacts: 'Kontakte',
     calendar: 'Kalender',
+    serverLog: 'Server-Log',
+    adminReads: 'Zugriffe auf Nutzerdaten',
+    month: 'Monat',
     account: 'Dein Konto',
     details: /Details: Design review/,
   },
@@ -117,6 +123,12 @@ const browser = await chromium.launch({ channel: process.env.PW_CHANNEL });
 async function settle(page) {
   await page.mouse.move(0, 0);
   await page.waitForLoadState('networkidle');
+  await page.evaluate(
+    () =>
+      new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   await page.evaluate(() =>
     Promise.all(
       document
@@ -176,6 +188,12 @@ async function run(scheme, lang, only) {
       await page.getByText('carol').first().waitFor();
       await shoot('users');
     }
+    if (wants('user')) {
+      await page.goto(`${base}/admin-ui/users/${alice.id}`);
+      await page.getByRole('heading', { name: 'alice' }).waitFor();
+      await page.getByRole('link', { name: 'Company' }).waitFor();
+      await shoot('user');
+    }
     if (wants('group')) {
       await page.goto(`${base}/admin-ui/groups/${teamGroup.id}`);
       await page.getByText('carol').first().waitFor();
@@ -193,31 +211,32 @@ async function run(scheme, lang, only) {
     }
     if (
       wants('calendar') ||
+      wants('calendar-month') ||
       wants('event') ||
       wants('contacts') ||
       wants('contact')
     ) {
       await page.goto(`${base}/admin-ui/users/${alice.id}/content`);
-      // The first calendar alphabetically is "personal"; show "work".
-      await page.getByRole('combobox', { name: t.calendar }).click();
-      await page
-        .locator('.ant-select-item-option-content', { hasText: /^work/ })
-        .click();
-      await page.getByText('Design review').first().waitFor();
-      // Select the day of the design review so the list below shows an event.
-      await page
-        .locator('.ant-picker-cell-in-view .ant-picker-calendar-date-value', {
-          hasText: /^12$/,
-        })
-        .click();
-      await page.getByRole('button', { name: t.details }).waitFor();
-      if (wants('calendar')) await shoot('calendar', 1340);
+      // The week of "today" (14 Oct 2026), all calendars on top of each other.
+      const planning = page.getByLabel(/(^|, )Sprint planning, /).first();
+      await planning.waitFor();
+      if (wants('calendar')) await shoot('calendar', 1000);
       if (wants('event')) {
-        await page.getByRole('button', { name: t.details }).click();
+        await planning.click();
         await page.getByRole('dialog').waitFor();
         await shoot('event');
         await page.keyboard.press('Escape');
         await page.getByRole('dialog').waitFor({ state: 'hidden' });
+        // The mask fades out after the drawer; clicking before it is gone fails.
+        await page.locator('.ant-drawer-mask').waitFor({ state: 'detached' });
+      }
+      if (wants('calendar-month')) {
+        await page.getByText(t.month, { exact: true }).click();
+        await page
+          .getByLabel(/(^|, )Release, /)
+          .first()
+          .waitFor();
+        await shoot('calendar-month', 900);
       }
       if (wants('contacts') || wants('contact')) {
         await page.getByRole('tab', { name: t.contacts }).click();
@@ -227,8 +246,16 @@ async function run(scheme, lang, only) {
           await page.getByText('Lena Hoffmann').click();
           await page.getByRole('dialog').waitFor();
           await shoot('contact');
+          await page.keyboard.press('Escape');
+          await page.locator('.ant-drawer-mask').waitFor({ state: 'detached' });
         }
       }
+    }
+    if (wants('logs')) {
+      await menu(t.serverLog).click();
+      await page.getByRole('button', { name: t.adminReads }).click();
+      await page.getByText('Admin read user content').first().waitFor();
+      await shoot('logs');
     }
   } catch (error) {
     await page.screenshot({
@@ -245,7 +272,7 @@ try {
   console.log('English, dark');
   await run('dark', 'en');
   console.log('German, light');
-  await run('light', 'de', ['overview', 'users', 'calendar']);
+  await run('light', 'de', ['overview', 'users', 'user', 'calendar']);
 } finally {
   await browser.close();
   stop();

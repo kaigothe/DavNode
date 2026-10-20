@@ -156,6 +156,7 @@ export default tseslint.config(
         Buffer: 'readonly',
         // Code passed to page.evaluate() runs in the browser.
         document: 'readonly',
+        requestAnimationFrame: 'readonly',
       },
     },
   },

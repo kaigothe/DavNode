@@ -47,6 +47,8 @@ export const de: Translation = {
     groups: 'Gruppen',
     quota: 'Speicher',
     tenants: 'Tenants',
+    logs: 'Server-Log',
+    menu: 'Menü',
   },
   role: {
     server_admin: 'Server-Administrator',
@@ -127,6 +129,18 @@ export const de: Translation = {
     deleteTitle: '{{name}} löschen?',
     deleteText:
       'Der Nutzer und alle seine Dateien, Kalender und Kontakte werden endgültig gelöscht. Das lässt sich nicht rückgängig machen.',
+  },
+  userDetail: {
+    back: 'Alle Nutzer',
+    account: 'Konto',
+    storage: 'Speicher',
+    groups: 'Gruppen',
+    noGroups: 'Dieser Nutzer ist in keiner Gruppe.',
+    membership: 'Mitgliedschaft',
+    direct: 'Direktes Mitglied',
+    via: 'Über {{groups}}',
+    groupsHint:
+      'Gruppen in Gruppen zählen mit: Wer im Team ist, ist auch in den Gruppen, zu denen das Team gehört.',
   },
   groups: {
     title: 'Gruppen',
@@ -264,8 +278,56 @@ export const de: Translation = {
     address: 'Adresse',
     birthday: 'Geburtstag',
     notes: 'Notizen',
+    card: 'Visitenkarte',
     photo: 'Foto',
     searchContacts: 'Nach Name, E-Mail, Telefon oder Organisation suchen',
+  },
+  logs: {
+    title: 'Server-Log',
+    hint: 'Die zuletzt vom Server protokollierten Zeilen, im Speicher gehalten: nach einem Neustart leer und nur für diese Instanz. Für eine dauerhafte Aufzeichnung dient das Container-Log oder ein Log-Dienst.',
+    notEnabledTitle: 'Nicht aktiviert',
+    notEnabledText:
+      'Dieser Server zeigt sein Log hier nicht an. Der Betreiber kann es mit DAVNODE_ADMIN_UI_LOG_VIEW einschalten.',
+    time: 'Zeit',
+    level: 'Stufe',
+    message: 'Meldung',
+    details: 'Details',
+    levelFrom: {
+      error: 'Fehler',
+      warn: 'Warnungen und höher',
+      info: 'Info und höher',
+      debug: 'Alles',
+    },
+    search: 'Im Log suchen',
+    adminReads: 'Zugriffe auf Nutzerdaten',
+    limit: 'Wie viele Zeilen',
+    lastN: 'Letzte {{count}}',
+    refresh: 'Aktualisieren',
+    live: 'Live',
+    buffer:
+      'Zeigt {{shown}} von {{buffered}} Zeilen im Puffer, der höchstens {{capacity}} hält.',
+    empty: 'Keine Zeile passt.',
+  },
+  calendar: {
+    today: 'Heute',
+    view: 'Ansicht',
+    views: { day: 'Tag', week: 'Woche', month: 'Monat' },
+    previous: {
+      day: 'Voriger Tag',
+      week: 'Vorige Woche',
+      month: 'Voriger Monat',
+    },
+    next: {
+      day: 'Nächster Tag',
+      week: 'Nächste Woche',
+      month: 'Nächster Monat',
+    },
+    calendars: 'Kalender',
+    miniMonth: 'Monatsnavigation',
+    sidebar: 'Kalenderliste und Monat',
+    eventLabel: '{{title}}, {{when}}, Kalender {{calendar}}',
+    eventLabelWithPlace:
+      '{{title}}, {{when}}, {{place}}, Kalender {{calendar}}',
   },
   errors: {
     unauthorized: 'Benutzername oder Passwort ist falsch.',

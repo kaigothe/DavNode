@@ -106,7 +106,7 @@ export const adminMe = {
     name: 'Acme Corp',
   },
   anchorTenant: 'acme',
-  capabilities: { contentView: false },
+  capabilities: { contentView: false, logView: false },
 };
 
 export const providers = {

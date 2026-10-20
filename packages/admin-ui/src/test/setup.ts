@@ -8,8 +8,9 @@ import { takeViolations } from './contract';
 // large stylesheets (seconds per query on a busy machine). The tests assert
 // visibility where it matters; the browser tests check the real tree.
 //
-// The default one-second wait of findBy* is too short for the same reason when
-// the three database jobs render these pages on a loaded CI runner.
+// A page's code is loaded on first use, which is slow in jsdom: the default
+// one-second wait of findBy* is too tight on a busy machine or a loaded CI
+// runner.
 configure({ defaultHidden: true, asyncUtilTimeout: 10_000 });
 
 // Ant Design reads these from the browser; jsdom does not implement them.

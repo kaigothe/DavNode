@@ -7,7 +7,7 @@ import { ApiError, type User } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { NotFoundPage } from '../StatusPages';
-import { CalendarsTab } from './CalendarsTab';
+import { CalendarApp } from '../calendar/CalendarApp';
 import { ContactsTab } from './ContactsTab';
 import { PageTitle } from '../../components/Headings';
 
@@ -58,7 +58,7 @@ export function UserContentPage() {
             {
               key: 'calendars',
               label: t('content.tabCalendars'),
-              children: <CalendarsTab userId={userId} />,
+              children: <CalendarApp userId={userId} />,
             },
             {
               key: 'contacts',

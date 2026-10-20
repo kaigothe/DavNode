@@ -1,4 +1,4 @@
-import { createAdminRouter } from '@davnode/admin-api';
+import { createAdminRouter, type LogSource } from '@davnode/admin-api';
 import {
   AddressbookMultigetReportHandler,
   AddressbookQueryReportHandler,
@@ -103,6 +103,12 @@ export interface CreateAppOptions {
    * means the UI does not exist: the path answers 404.
    */
   adminUi?: AdminUiRouteOptions;
+  /**
+   * The in-memory log behind the admin UI's log view
+   * (`DAVNODE_ADMIN_UI_LOG_VIEW`); with it `GET /admin/{tenant}/logs`
+   * exists. Absent means the log is not reachable through the API.
+   */
+  adminLogs?: LogSource;
 }
 
 /**
@@ -219,6 +225,7 @@ export function createApp(
       oauth2Issuers: authConfig.oauth2Issuers.map((issuer) => issuer.issuer),
       authProviders: authConfig.providers,
       contentView: options.adminContentView === true,
+      logs: options.adminLogs,
       onContentAccess: (access) =>
         logger.info(access, 'Admin read user content'),
       metrics,

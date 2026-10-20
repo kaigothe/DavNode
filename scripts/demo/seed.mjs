@@ -159,7 +159,15 @@ const put = (path, body, headers, extra = {}) =>
   call('PUT', path, { ...as, body, headers, ...extra });
 
 // 405 means the collection already exists.
-await call('MKCALENDAR', `${home}/work/`, { ...as, ok: [405] });
+// A calendar with a name and the colour Apple's clients use (405 = it exists).
+const mkcalendar = (path, name, color) =>
+  call('MKCALENDAR', path, {
+    ...as,
+    ok: [405],
+    headers: { 'content-type': 'application/xml' },
+    body: `<?xml version="1.0"?><C:mkcalendar xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav" xmlns:A="http://apple.com/ns/ical/"><D:set><D:prop><D:displayname>${name}</D:displayname><A:calendar-color>${color}</A:calendar-color></D:prop></D:set></C:mkcalendar>`,
+  });
+await mkcalendar(`${home}/work/`, 'Work', '#1BADF8FF');
 await put(
   `${home}/work/standup.ics`,
   event('demo-standup', 'Team standup', [
@@ -207,12 +215,66 @@ await put(
   ]),
   ICS,
 );
-await call('MKCALENDAR', `${home}/personal/`, { ...as, ok: [405] });
+await put(
+  `${home}/work/planning.ics`,
+  event('demo-planning', 'Sprint planning', [
+    `DTSTART:${day(14)}T130000Z`,
+    `DTEND:${day(14)}T143000Z`,
+    'LOCATION:Room 2',
+  ]),
+  ICS,
+);
+await put(
+  `${home}/work/one-on-one.ics`,
+  event('demo-1on1', '1:1 with Maria', [
+    `DTSTART:${day(14)}T140000Z`,
+    `DTEND:${day(14)}T143000Z`,
+  ]),
+  ICS,
+);
+await put(
+  `${home}/work/docs.ics`,
+  event('demo-docs', 'Write the docs', [
+    `DTSTART:${day(14)}T160000Z`,
+    `DTEND:${day(14)}T173000Z`,
+  ]),
+  ICS,
+);
+await put(
+  `${home}/work/workshop.ics`,
+  event('demo-workshop', 'Customer workshop', [
+    `DTSTART:${day(15)}T093000Z`,
+    `DTEND:${day(15)}T120000Z`,
+    'LOCATION:Online',
+    'DESCRIPTION:Walk through the admin interface.',
+  ]),
+  ICS,
+);
+await mkcalendar(`${home}/personal/`, 'Personal', '#FF2968FF');
 await put(
   `${home}/personal/dentist.ics`,
   event('demo-dentist', 'Dentist', [
     `DTSTART:${day(9)}T133000Z`,
     `DTEND:${day(9)}T141500Z`,
+  ]),
+  ICS,
+);
+
+await put(
+  `${home}/personal/lunch.ics`,
+  event('demo-lunch', 'Lunch with Sofia', [
+    `DTSTART:${day(14)}T113000Z`,
+    `DTEND:${day(14)}T123000Z`,
+    'LOCATION:Cafe Central',
+  ]),
+  ICS,
+);
+await put(
+  `${home}/personal/gym.ics`,
+  event('demo-gym', 'Gym', [
+    `DTSTART:${day(16)}T170000Z`,
+    `DTEND:${day(16)}T180000Z`,
+    'RRULE:FREQ=WEEKLY;COUNT=20',
   ]),
   ICS,
 );

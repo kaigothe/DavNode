@@ -130,3 +130,8 @@ export type Calendar = Schemas['Calendar'];
 export type CalendarEvent = Schemas['Event'];
 export type Addressbook = Schemas['Addressbook'];
 export type Contact = Schemas['Contact'];
+
+export type UserGroup = Schemas['UserGroup'];
+
+export type LogEntry = Schemas['LogEntry'];
+export type LogPage = Schemas['LogPage'];

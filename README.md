@@ -157,7 +157,7 @@ variable.
 
 A browser interface for the [Admin API](docs/admin-api.md): tenants, users,
 groups, quotas and, optionally, a read-only view of users' calendars and
-contacts. It is part of the image but **off by default**. When enabled it is
+contacts and of the recent server log. It is part of the image but **off by default**. When enabled it is
 served at `/admin-ui/` and signs in with the same credentials as the DAV
 endpoints; use it over HTTPS. English and German, light and dark. The
 [admin UI guide](docs/admin-ui.md) has the details.
@@ -167,11 +167,13 @@ endpoints; use it over HTTPS. English and German, light and dark. The
   <img alt="The admin UI: the user list with roles and storage use" src="docs/assets/admin-ui/users-light-en.png">
 </picture>
 
-| Variable                        | Default  | Meaning                                                                                                                                                                                        |
-| ------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DAVNODE_ADMIN_UI_ENABLED`      | `false`  | Serve the admin UI at `/admin-ui/`.                                                                                                                                                            |
-| `DAVNODE_ADMIN_UI_CONTENT_VIEW` | `false`  | Let administrators read users' calendars and contacts through the Admin API and the UI. Every read is logged. Requires `DAVNODE_ADMIN_UI_ENABLED=true`; the server refuses to start otherwise. |
-| `DAVNODE_ADMIN_UI_DIR`          | built-in | Directory with the built UI, if you serve your own build. The server refuses to start when it is enabled but the directory has no `index.html`.                                                |
+| Variable                        | Default  | Meaning                                                                                                                                                                                                          |
+| ------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DAVNODE_ADMIN_UI_ENABLED`      | `false`  | Serve the admin UI at `/admin-ui/`.                                                                                                                                                                              |
+| `DAVNODE_ADMIN_UI_CONTENT_VIEW` | `false`  | Let administrators read users' calendars and contacts through the Admin API and the UI. Every read is logged. Requires `DAVNODE_ADMIN_UI_ENABLED=true`; the server refuses to start otherwise.                   |
+| `DAVNODE_ADMIN_UI_LOG_VIEW`     | `false`  | Let server administrators read the most recent server log in the UI (`GET /admin/{tenant}/logs`). The log is kept in memory: empty after a restart, one instance only. Requires `DAVNODE_ADMIN_UI_ENABLED=true`. |
+| `DAVNODE_ADMIN_UI_LOG_BUFFER`   | `2000`   | How many log lines the view keeps (100–50000).                                                                                                                                                                   |
+| `DAVNODE_ADMIN_UI_DIR`          | built-in | Directory with the built UI, if you serve your own build. The server refuses to start when it is enabled but the directory has no `index.html`.                                                                  |
 
 ### Authentication
 

@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import type { Contact } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
 import { ErrorAlert } from '../../components/ErrorAlert';
+import { ContactCard } from './ContactCard';
 
 const values = (list: Contact['emails']) => (
   <Flex vertical gap={2}>
@@ -71,6 +72,7 @@ export function ContactDrawer({
     >
       {contact && (
         <Flex vertical gap={16}>
+          <ContactCard contact={contact} />
           <Descriptions column={1} size="small" bordered>
             {contact.organization && (
               <Descriptions.Item label={t('content.organization')}>

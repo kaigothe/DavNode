@@ -45,6 +45,8 @@ export const en = {
     groups: 'Groups',
     quota: 'Storage',
     tenants: 'Tenants',
+    logs: 'Server log',
+    menu: 'Menu',
   },
   role: {
     server_admin: 'Server administrator',
@@ -125,6 +127,18 @@ export const en = {
     deleteTitle: 'Delete {{name}}?',
     deleteText:
       'The user and all their files, calendars and contacts are deleted for good. This cannot be undone.',
+  },
+  userDetail: {
+    back: 'All users',
+    account: 'Account',
+    storage: 'Storage',
+    groups: 'Groups',
+    noGroups: 'This user is not a member of any group.',
+    membership: 'Membership',
+    direct: 'Direct member',
+    via: 'Via {{groups}}',
+    groupsHint:
+      'Groups inside a group count too: a member of the team is also a member of the groups the team belongs to.',
   },
   groups: {
     title: 'Groups',
@@ -259,8 +273,52 @@ export const en = {
     address: 'Address',
     birthday: 'Birthday',
     notes: 'Notes',
+    card: 'Business card',
     photo: 'Photo',
     searchContacts: 'Search by name, e-mail, phone or organization',
+  },
+  logs: {
+    title: 'Server log',
+    hint: 'The most recent lines the server logged, kept in memory: empty after a restart and only for this instance. For a lasting record use the container log or a log service.',
+    notEnabledTitle: 'Not enabled',
+    notEnabledText:
+      'This server does not show its log here. The operator can switch it on with DAVNODE_ADMIN_UI_LOG_VIEW.',
+    time: 'Time',
+    level: 'Level',
+    message: 'Message',
+    details: 'Details',
+    levelFrom: {
+      error: 'Errors',
+      warn: 'Warnings and above',
+      info: 'Info and above',
+      debug: 'Everything',
+    },
+    search: 'Search the log',
+    adminReads: 'Reads of user data',
+    limit: 'How many lines',
+    lastN: 'Latest {{count}}',
+    refresh: 'Refresh',
+    live: 'Live',
+    buffer:
+      'Showing {{shown}} of {{buffered}} lines in the buffer, which keeps at most {{capacity}}.',
+    empty: 'No lines match.',
+  },
+  calendar: {
+    today: 'Today',
+    view: 'View',
+    views: { day: 'Day', week: 'Week', month: 'Month' },
+    previous: {
+      day: 'Previous day',
+      week: 'Previous week',
+      month: 'Previous month',
+    },
+    next: { day: 'Next day', week: 'Next week', month: 'Next month' },
+    calendars: 'Calendars',
+    miniMonth: 'Month navigation',
+    sidebar: 'Calendar list and month',
+    eventLabel: '{{title}}, {{when}}, calendar {{calendar}}',
+    eventLabelWithPlace:
+      '{{title}}, {{when}}, {{place}}, calendar {{calendar}}',
   },
   errors: {
     unauthorized: 'The username or password is wrong.',

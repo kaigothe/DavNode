@@ -19,7 +19,9 @@ const env = {
   DAVNODE_HTTP_PORT: process.env.E2E_PORT ?? '8099',
   DAVNODE_ADMIN_UI_ENABLED: 'true',
   DAVNODE_ADMIN_UI_CONTENT_VIEW: 'true',
-  DAVNODE_LOG_LEVEL: 'warn',
+  DAVNODE_ADMIN_UI_LOG_VIEW: 'true',
+  // The log view shows what the server logs, and requests are logged at info.
+  DAVNODE_LOG_LEVEL: 'info',
   // The tests sign in many times from one address.
   DAVNODE_AUTH_RATE_LIMIT_MAX: '0',
 };

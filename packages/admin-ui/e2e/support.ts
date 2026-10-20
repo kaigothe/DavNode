@@ -84,3 +84,60 @@ export async function dav(
   });
   expect(response.status(), `${method} ${path}`).toBeLessThan(300);
 }
+
+const MKCALENDAR = (name: string, color?: string) =>
+  `<?xml version="1.0"?><C:mkcalendar xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav" xmlns:A="http://apple.com/ns/ical/"><D:set><D:prop><D:displayname>${name}</D:displayname>${
+    color ? `<A:calendar-color>${color}</A:calendar-color>` : ''
+  }</D:prop></D:set></C:mkcalendar>`;
+
+/** One event of a seeded calendar. `start` and `end` are iCalendar values (`20261014T090000Z`, or a date for all-day). */
+export interface SeedEvent {
+  uid: string;
+  summary: string;
+  start: string;
+  end: string;
+  allDay?: boolean;
+  rrule?: string;
+  location?: string;
+}
+
+/** Creates a calendar for `user`, with an optional Apple colour, and puts `events` in it. */
+export async function seedCalendar(
+  request: APIRequestContext,
+  user: { username: string; password: string; principalId: string },
+  calendar: { path: string; name: string; color?: string },
+  events: SeedEvent[],
+) {
+  const home = `/calendars/${user.principalId}/${calendar.path}`;
+  await dav(request, user, 'MKCALENDAR', `${home}/`, {
+    contentType: 'application/xml',
+    body: MKCALENDAR(calendar.name, calendar.color),
+  });
+  for (const e of events) {
+    const date = e.allDay ? ';VALUE=DATE' : '';
+    const body = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//e2e//EN',
+      'BEGIN:VEVENT',
+      `UID:${e.uid}`,
+      'DTSTAMP:20260101T000000Z',
+      `DTSTART${date}:${e.start}`,
+      `DTEND${date}:${e.end}`,
+      ...(e.rrule ? [`RRULE:${e.rrule}`] : []),
+      ...(e.location ? [`LOCATION:${e.location}`] : []),
+      `SUMMARY:${e.summary}`,
+      'END:VEVENT',
+      'END:VCALENDAR',
+      '',
+    ].join('\r\n');
+    await dav(request, user, 'PUT', `${home}/${e.uid}.ics`, {
+      contentType: 'text/calendar',
+      body,
+    });
+  }
+}
+
+/** `20261014` for a date, in UTC. */
+export const ymd = (date: Date) =>
+  date.toISOString().slice(0, 10).replace(/-/g, '');
