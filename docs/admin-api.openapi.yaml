@@ -181,6 +181,43 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /logs:
+    get:
+      summary: The most recent server log lines (in-memory buffer)
+      description: |
+        Requires `server_admin`, and only exists when the server runs with the
+        admin log view (`DAVNODE_ADMIN_UI_LOG_VIEW`); otherwise `404`. The log
+        spans all tenants and holds user names, paths and client addresses.
+        The buffer lives in the server process: it is empty after a restart and
+        covers this instance only.
+      operationId: listLogs
+      tags: [Operations]
+      parameters:
+        - name: limit
+          in: query
+          description: At most this many entries (default 200).
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 200 }
+        - name: level
+          in: query
+          description: Only entries at this level or more severe.
+          schema: { type: string, enum: [error, warn, info, debug] }
+        - name: q
+          in: query
+          description: Only entries containing this text in the message or the fields.
+          schema: { type: string, maxLength: 200 }
+        - name: after
+          in: query
+          description: Only entries with a `seq` greater than this, to fetch what is new.
+          schema: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: The entries, newest first.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LogPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /tenants:
     get:
       summary: List all tenants
@@ -819,11 +856,14 @@ components:
           description: Slug of the tenant the request URL addressed.
         capabilities:
           type: object
-          required: [contentView]
+          required: [contentView, logView]
           properties:
             contentView:
               type: boolean
               description: The read-only calendar/contact routes exist.
+            logView:
+              type: boolean
+              description: '`GET /logs` exists (it also needs the `server_admin` role).'
     Providers:
       type: object
       required: [providers, oauth2Issuers]
@@ -981,6 +1021,33 @@ components:
           type: string
           nullable: true
           description: The user name or group name; `null` for a special principal.
+    LogEntry:
+      type: object
+      required: [seq, timestamp, level, message, fields]
+      properties:
+        seq:
+          type: integer
+          description: Counts up from 1 for the lifetime of the server process.
+        timestamp: { type: string, format: date-time }
+        level: { type: string, example: info }
+        message: { type: string }
+        fields:
+          type: object
+          additionalProperties: true
+          description: Everything else of the line (method, path, status, requestId, …).
+    LogPage:
+      type: object
+      required: [entries, newest, buffered, capacity]
+      properties:
+        entries:
+          type: array
+          items: { $ref: '#/components/schemas/LogEntry' }
+        newest:
+          type: integer
+          description: The `seq` of the newest entry in the buffer, 0 when it is empty.
+        buffered:
+          { type: integer, description: How many entries the buffer holds now. }
+        capacity: { type: integer, description: How many it holds at most. }
     UserGroup:
       type: object
       required: [id, name, description, direct, via]

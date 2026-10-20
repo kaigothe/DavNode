@@ -21,6 +21,9 @@ function registeredRoutes(): string[] {
   const router = createAdminRouter({} as DataSource, {
     metrics: { contentType: 'text/plain', render: async () => '' },
     contentView: true,
+    logs: {
+      query: () => ({ entries: [], newest: 0, buffered: 0, capacity: 1 }),
+    },
   });
   const out: string[] = [];
   for (const layer of (router as unknown as { stack: Layer[] }).stack) {

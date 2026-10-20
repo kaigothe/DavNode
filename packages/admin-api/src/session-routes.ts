@@ -44,7 +44,10 @@ export function registerSessionRoutes(
       // The tenant the URL addresses; differs from `tenant` for a
       // server_admin who authenticates through another tenant's anchor.
       anchorTenant: requireTenant(req).slug,
-      capabilities: { contentView: options.contentView === true },
+      capabilities: {
+        contentView: options.contentView === true,
+        logView: options.logs !== undefined,
+      },
     });
   });
 

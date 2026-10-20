@@ -86,7 +86,7 @@ describe('session routes (/me, /providers)', () => {
           role,
           tenant: { slug: 'acme', name: 'Acme Corp' },
           anchorTenant: 'acme',
-          capabilities: { contentView: false },
+          capabilities: { contentView: false, logView: false },
         });
       },
     );

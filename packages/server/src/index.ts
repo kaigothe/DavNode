@@ -19,6 +19,7 @@ import {
   type LogLevel,
 } from './logging/logger.js';
 import { parseAdminUiConfig } from './admin-ui-config.js';
+import { createBufferedDestination, LogBuffer } from './logging/log-buffer.js';
 import { defaultAdminUiDirectory } from './http/routes/admin-ui.route.js';
 import { parseAuthConfig } from './auth-config.js';
 import { parseSecurityConfig } from './security/security-config.js';
@@ -35,6 +36,12 @@ export interface StartServerOptions {
   env?: NodeJS.ProcessEnv;
   /** Defaults to a JSON logger at `DAVNODE_LOG_LEVEL` writing to standard output. */
   logger?: Logger;
+  /**
+   * The buffer `logger` also writes into, for the admin UI's log view. Only
+   * used with `DAVNODE_ADMIN_UI_LOG_VIEW`; when no `logger` is given a logger
+   * with its own buffer is created then.
+   */
+  logBuffer?: LogBuffer;
 }
 
 /** A started server, the DataSource backing it, and its in-process quota reconciliation job, so all three can be closed together. */
@@ -87,8 +94,17 @@ export async function startServer(
   const auth = parseAuthConfig(env);
   const security = parseSecurityConfig(env);
   const adminUi = parseAdminUiConfig(env);
-  const logger =
-    options.logger ?? createLogger(parseLogLevel(env.DAVNODE_LOG_LEVEL));
+  let logBuffer = adminUi.logView ? options.logBuffer : undefined;
+  let logger = options.logger;
+  if (!logger) {
+    const level = parseLogLevel(env.DAVNODE_LOG_LEVEL);
+    if (adminUi.logView) {
+      logBuffer = new LogBuffer(adminUi.logBuffer);
+      logger = createLogger(level, createBufferedDestination(logBuffer));
+    } else {
+      logger = createLogger(level);
+    }
+  }
   // Messages from @davnode/core and the error handlers go to the same log.
   setLogSink(toLogSink(logger));
   const dataSource = createDataSource(env);
@@ -118,6 +134,7 @@ export async function startServer(
     logger,
     defaultTenant: env.DAVNODE_DEFAULT_TENANT?.trim() || undefined,
     adminContentView: adminUi.contentView,
+    adminLogs: logBuffer,
     adminUi: adminUi.enabled
       ? { directory: adminUi.directory ?? defaultAdminUiDirectory() }
       : undefined,
@@ -191,10 +208,22 @@ function bootLogLevel(): LogLevel {
 }
 
 async function main(): Promise<void> {
-  const logger = createLogger(bootLogLevel());
+  // The log view needs the buffer in place before anything is logged. A
+  // misconfiguration is reported by startServer; here it just means no buffer.
+  let logBuffer: LogBuffer | undefined;
+  try {
+    const adminUi = parseAdminUiConfig(process.env);
+    logBuffer = adminUi.logView ? new LogBuffer(adminUi.logBuffer) : undefined;
+  } catch {
+    logBuffer = undefined;
+  }
+  const logger = createLogger(
+    bootLogLevel(),
+    logBuffer ? createBufferedDestination(logBuffer) : undefined,
+  );
   let running: RunningServer;
   try {
-    running = await startServer({ logger });
+    running = await startServer({ logger, logBuffer });
   } catch (error) {
     logger.error({ err: error }, 'Failed to start server');
     process.exitCode = 1;
