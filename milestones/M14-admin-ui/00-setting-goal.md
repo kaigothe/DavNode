@@ -53,7 +53,13 @@ barrierearm, mit System/Hell/Dunkel-Theme und standardmäßig abgeschaltet.
 - ✅ 5 Verwaltungsansichten (Nutzer, Gruppen, Speicher, Tenants; die
   Provider-Anzeige liegt auf der Übersichtsseite)
 - ✅ 6 Kalender-/Kontakte-Ansicht
-- ⏳ 7–8 offen.
+- ✅ 7 Qualität: Contract-Prüfung der Test-Fakes gegen die OpenAPI-Spec,
+  axe (jsdom und echter Browser, beide Themes, mit Kontrast), Playwright-
+  E2E gegen echten Server in CI, Bundle-Budget, Lint-Regeln gegen
+  HTML-Injection und `console`. Bewusst anders als geplant: keine `msw`
+  (die Fakes laufen über `stubApi` + Contract-Check) und keine
+  Coverage-Schwelle (die übrigen Pakete haben keine).
+- ⏳ 8 offen.
 
 ## Große Aufgaben (Übersicht)
 1. [Backend-Ergänzungen](01-backend-additions/00-overview.md)
