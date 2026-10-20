@@ -740,10 +740,11 @@ components:
         application/json:
           schema:
             type: object
+            required: [members]
             properties:
               members:
                 type: array
-                items: { type: object, additionalProperties: true }
+                items: { $ref: '#/components/schemas/Member' }
   schemas:
     Error:
       type: object
@@ -944,6 +945,16 @@ components:
         quotaLimitBytes: { $ref: '#/components/schemas/QuotaLimit' }
         quotaUsedBytes: { type: integer }
         createdAt: { type: string, format: date-time }
+    Member:
+      type: object
+      required: [principalId, kind, name]
+      properties:
+        principalId: { type: string, format: uuid }
+        kind: { type: string, enum: [user, group, special] }
+        name:
+          type: string
+          nullable: true
+          description: The user name or group name; `null` for a special principal.
     Group:
       type: object
       required: [id, principalId, name, description]

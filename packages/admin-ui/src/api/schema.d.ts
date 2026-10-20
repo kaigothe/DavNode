@@ -560,6 +560,14 @@ export interface components {
       /** Format: date-time */
       createdAt: string;
     };
+    Member: {
+      /** Format: uuid */
+      principalId: string;
+      /** @enum {string} */
+      kind: 'user' | 'group' | 'special';
+      /** @description The user name or group name; `null` for a special principal. */
+      name: string | null;
+    };
     Group: {
       /** Format: uuid */
       id: string;
@@ -636,9 +644,7 @@ export interface components {
       };
       content: {
         'application/json': {
-          members?: {
-            [key: string]: unknown;
-          }[];
+          members: components['schemas']['Member'][];
         };
       };
     };
