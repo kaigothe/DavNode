@@ -858,7 +858,7 @@ components:
         status:
           type: string
           nullable: true
-          enum: [tentative, confirmed, cancelled]
+          enum: [tentative, confirmed, cancelled, null]
         transparency: { type: string, enum: [opaque, transparent] }
         raw: { type: string, description: Only with `raw=true`. }
     Addressbook:
