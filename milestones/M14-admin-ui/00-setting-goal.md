@@ -52,7 +52,8 @@ barrierearm, mit System/Hell/Dunkel-Theme und standardmäßig abgeschaltet.
   mit Aufgabe 5 und 6.
 - ✅ 5 Verwaltungsansichten (Nutzer, Gruppen, Speicher, Tenants; die
   Provider-Anzeige liegt auf der Übersichtsseite)
-- ⏳ 6–8 offen.
+- ✅ 6 Kalender-/Kontakte-Ansicht
+- ⏳ 7–8 offen.
 
 ## Große Aufgaben (Übersicht)
 1. [Backend-Ergänzungen](01-backend-additions/00-overview.md)
