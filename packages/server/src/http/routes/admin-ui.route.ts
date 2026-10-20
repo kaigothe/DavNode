@@ -82,6 +82,11 @@ export function registerAdminUiRoute(
     next();
   };
 
+  // The server has nothing at "/", so point a browser there at the UI.
+  app.get('/', (_req, res) => {
+    res.redirect(302, `${ADMIN_UI_PATH}/`);
+  });
+
   app.use(
     ADMIN_UI_PATH,
     headers,

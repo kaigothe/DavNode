@@ -50,6 +50,7 @@ describe('admin UI route', () => {
       start();
 
       expect((await fetch(`${baseUrl}/admin-ui/`)).status).toBe(404);
+      expect((await fetch(`${baseUrl}/`)).status).toBe(404);
       expect(
         (await fetch(`${baseUrl}/admin-ui/assets/app-1a2b3c.js`)).status,
       ).toBe(404);
@@ -109,6 +110,13 @@ describe('admin UI route', () => {
       expect(health.headers.get('content-security-policy')).toBeNull();
       expect(api.headers.get('content-security-policy')).toBeNull();
       expect(api.status).toBe(404);
+    });
+
+    it('sends / to the UI', async () => {
+      const response = await fetch(`${baseUrl}/`, { redirect: 'manual' });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get('location')).toBe('/admin-ui/');
     });
 
     it('does not accept writes', async () => {
