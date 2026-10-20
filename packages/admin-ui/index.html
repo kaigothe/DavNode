@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
+    <title>DavNode Admin</title>
+    <script src="%BASE_URL%theme-init.js"></script>
+    <style>
+      /* Shown until the app has rendered: no white flash in dark mode. */
+      html,
+      body,
+      #root {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        background: #fff;
+        color: #1f1f1f;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #141414;
+          color: #e6e6e6;
+        }
+      }
+      html[data-theme='dark'] body {
+        background: #141414;
+        color: #e6e6e6;
+      }
+      html[data-theme='light'] body {
+        background: #fff;
+        color: #1f1f1f;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

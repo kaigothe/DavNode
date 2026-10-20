@@ -3,6 +3,8 @@ import tseslint from 'typescript-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier';
 import tsdocPlugin from 'eslint-plugin-tsdoc';
 import jsdocPlugin from 'eslint-plugin-jsdoc';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
+import reactHooks from 'eslint-plugin-react-hooks';
 
 // Exported declaration shapes that make up a package's public API and
 // therefore require a TSDoc comment, per planning/07-coding-conventions.md:
@@ -41,11 +43,11 @@ export default tseslint.config(
   ...tseslint.configs.recommendedTypeChecked.map((config) => ({
     ...config,
     files: ['packages/*/src/**/*.ts'],
-    ignores: ['packages/*/src/**/*.test.ts'],
+    ignores: ['packages/*/src/**/*.test.ts', 'packages/admin-ui/**'],
   })),
   {
     files: ['packages/*/src/**/*.ts'],
-    ignores: ['packages/*/src/**/*.test.ts'],
+    ignores: ['packages/*/src/**/*.test.ts', 'packages/admin-ui/**'],
     languageOptions: {
       parserOptions: {
         projectService: true,
@@ -79,7 +81,7 @@ export default tseslint.config(
   // not part of a package's public API.
   {
     files: ['packages/*/src/**/*.ts'],
-    ignores: ['packages/*/src/**/*.test.ts'],
+    ignores: ['packages/*/src/**/*.test.ts', 'packages/admin-ui/**'],
     plugins: {
       tsdoc: tsdocPlugin,
       jsdoc: jsdocPlugin,
@@ -114,6 +116,17 @@ export default tseslint.config(
         },
       ],
     },
+  },
+  // The admin UI (M14) is a browser app: React hooks and accessibility rules
+  // instead of the Node packages' type-aware and TSDoc rules.
+  {
+    files: ['packages/admin-ui/**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks, 'jsx-a11y': jsxA11y },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      ...jsxA11y.flatConfigs.recommended.rules,
+    },
+    languageOptions: { ...jsxA11y.flatConfigs.recommended.languageOptions },
   },
   eslintConfigPrettier,
 );
