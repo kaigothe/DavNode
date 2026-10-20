@@ -413,6 +413,32 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /users/{userId}/groups:
+    get:
+      summary: The groups a user is a member of
+      description: |
+        Direct memberships and those through other groups (a group inside a
+        group the user belongs to). `via` names the user's own groups that
+        lead there.
+      operationId: listUserGroups
+      tags: [Users]
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: The groups, ordered by name.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [groups]
+                properties:
+                  groups:
+                    type: array
+                    items: { $ref: '#/components/schemas/UserGroup' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /users/{userId}/password:
     parameters:
       - $ref: '#/components/parameters/userId'
@@ -955,6 +981,20 @@ components:
           type: string
           nullable: true
           description: The user name or group name; `null` for a special principal.
+    UserGroup:
+      type: object
+      required: [id, name, description, direct, via]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        direct:
+          type: boolean
+          description: The user is a member of this group itself.
+        via:
+          type: array
+          items: { type: string }
+          description: Names of the user's own groups that sit inside this one.
     Group:
       type: object
       required: [id, principalId, name, description]

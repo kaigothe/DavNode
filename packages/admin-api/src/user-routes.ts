@@ -1,4 +1,5 @@
 import {
+  GroupMembershipService,
   recomputeQuotaForTenant,
   USER_ROLES,
   UserService,
@@ -183,6 +184,25 @@ export function registerUserRoutes(
     if (target) {
       res.json(toUserBody(target));
     }
+  });
+
+  router.get('/users/:userId/groups', tenantAdmin, async (req, res) => {
+    const target = await loadTarget(req, res);
+    if (!target) {
+      return;
+    }
+    const memberships = await new GroupMembershipService(
+      dataSource,
+    ).describeGroupsOfPrincipal(target.principalId);
+    res.json({
+      groups: memberships.map(({ group, direct, via }) => ({
+        id: group.id,
+        name: group.name,
+        description: group.description,
+        direct,
+        via,
+      })),
+    });
   });
 
   router.patch(

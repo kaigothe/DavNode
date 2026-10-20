@@ -169,6 +169,64 @@ export class GroupMembershipService {
   }
 
   /**
+   * The groups `principalId` belongs to, each marked as a direct
+   * membership and/or as reached through other groups: `via` names the
+   * direct groups of the principal that (transitively) sit inside it. A
+   * group can be both (the user is a member of it and also of a group
+   * inside it). Ordered by name.
+   */
+  async describeGroupsOfPrincipal(principalId: string): Promise<
+    {
+      group: Group;
+      direct: boolean;
+      /** Names of the principal's direct groups that are nested in `group`. */
+      via: string[];
+    }[]
+  > {
+    const memberships = await this.dataSource
+      .getRepository(GroupMembership)
+      .findBy({ memberPrincipalId: principalId });
+    const groupRepository = this.dataSource.getRepository(Group);
+    const directGroups =
+      memberships.length === 0
+        ? []
+        : await groupRepository.findBy({
+            id: In(memberships.map((membership) => membership.groupId)),
+          });
+    const directIds = new Set(directGroups.map((group) => group.id));
+
+    const viaByGroup = new Map<string, Set<string>>();
+    for (const direct of directGroups) {
+      for (const ancestor of await this.resolveGroupsForPrincipal(
+        direct.principalId,
+      )) {
+        const names = viaByGroup.get(ancestor.id) ?? new Set<string>();
+        names.add(direct.name);
+        viaByGroup.set(ancestor.id, names);
+      }
+    }
+
+    const all = new Map<string, Group>();
+    for (const group of directGroups) {
+      all.set(group.id, group);
+    }
+    if (viaByGroup.size > 0) {
+      for (const group of await groupRepository.findBy({
+        id: In([...viaByGroup.keys()]),
+      })) {
+        all.set(group.id, group);
+      }
+    }
+    return [...all.values()]
+      .map((group) => ({
+        group,
+        direct: directIds.has(group.id),
+        via: [...(viaByGroup.get(group.id) ?? [])].sort(),
+      }))
+      .sort((a, b) => a.group.name.localeCompare(b.group.name));
+  }
+
+  /**
    * Pairs each principal with a human-readable name: the username for a
    * user, the group name for a group, `null` for a special principal.
    */

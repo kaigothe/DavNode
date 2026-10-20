@@ -200,9 +200,7 @@ describe('GroupMembershipService', () => {
     const alice = await user('alice');
     await membershipService.addMember(groupA.id, alice.id);
 
-    const groups = await membershipService.resolveGroupsForPrincipal(
-      alice.id,
-    );
+    const groups = await membershipService.resolveGroupsForPrincipal(alice.id);
     expect(groups.map((g) => g.id)).toEqual([groupA.id]);
   });
 
@@ -218,9 +216,7 @@ describe('GroupMembershipService', () => {
     await membershipService.addMember(groupB.id, groupC.principalId);
     await membershipService.addMember(groupA.id, groupB.principalId);
 
-    const groups = await membershipService.resolveGroupsForPrincipal(
-      alice.id,
-    );
+    const groups = await membershipService.resolveGroupsForPrincipal(alice.id);
     const groupIds = groups.map((g) => g.id).sort();
     expect(groupIds).toEqual([groupA.id, groupB.id, groupC.id].sort());
   });
@@ -258,15 +254,99 @@ describe('GroupMembershipService', () => {
     await membershipService.addMember(left.id, shared.id);
     await membershipService.addMember(right.id, shared.id);
 
-    const groups = await membershipService.resolveGroupsForPrincipal(
-      shared.id,
-    );
+    const groups = await membershipService.resolveGroupsForPrincipal(shared.id);
     const topOccurrences = groups.filter((g) => g.id === top.id);
     expect(topOccurrences).toHaveLength(1);
   });
 
+  describe('describeGroupsOfPrincipal', () => {
+    it('is empty for a principal without groups', async () => {
+      const alice = await user('alice');
+
+      expect(
+        await membershipService.describeGroupsOfPrincipal(alice.id),
+      ).toEqual([]);
+    });
+
+    it('marks a direct membership', async () => {
+      const team = await group('team');
+      const alice = await user('alice');
+      await membershipService.addMember(team.id, alice.id);
+
+      const described = await membershipService.describeGroupsOfPrincipal(
+        alice.id,
+      );
+
+      expect(
+        described.map(({ group: g, direct, via }) => [g.name, direct, via]),
+      ).toEqual([['team', true, []]]);
+    });
+
+    it('names the direct group a nested membership comes through', async () => {
+      const company = await group('company');
+      const team = await group('team');
+      const alice = await user('alice');
+      await membershipService.addMember(team.id, alice.id);
+      await membershipService.addMember(company.id, team.principalId);
+
+      const described = await membershipService.describeGroupsOfPrincipal(
+        alice.id,
+      );
+
+      expect(
+        described.map(({ group: g, direct, via }) => [g.name, direct, via]),
+      ).toEqual([
+        ['company', false, ['team']],
+        ['team', true, []],
+      ]);
+    });
+
+    it('can be direct and nested at once, and lists every way in', async () => {
+      const company = await group('company');
+      const team = await group('team');
+      const sales = await group('sales');
+      const alice = await user('alice');
+      await membershipService.addMember(company.id, alice.id);
+      await membershipService.addMember(team.id, alice.id);
+      await membershipService.addMember(sales.id, alice.id);
+      await membershipService.addMember(company.id, team.principalId);
+      await membershipService.addMember(company.id, sales.principalId);
+
+      const company_ = (
+        await membershipService.describeGroupsOfPrincipal(alice.id)
+      ).find(({ group: g }) => g.id === company.id);
+
+      expect(company_).toMatchObject({ direct: true, via: ['sales', 'team'] });
+    });
+
+    it('terminates on a cycle in the data', async () => {
+      const a = await group('a');
+      const b = await group('b');
+      const alice = await user('alice');
+      await membershipService.addMember(a.id, alice.id);
+      // Bypass the service's own guard, as a bug elsewhere might.
+      await dataSource.getRepository(GroupMembership).save({
+        groupId: a.id,
+        memberPrincipalId: b.principalId,
+      });
+      await dataSource.getRepository(GroupMembership).save({
+        groupId: b.id,
+        memberPrincipalId: a.principalId,
+      });
+
+      const described = await membershipService.describeGroupsOfPrincipal(
+        alice.id,
+      );
+
+      expect(described.map(({ group: g }) => g.name)).toEqual(['a', 'b']);
+    });
+  });
+
   it('rejects adding a group to itself as a cycle', async () => {
-    const group = await groupService.createGroup({ tenantId: tenant.id, name: 'solo' });
+    const group = await groupService.createGroup({
+      tenantId: tenant.id,
+      name: 'solo',
+    });
 
     await expect(
       membershipService.addMember(group.id, group.principalId),
@@ -274,8 +354,14 @@ describe('GroupMembershipService', () => {
   });
 
   it('lists direct members only and describes them by name', async () => {
-    const outer = await groupService.createGroup({ tenantId: tenant.id, name: 'outer' });
-    const inner = await groupService.createGroup({ tenantId: tenant.id, name: 'inner' });
+    const outer = await groupService.createGroup({
+      tenantId: tenant.id,
+      name: 'outer',
+    });
+    const inner = await groupService.createGroup({
+      tenantId: tenant.id,
+      name: 'inner',
+    });
     const user = await userService.createUser({
       tenantId: tenant.id,
       username: 'alice',
