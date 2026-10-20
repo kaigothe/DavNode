@@ -4,6 +4,8 @@ export interface AdminUiConfig {
   enabled: boolean;
   /** Let admins read users' calendars and contacts (`DAVNODE_ADMIN_UI_CONTENT_VIEW`, default off). */
   contentView: boolean;
+  /** Directory with the built UI (`DAVNODE_ADMIN_UI_DIR`); unset means the one shipped next to the server. */
+  directory?: string;
 }
 
 function flag(name: string, raw: string | undefined): boolean {
@@ -18,8 +20,8 @@ function flag(name: string, raw: string | undefined): boolean {
 }
 
 /**
- * Reads `DAVNODE_ADMIN_UI_ENABLED` and `DAVNODE_ADMIN_UI_CONTENT_VIEW`;
- * both default to off.
+ * Reads `DAVNODE_ADMIN_UI_ENABLED` and `DAVNODE_ADMIN_UI_CONTENT_VIEW`
+ * (both default to off) and the optional `DAVNODE_ADMIN_UI_DIR`.
  *
  * @throws An `Error` for a value other than `true`/`false`, and when the
  * content view is requested without the UI: reading other users' data
@@ -39,5 +41,9 @@ export function parseAdminUiConfig(env: NodeJS.ProcessEnv): AdminUiConfig {
       'DAVNODE_ADMIN_UI_CONTENT_VIEW requires DAVNODE_ADMIN_UI_ENABLED=true.',
     );
   }
-  return { enabled, contentView };
+  return {
+    enabled,
+    contentView,
+    directory: env.DAVNODE_ADMIN_UI_DIR?.trim() || undefined,
+  };
 }
