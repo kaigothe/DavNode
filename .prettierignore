@@ -9,3 +9,6 @@ planning
 milestones
 docs/.vitepress/cache
 docs/.vitepress/dist
+
+# Generated from the OpenAPI document by `npm run generate:api`; CI fails on any difference.
+packages/admin-ui/src/api/schema.d.ts
