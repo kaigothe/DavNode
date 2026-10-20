@@ -150,6 +150,20 @@ variable.
 | `DAVNODE_BEHIND_TLS_PROXY` | `false`   | Set `true` when exactly one reverse proxy terminates HTTPS in front of DavNode (the production compose file does). DavNode then sends `Strict-Transport-Security` and takes the client address from the proxy's `X-Forwarded-For`; without that, rate limiting would see only the proxy's address. DavNode never terminates TLS itself. |
 | `DAVNODE_DEFAULT_TENANT`   | unset     | Tenant slug that `/.well-known/caldav` and `/carddav` resolve plain user names to. Unset: users log in as `user@tenant`.                                                                                                                                                                                                                |
 
+### Admin UI
+
+A browser interface for the [Admin API](docs/admin-api.md): tenants, users,
+groups, quotas and, optionally, a read-only view of users' calendars and
+contacts. It is part of the image but **off by default**. When enabled it is
+served at `/admin-ui/` and signs in with the same credentials as the DAV
+endpoints; use it over HTTPS.
+
+| Variable                        | Default  | Meaning                                                                                                                                                                                        |
+| ------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DAVNODE_ADMIN_UI_ENABLED`      | `false`  | Serve the admin UI at `/admin-ui/`.                                                                                                                                                            |
+| `DAVNODE_ADMIN_UI_CONTENT_VIEW` | `false`  | Let administrators read users' calendars and contacts through the Admin API and the UI. Every read is logged. Requires `DAVNODE_ADMIN_UI_ENABLED=true`; the server refuses to start otherwise. |
+| `DAVNODE_ADMIN_UI_DIR`          | built-in | Directory with the built UI, if you serve your own build. The server refuses to start when it is enabled but the directory has no `index.html`.                                                |
+
 ### Authentication
 
 | Variable                                 | Default   | Meaning                                                                                                                                                                                                                       |

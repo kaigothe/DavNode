@@ -38,6 +38,12 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build --workspaces
+      # The admin UI's API types are generated from the OpenAPI document and
+      # checked in; a change to the spec without regenerating them fails here.
+      - name: Admin UI API types are up to date
+        run: |
+          npm run generate:api -w @davnode/admin-ui
+          git diff --exit-code packages/admin-ui/src/api/schema.d.ts
 
   test:
     needs: lint-and-build
@@ -209,9 +215,23 @@ jobs:
             --email=admin@example.com --password=ci-password-123
           curl -fsS -u admin:ci-password-123 -X PUT -d hello http://127.0.0.1:8080/dav/ci/files/hello.txt
           test "$(curl -fsS -u admin:ci-password-123 http://127.0.0.1:8080/dav/ci/files/hello.txt)" = hello
+      # The admin UI (M14) is shipped in the image but off by default.
+      - name: Admin UI is off by default and served when enabled
+        run: |
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/admin-ui/)" = 404
+          docker run -d --name davnode-ui -p 8081:8080 -e DAVNODE_ADMIN_UI_ENABLED=true davnode:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8081/healthz && break
+            sleep 2
+          done
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8081/admin-ui/)" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8081/admin-ui/users)" = 200
+          curl -fsS http://127.0.0.1:8081/admin-ui/ | grep -q 'DavNode Admin'
       - name: Container log on failure
         if: failure()
-        run: docker logs davnode
+        run: |
+          docker logs davnode
+          docker logs davnode-ui || true
 
   release:
     needs:
