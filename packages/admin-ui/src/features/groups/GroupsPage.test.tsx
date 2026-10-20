@@ -14,14 +14,14 @@ import {
 afterEach(() => vi.unstubAllGlobals());
 
 const sales = {
-  id: 'g1',
-  principalId: 'gp1',
+  id: '00000000-0000-4000-8000-0000000000c1',
+  principalId: '00000000-0000-4000-8000-0000000000d1',
   name: 'Sales',
   description: 'The sales team',
 };
 const support = {
-  id: 'g2',
-  principalId: 'gp2',
+  id: '00000000-0000-4000-8000-0000000000c2',
+  principalId: '00000000-0000-4000-8000-0000000000d2',
   name: 'Support',
   description: null,
 };
@@ -39,7 +39,10 @@ describe('groups page', () => {
     await renderApp('/groups');
 
     const link = await screen.findByRole('link', { name: /Sales/ });
-    expect(link).toHaveAttribute('href', '/groups/g1');
+    expect(link).toHaveAttribute(
+      'href',
+      '/groups/00000000-0000-4000-8000-0000000000c1',
+    );
   });
 
   it('creates a group', async () => {
@@ -85,7 +88,8 @@ describe('groups page', () => {
     signedInAs();
     const calls = stubApi(
       groupRoutes({
-        'DELETE /groups/g2': () => new Response(null, { status: 204 }),
+        'DELETE /groups/00000000-0000-4000-8000-0000000000c2': () =>
+          new Response(null, { status: 204 }),
       }),
     );
     const u = userEvent.setup();
@@ -98,7 +102,11 @@ describe('groups page', () => {
 
     expect(await screen.findByText('Group deleted.')).toBeInTheDocument();
     expect(
-      calls.some((c) => c.method === 'DELETE' && c.path === '/groups/g2'),
+      calls.some(
+        (c) =>
+          c.method === 'DELETE' &&
+          c.path === '/groups/00000000-0000-4000-8000-0000000000c2',
+      ),
     ).toBe(true);
   });
 });
@@ -107,16 +115,31 @@ describe('group detail page', () => {
   const alice = user();
   const detail = (extra: Routes = {}): Routes => ({
     ...baseRoutes(),
-    'GET /groups/g1': () => Response.json(sales),
-    'GET /groups/g1/members': () =>
-      Response.json({
-        members: [{ principalId: 'p9', kind: 'user', name: 'bob' }],
-      }),
-    'GET /groups/g1/members/effective': () =>
+    'GET /groups/00000000-0000-4000-8000-0000000000c1': () =>
+      Response.json(sales),
+    'GET /groups/00000000-0000-4000-8000-0000000000c1/members': () =>
       Response.json({
         members: [
-          { principalId: 'p9', kind: 'user', name: 'bob' },
-          { principalId: 'p8', kind: 'user', name: 'carol' },
+          {
+            principalId: '00000000-0000-4000-8000-0000000000b9',
+            kind: 'user',
+            name: 'bob',
+          },
+        ],
+      }),
+    'GET /groups/00000000-0000-4000-8000-0000000000c1/members/effective': () =>
+      Response.json({
+        members: [
+          {
+            principalId: '00000000-0000-4000-8000-0000000000b9',
+            kind: 'user',
+            name: 'bob',
+          },
+          {
+            principalId: '00000000-0000-4000-8000-0000000000b8',
+            kind: 'user',
+            name: 'carol',
+          },
         ],
       }),
     'GET /users': () => Response.json({ users: [alice], total: 1 }),
@@ -128,7 +151,7 @@ describe('group detail page', () => {
     signedInAs();
     stubApi(detail());
     const u = userEvent.setup();
-    await renderApp('/groups/g1');
+    await renderApp('/groups/00000000-0000-4000-8000-0000000000c1');
 
     expect(
       await screen.findByRole('heading', { name: 'Sales' }),
@@ -145,11 +168,12 @@ describe('group detail page', () => {
     signedInAs();
     const calls = stubApi(
       detail({
-        'POST /groups/g1/members': () => new Response(null, { status: 204 }),
+        'POST /groups/00000000-0000-4000-8000-0000000000c1/members': () =>
+          new Response(null, { status: 204 }),
       }),
     );
     const u = userEvent.setup();
-    await renderApp('/groups/g1');
+    await renderApp('/groups/00000000-0000-4000-8000-0000000000c1');
     await screen.findByText('bob');
 
     await u.click(screen.getByRole('combobox', { name: 'Add a member' }));
@@ -164,7 +188,7 @@ describe('group detail page', () => {
 
     expect(await screen.findByText('Member added.')).toBeInTheDocument();
     expect(calls.find((c) => c.method === 'POST')?.body).toEqual({
-      principalId: 'p2',
+      principalId: '00000000-0000-4000-8000-0000000000b2',
     });
   });
 
@@ -172,7 +196,7 @@ describe('group detail page', () => {
     signedInAs();
     stubApi(
       detail({
-        'POST /groups/g1/members': () =>
+        'POST /groups/00000000-0000-4000-8000-0000000000c1/members': () =>
           Response.json(
             { error: { code: 'cycle_detected', message: 'x' } },
             { status: 409 },
@@ -180,7 +204,7 @@ describe('group detail page', () => {
       }),
     );
     const u = userEvent.setup();
-    await renderApp('/groups/g1');
+    await renderApp('/groups/00000000-0000-4000-8000-0000000000c1');
     await screen.findByText('bob');
 
     await u.click(screen.getByRole('combobox', { name: 'Add a member' }));
@@ -196,12 +220,12 @@ describe('group detail page', () => {
     signedInAs();
     const calls = stubApi(
       detail({
-        'DELETE /groups/g1/members/p9': () =>
-          new Response(null, { status: 204 }),
+        'DELETE /groups/00000000-0000-4000-8000-0000000000c1/members/00000000-0000-4000-8000-0000000000b9':
+          () => new Response(null, { status: 204 }),
       }),
     );
     const u = userEvent.setup();
-    await renderApp('/groups/g1');
+    await renderApp('/groups/00000000-0000-4000-8000-0000000000c1');
     await screen.findByText('bob');
 
     await u.click(
@@ -218,9 +242,10 @@ describe('group detail page', () => {
     signedInAs();
     stubApi({
       ...detail(),
-      'GET /groups/g1': () => new Response(null, { status: 404 }),
+      'GET /groups/00000000-0000-4000-8000-0000000000c1': () =>
+        new Response(null, { status: 404 }),
     });
-    await renderApp('/groups/g1');
+    await renderApp('/groups/00000000-0000-4000-8000-0000000000c1');
 
     expect(await screen.findByText('Page not found')).toBeInTheDocument();
   });

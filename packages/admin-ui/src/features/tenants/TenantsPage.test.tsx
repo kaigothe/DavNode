@@ -15,14 +15,19 @@ import {
 afterEach(() => vi.unstubAllGlobals());
 
 const acme = {
-  id: 't1',
+  id: '00000000-0000-4000-8000-0000000000e1',
   slug: 'acme',
   name: 'Acme Corp',
   quotaLimitBytes: null,
   quotaUsedBytes: 0,
   createdAt: '2026-01-01T00:00:00.000Z',
 };
-const bravo = { ...acme, id: 't2', slug: 'bravo', name: 'Bravo Ltd' };
+const bravo = {
+  ...acme,
+  id: '00000000-0000-4000-8000-0000000000e2',
+  slug: 'bravo',
+  name: 'Bravo Ltd',
+};
 
 const tenantRoutes = (extra: Routes = {}): Routes => ({
   ...baseRoutes(serverAdminMe),

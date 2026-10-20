@@ -49,6 +49,22 @@ describe('apiRequest', () => {
     );
   });
 
+  it('never puts the credentials into the address', async () => {
+    const fetchMock = stubFetch(Response.json({}));
+
+    await apiRequest(
+      {
+        tenantSlug: 'acme',
+        authorization: basicAuthorization('alice', 's3cret'),
+      },
+      '/me',
+      { query: { q: 'x' } },
+    );
+
+    const [url] = fetchMock.mock.calls[0] as unknown as [URL];
+    expect(url.href).not.toMatch(/s3cret|alice:|Basic|@/);
+  });
+
   it('escapes the tenant slug in the path', async () => {
     const fetchMock = stubFetch(Response.json({}));
 

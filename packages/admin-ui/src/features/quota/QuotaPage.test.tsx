@@ -8,6 +8,7 @@ import {
   serverAdminMe,
   signedInAs,
   stubApi,
+  user,
   type Routes,
 } from '../../test/render';
 
@@ -16,15 +17,20 @@ afterEach(() => vi.unstubAllGlobals());
 const GB = 1024 ** 3;
 const overview = (over: object = {}) => ({
   tenant: {
-    id: 't1',
+    id: '00000000-0000-4000-8000-0000000000e1',
     slug: 'acme',
     quotaLimitBytes: 10 * GB,
     quotaUsedBytes: 2 * GB,
   },
   users: [
-    { id: 'u1', username: 'boss', quotaLimitBytes: null, quotaUsedBytes: GB },
     {
-      id: 'u2',
+      id: '00000000-0000-4000-8000-0000000000a1',
+      username: 'boss',
+      quotaLimitBytes: null,
+      quotaUsedBytes: GB,
+    },
+    {
+      id: '00000000-0000-4000-8000-0000000000a2',
       username: 'alice',
       quotaLimitBytes: 5 * GB,
       quotaUsedBytes: 4 * GB,
@@ -70,7 +76,7 @@ describe('quota page', () => {
           Response.json(
             overview({
               tenant: {
-                id: 't1',
+                id: '00000000-0000-4000-8000-0000000000e1',
                 slug: 'acme',
                 quotaLimitBytes: 20 * GB,
                 quotaUsedBytes: 2 * GB,
@@ -100,7 +106,10 @@ describe('quota page', () => {
   it('removes the limit of a user', async () => {
     signedInAs();
     const calls = stubApi(
-      quotaRoutes(adminMe, { 'PATCH /users/u2': () => Response.json({}) }),
+      quotaRoutes(adminMe, {
+        'PATCH /users/00000000-0000-4000-8000-0000000000a2': () =>
+          Response.json(user({ quotaLimitBytes: null })),
+      }),
     );
     const u = userEvent.setup();
     await renderApp('/quota');
@@ -127,7 +136,7 @@ describe('quota page', () => {
             recounted
               ? overview({
                   tenant: {
-                    id: 't1',
+                    id: '00000000-0000-4000-8000-0000000000e1',
                     slug: 'acme',
                     quotaLimitBytes: 10 * GB,
                     quotaUsedBytes: 3 * GB,
@@ -140,7 +149,7 @@ describe('quota page', () => {
           return Response.json(
             overview({
               tenant: {
-                id: 't1',
+                id: '00000000-0000-4000-8000-0000000000e1',
                 slug: 'acme',
                 quotaLimitBytes: 10 * GB,
                 quotaUsedBytes: 3 * GB,

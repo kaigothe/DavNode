@@ -16,14 +16,18 @@ import {
 afterEach(() => vi.unstubAllGlobals());
 
 const boss = user({
-  id: 'u1',
-  principalId: 'p1',
+  id: '00000000-0000-4000-8000-0000000000a1',
+  principalId: '00000000-0000-4000-8000-0000000000b1',
   username: 'boss',
   email: 'boss@example.com',
   role: 'tenant_admin',
 });
 const alice = user();
-const root = user({ id: 'u3', username: 'root', role: 'server_admin' });
+const root = user({
+  id: '00000000-0000-4000-8000-0000000000a3',
+  username: 'root',
+  role: 'server_admin',
+});
 
 const withUsers = (
   users: object[],
@@ -191,7 +195,8 @@ describe('users page', () => {
     it('changes the e-mail and the role', async () => {
       const { calls, user: u } = await open(
         withUsers([boss, alice], {
-          'PATCH /users/u2': () => Response.json(alice),
+          'PATCH /users/00000000-0000-4000-8000-0000000000a2': () =>
+            Response.json(alice),
         }),
       );
 
@@ -241,7 +246,8 @@ describe('users page', () => {
     it('needs the user name typed and then sends it as the confirmation', async () => {
       const { calls, user: u } = await open(
         withUsers([boss, alice], {
-          'DELETE /users/u2': () => new Response(null, { status: 204 }),
+          'DELETE /users/00000000-0000-4000-8000-0000000000a2': () =>
+            new Response(null, { status: 204 }),
         }),
       );
 
@@ -264,7 +270,10 @@ describe('users page', () => {
       const { user: u } = await open(
         withUsers(
           [boss, alice],
-          { 'DELETE /users/u2': () => apiError(409, 'last_server_admin') },
+          {
+            'DELETE /users/00000000-0000-4000-8000-0000000000a2': () =>
+              apiError(409, 'last_server_admin'),
+          },
           serverAdminMe,
         ),
       );
@@ -303,7 +312,8 @@ describe('users page', () => {
     it('sets the new password', async () => {
       const { calls, user: u } = await open(
         withUsers([boss, alice], {
-          'POST /users/u2/password': () => new Response(null, { status: 204 }),
+          'POST /users/00000000-0000-4000-8000-0000000000a2/password': () =>
+            new Response(null, { status: 204 }),
         }),
       );
 
@@ -331,7 +341,7 @@ describe('users page', () => {
     it('is offered because the provider is enabled, and links an identity', async () => {
       const { calls, user: u } = await open(
         withUsers([boss, alice], {
-          'POST /users/u2/oauth2-link': () =>
+          'POST /users/00000000-0000-4000-8000-0000000000a2/oauth2-link': () =>
             Response.json(
               { issuer: 'https://id.example.com', subject: 's1' },
               { status: 201 },

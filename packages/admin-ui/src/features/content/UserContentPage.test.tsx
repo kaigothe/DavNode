@@ -21,7 +21,7 @@ const alice = user();
 
 const today = () => dayjs().startOf('day');
 const event = (over: Record<string, unknown> = {}) => ({
-  objectId: 'o1',
+  objectId: '00000000-0000-4000-8000-000000000093',
   uid: 'standup@test',
   name: 'standup.ics',
   summary: 'Standup',
@@ -37,7 +37,7 @@ const event = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 const work = {
-  id: 'c1',
+  id: '00000000-0000-4000-8000-0000000000f1',
   name: 'work',
   displayName: 'Work',
   description: null,
@@ -47,7 +47,7 @@ const work = {
 };
 const private_ = {
   ...work,
-  id: 'c2',
+  id: '00000000-0000-4000-8000-0000000000f2',
   name: 'private',
   displayName: 'Private',
   objectCount: 1,
@@ -58,12 +58,13 @@ const calendarRoutes = (
   me: object = withContent,
 ): Routes => ({
   ...baseRoutes(me),
-  'GET /users/u2': () => Response.json(alice),
-  'GET /users/u2/calendars': () =>
+  'GET /users/00000000-0000-4000-8000-0000000000a2': () => Response.json(alice),
+  'GET /users/00000000-0000-4000-8000-0000000000a2/calendars': () =>
     Response.json({ calendars: [work, private_] }),
-  'GET /users/u2/calendars/c1/events': () =>
-    Response.json({ events: [event()], truncated: false, skipped: 0 }),
-  'GET /users/u2/addressbooks': () => Response.json({ addressbooks: [] }),
+  'GET /users/00000000-0000-4000-8000-0000000000a2/calendars/00000000-0000-4000-8000-0000000000f1/events':
+    () => Response.json({ events: [event()], truncated: false, skipped: 0 }),
+  'GET /users/00000000-0000-4000-8000-0000000000a2/addressbooks': () =>
+    Response.json({ addressbooks: [] }),
   ...extra,
 });
 
@@ -79,7 +80,10 @@ describe('opening the content view', () => {
     const link = await screen.findByRole('link', {
       name: /Calendars and contacts alice/,
     });
-    expect(link).toHaveAttribute('href', '/users/u2/content');
+    expect(link).toHaveAttribute(
+      'href',
+      '/users/00000000-0000-4000-8000-0000000000a2/content',
+    );
   });
 
   it('is not offered when it is off', async () => {
@@ -99,7 +103,7 @@ describe('opening the content view', () => {
   it('says so when someone opens the address anyway', async () => {
     signedInAs();
     const calls = stubApi(baseRoutes(adminMe));
-    await renderApp('/users/u2/content');
+    await renderApp('/users/00000000-0000-4000-8000-0000000000a2/content');
 
     expect(await screen.findByText('Not enabled')).toBeInTheDocument();
     expect(calls.some((c) => c.path.includes('/calendars'))).toBe(false);
@@ -109,10 +113,11 @@ describe('opening the content view', () => {
     signedInAs();
     stubApi(
       calendarRoutes({
-        'GET /users/u2': () => apiError(404, 'user_not_found'),
+        'GET /users/00000000-0000-4000-8000-0000000000a2': () =>
+          apiError(404, 'user_not_found'),
       }),
     );
-    await renderApp('/users/u2/content');
+    await renderApp('/users/00000000-0000-4000-8000-0000000000a2/content');
 
     expect(await screen.findByText('Page not found')).toBeInTheDocument();
   });
@@ -120,7 +125,7 @@ describe('opening the content view', () => {
   it('warns that every access is logged', async () => {
     signedInAs();
     stubApi(calendarRoutes());
-    await renderApp('/users/u2/content');
+    await renderApp('/users/00000000-0000-4000-8000-0000000000a2/content');
 
     expect(
       await screen.findByText(
@@ -134,7 +139,7 @@ describe('calendars', () => {
   async function open(routes: Routes = calendarRoutes()) {
     signedInAs();
     const calls = stubApi(routes);
-    await renderApp('/users/u2/content');
+    await renderApp('/users/00000000-0000-4000-8000-0000000000a2/content');
     await screen.findByText('Standup');
     return { calls, user: userEvent.setup() };
   }
@@ -149,7 +154,11 @@ describe('calendars', () => {
   it('asks for a window around the month, in whole days', async () => {
     const { calls } = await open();
 
-    const call = calls.find((c) => c.path === '/users/u2/calendars/c1/events');
+    const call = calls.find(
+      (c) =>
+        c.path ===
+        '/users/00000000-0000-4000-8000-0000000000a2/calendars/00000000-0000-4000-8000-0000000000f1/events',
+    );
     const params = new URL(call?.full ?? '', 'http://x').searchParams;
     expect(new Date(params.get('to') ?? '').getTime()).toBeGreaterThan(
       new Date(params.get('from') ?? '').getTime(),
@@ -163,17 +172,18 @@ describe('calendars', () => {
   it('shows event text as text, never as markup', async () => {
     await open(
       calendarRoutes({
-        'GET /users/u2/calendars/c1/events': () =>
-          Response.json({
-            events: [
-              event({
-                summary:
-                  '<img src=x onerror=alert(1)><script>alert(2)</script>',
-              }),
-            ],
-            truncated: false,
-            skipped: 0,
-          }),
+        'GET /users/00000000-0000-4000-8000-0000000000a2/calendars/00000000-0000-4000-8000-0000000000f1/events':
+          () =>
+            Response.json({
+              events: [
+                event({
+                  summary:
+                    '<img src=x onerror=alert(1)><script>alert(2)</script>',
+                }),
+              ],
+              truncated: false,
+              skipped: 0,
+            }),
       }),
     ).catch(() => undefined);
     await screen.findByText(
@@ -192,7 +202,11 @@ describe('calendars', () => {
 
     await waitFor(() =>
       expect(
-        calls.some((c) => c.path === '/users/u2/calendars/c2/events'),
+        calls.some(
+          (c) =>
+            c.path ===
+            '/users/00000000-0000-4000-8000-0000000000a2/calendars/00000000-0000-4000-8000-0000000000f2/events',
+        ),
       ).toBe(true),
     );
   });
@@ -229,8 +243,9 @@ describe('calendars', () => {
   it('explains when events were cut off or unreadable', async () => {
     await open(
       calendarRoutes({
-        'GET /users/u2/calendars/c1/events': () =>
-          Response.json({ events: [event()], truncated: true, skipped: 2 }),
+        'GET /users/00000000-0000-4000-8000-0000000000a2/calendars/00000000-0000-4000-8000-0000000000f1/events':
+          () =>
+            Response.json({ events: [event()], truncated: true, skipped: 2 }),
       }),
     );
 
@@ -246,10 +261,11 @@ describe('calendars', () => {
     signedInAs();
     stubApi(
       calendarRoutes({
-        'GET /users/u2/calendars': () => Response.json({ calendars: [] }),
+        'GET /users/00000000-0000-4000-8000-0000000000a2/calendars': () =>
+          Response.json({ calendars: [] }),
       }),
     );
-    await renderApp('/users/u2/content');
+    await renderApp('/users/00000000-0000-4000-8000-0000000000a2/content');
 
     expect(
       await screen.findByText('This user has no calendars.'),
@@ -260,11 +276,11 @@ describe('calendars', () => {
     signedInAs();
     stubApi(
       calendarRoutes({
-        'GET /users/u2/calendars/c1/events': () =>
-          apiError(400, 'range_too_large'),
+        'GET /users/00000000-0000-4000-8000-0000000000a2/calendars/00000000-0000-4000-8000-0000000000f1/events':
+          () => apiError(400, 'range_too_large'),
       }),
     );
-    await renderApp('/users/u2/content');
+    await renderApp('/users/00000000-0000-4000-8000-0000000000a2/content');
 
     expect(
       await screen.findByText('The time range is too long.'),
@@ -281,7 +297,9 @@ function stubApiRaw() {
   vi.stubGlobal('fetch', (input: URL | string, init?: RequestInit) => {
     const url = new URL(input.toString(), 'http://localhost');
     if (
-      url.pathname.endsWith('/calendars/c1/events') &&
+      url.pathname.endsWith(
+        '/calendars/00000000-0000-4000-8000-0000000000f1/events',
+      ) &&
       url.searchParams.get('raw') === 'true'
     ) {
       return Promise.resolve(
@@ -302,7 +320,7 @@ function stubApiRaw() {
 
 describe('contacts', () => {
   const ada = {
-    id: 'a1',
+    id: '00000000-0000-4000-8000-000000000092',
     uid: 'ada1',
     name: 'ada.vcf',
     displayName: 'Ada Lovelace',
@@ -317,7 +335,7 @@ describe('contacts', () => {
     updatedAt: '2026-01-01T00:00:00.000Z',
   };
   const book = {
-    id: 'b1',
+    id: '00000000-0000-4000-8000-000000000091',
     displayName: 'Contacts',
     description: null,
     contactCount: 2,
@@ -325,10 +343,12 @@ describe('contacts', () => {
   };
   const contactRoutes = (extra: Routes = {}): Routes => ({
     ...calendarRoutes(),
-    'GET /users/u2/calendars': () => Response.json({ calendars: [] }),
-    'GET /users/u2/addressbooks': () => Response.json({ addressbooks: [book] }),
-    'GET /users/u2/addressbooks/b1/contacts': () =>
-      Response.json({ contacts: [ada], total: 1 }),
+    'GET /users/00000000-0000-4000-8000-0000000000a2/calendars': () =>
+      Response.json({ calendars: [] }),
+    'GET /users/00000000-0000-4000-8000-0000000000a2/addressbooks': () =>
+      Response.json({ addressbooks: [book] }),
+    'GET /users/00000000-0000-4000-8000-0000000000a2/addressbooks/00000000-0000-4000-8000-000000000091/contacts':
+      () => Response.json({ contacts: [ada], total: 1 }),
     ...extra,
   });
 
@@ -336,7 +356,7 @@ describe('contacts', () => {
     signedInAs();
     const calls = stubApi(routes);
     const u = userEvent.setup();
-    await renderApp('/users/u2/content');
+    await renderApp('/users/00000000-0000-4000-8000-0000000000a2/content');
     await u.click(await screen.findByRole('tab', { name: 'Contacts' }));
     await screen.findByText('Ada Lovelace');
     return { calls, user: u };
@@ -346,7 +366,11 @@ describe('contacts', () => {
     const { calls } = await open();
 
     expect(
-      calls.find((c) => c.path === '/users/u2/addressbooks/b1/contacts')?.full,
+      calls.find(
+        (c) =>
+          c.path ===
+          '/users/00000000-0000-4000-8000-0000000000a2/addressbooks/00000000-0000-4000-8000-000000000091/contacts',
+      )?.full,
     ).toContain('limit=50');
   });
 
@@ -381,7 +405,7 @@ describe('contacts', () => {
   it('fetches the stored vCard by name, only on request', async () => {
     const { calls, user: u } = await open(
       contactRoutes({
-        'GET /users/u2/addressbooks/b1/contacts?q=Ada+Lovelace&limit=500&raw=true':
+        'GET /users/00000000-0000-4000-8000-0000000000a2/addressbooks/00000000-0000-4000-8000-000000000091/contacts?q=Ada+Lovelace&limit=500&raw=true':
           () =>
             Response.json({
               contacts: [
@@ -409,11 +433,12 @@ describe('contacts', () => {
     signedInAs();
     stubApi(
       contactRoutes({
-        'GET /users/u2/addressbooks': () => Response.json({ addressbooks: [] }),
+        'GET /users/00000000-0000-4000-8000-0000000000a2/addressbooks': () =>
+          Response.json({ addressbooks: [] }),
       }),
     );
     const u = userEvent.setup();
-    await renderApp('/users/u2/content');
+    await renderApp('/users/00000000-0000-4000-8000-0000000000a2/content');
     await u.click(await screen.findByRole('tab', { name: 'Contacts' }));
 
     expect(

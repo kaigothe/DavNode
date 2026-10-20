@@ -4,6 +4,11 @@ import { vi } from 'vitest';
 import { App } from '../App';
 import { AppProviders } from '../AppProviders';
 import { initI18n } from '../i18n';
+import {
+  recordViolations,
+  requestViolations,
+  responseViolations,
+} from './contract';
 
 /** A fake Admin API: maps `METHOD /path` (without the tenant prefix, with or without the query) to a response. */
 export type Routes = Record<
@@ -39,11 +44,27 @@ export function stubApi(routes: Routes) {
       calls.push({ method, path, full, body });
       const handler =
         routes[`${method} ${full}`] ?? routes[`${method} ${path}`];
+      if (body !== undefined) {
+        recordViolations(requestViolations(method, path, body));
+      }
       return Promise.resolve(
         handler
           ? handler({ init, body, url })
           : new Response(null, { status: 404 }),
-      );
+      ).then(async (response) => {
+        // Keep the fakes honest: they must answer as the documented API does.
+        if (response.headers.get('content-type')?.includes('json')) {
+          recordViolations(
+            responseViolations(
+              method,
+              path,
+              response.status,
+              await response.clone().json(),
+            ),
+          );
+        }
+        return response;
+      });
     }),
   );
   return calls;
@@ -74,12 +95,16 @@ export const apiError = (status: number, code: string, message = code) =>
   Response.json({ error: { code, message } }, { status });
 
 export const adminMe = {
-  id: 'u1',
-  principalId: 'p1',
+  id: '00000000-0000-4000-8000-0000000000a1',
+  principalId: '00000000-0000-4000-8000-0000000000b1',
   username: 'boss',
   email: 'boss@example.com',
   role: 'tenant_admin',
-  tenant: { id: 't1', slug: 'acme', name: 'Acme Corp' },
+  tenant: {
+    id: '00000000-0000-4000-8000-0000000000e1',
+    slug: 'acme',
+    name: 'Acme Corp',
+  },
   anchorTenant: 'acme',
   capabilities: { contentView: false },
 };
@@ -102,8 +127,8 @@ export const baseRoutes = (me: object = adminMe): Routes => ({
 });
 
 export const user = (over: Record<string, unknown> = {}) => ({
-  id: 'u2',
-  principalId: 'p2',
+  id: '00000000-0000-4000-8000-0000000000a2',
+  principalId: '00000000-0000-4000-8000-0000000000b2',
   username: 'alice',
   email: 'alice@example.com',
   role: 'member',

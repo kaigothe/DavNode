@@ -8,8 +8,8 @@ import {
 } from './events';
 
 const event = (over: Partial<CalendarEvent> = {}): CalendarEvent => ({
-  objectId: 'o1',
-  uid: 'u1',
+  objectId: '00000000-0000-4000-8000-000000000093',
+  uid: '00000000-0000-4000-8000-0000000000a1',
   name: 'e.ics',
   summary: 'Standup',
   location: null,

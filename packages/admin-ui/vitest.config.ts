@@ -12,7 +12,8 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
     css: false,
-    // The first render of Ant Design's components in jsdom is slow.
-    testTimeout: 20_000,
+    // jsdom is slow with Ant Design: a cold first render takes seconds, and
+    // axe needs about ten on a large page. Generous, since it is only a ceiling.
+    testTimeout: 45_000,
   },
 });
