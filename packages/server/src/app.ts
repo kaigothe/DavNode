@@ -198,6 +198,7 @@ export function createApp(
         ? authConfig.realm
         : undefined,
       oauth2Issuers: authConfig.oauth2Issuers.map((issuer) => issuer.issuer),
+      authProviders: authConfig.providers,
       metrics,
     }),
   );

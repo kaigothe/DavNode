@@ -4,6 +4,7 @@ import { adminErrorHandler } from './admin-error-handler.middleware.js';
 import { registerGroupRoutes } from './group-routes.js';
 import { registerMetricsRoute, type MetricsSource } from './metrics-routes.js';
 import { registerQuotaRoutes } from './quota-routes.js';
+import { registerSessionRoutes } from './session-routes.js';
 import { registerTenantRoutes } from './tenant-routes.js';
 import { registerUserRoutes } from './user-routes.js';
 
@@ -23,6 +24,16 @@ export interface AdminRouterOptions {
   oauth2Issuers?: readonly string[];
   /** The server's metrics; without them `GET /metrics` does not exist. */
   metrics?: MetricsSource;
+  /**
+   * The enabled authentication providers (`basic`, `digest`, `oauth2`),
+   * reported by `GET /providers`. Defaults to `['basic']`.
+   */
+  authProviders?: readonly string[];
+  /**
+   * Whether the read-only calendar/contact inspection routes (M14) exist.
+   * Off by default: they let admins read other users' data.
+   */
+  contentView?: boolean;
 }
 
 /**
@@ -53,6 +64,7 @@ export function createAdminRouter(
   // Große Aufgaben 3-6 add their own registerXRoutes(router,
   // dataSource) calls here, in that order, mirroring server/app.ts's
   // own registration pattern.
+  registerSessionRoutes(router, dataSource, options);
   registerTenantRoutes(router, dataSource);
   registerUserRoutes(router, dataSource, options);
   registerGroupRoutes(router, dataSource);

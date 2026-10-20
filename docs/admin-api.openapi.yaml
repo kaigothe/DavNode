@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: DavNode Admin API
-  version: 1.0.0
+  version: 1.1.0
   description: |
     REST API to manage tenants, users, groups and quotas of a DavNode server.
 
@@ -24,12 +24,47 @@ security:
   - basic: []
   - bearer: []
 paths:
+  /me:
+    get:
+      summary: The authenticated user
+      description: |
+        Open to every role. Tells a client who it is talking as, so it can
+        distinguish wrong credentials (`401`) from a valid user without admin
+        rights (`role: member`), and which optional features are enabled.
+      operationId: getMe
+      tags: [Session]
+      responses:
+        '200':
+          description: The authenticated user.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /providers:
+    get:
+      summary: Authentication providers of the server
+      description: Read-only; providers are configured on the server. Contains no secrets.
+      operationId: listProviders
+      tags: [Session]
+      responses:
+        '200':
+          description: The providers and their state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Providers' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /tenants:
     get:
       summary: List all tenants
       description: Requires `server_admin`.
       operationId: listTenants
       tags: [Tenants]
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/q'
       responses:
         '200':
           description: All tenants.
@@ -41,6 +76,9 @@ paths:
                   tenants:
                     type: array
                     items: { $ref: '#/components/schemas/Tenant' }
+                  total:
+                    type: integer
+                    description: Number of matches before `limit`/`offset` were applied.
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
     post:
@@ -135,6 +173,10 @@ paths:
       summary: List the users of the tenant
       operationId: listUsers
       tags: [Users]
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/q'
       responses:
         '200':
           description: The users.
@@ -146,6 +188,9 @@ paths:
                   users:
                     type: array
                     items: { $ref: '#/components/schemas/User' }
+                  total:
+                    type: integer
+                    description: Number of matches before `limit`/`offset` were applied.
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
     post:
@@ -311,6 +356,10 @@ paths:
       summary: List the groups of the tenant
       operationId: listGroups
       tags: [Groups]
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/q'
       responses:
         '200':
           description: The groups.
@@ -322,6 +371,9 @@ paths:
                   groups:
                     type: array
                     items: { $ref: '#/components/schemas/Group' }
+                  total:
+                    type: integer
+                    description: Number of matches before `limit`/`offset` were applied.
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
     post:
@@ -499,6 +551,20 @@ components:
     basic: { type: http, scheme: basic }
     bearer: { type: http, scheme: bearer, bearerFormat: JWT }
   parameters:
+    limit:
+      name: limit
+      in: query
+      description: Page size, 1 to 500. Without it the whole list is returned.
+      schema: { type: integer, minimum: 1, maximum: 500 }
+    offset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    q:
+      name: q
+      in: query
+      description: Case-insensitive search text.
+      schema: { type: string }
     targetSlug:
       name: targetSlug
       in: path
@@ -563,7 +629,43 @@ components:
       description: Limit in bytes; `null` means unlimited.
     Role:
       type: string
-      enum: [server_admin, tenant_admin, user]
+      enum: [server_admin, tenant_admin, member]
+    Me:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        principalId: { type: string, format: uuid }
+        username: { type: string }
+        email: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        tenant:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            slug: { type: string }
+            name: { type: string }
+        anchorTenant:
+          type: string
+          description: Slug of the tenant the request URL addressed.
+        capabilities:
+          type: object
+          properties:
+            contentView:
+              type: boolean
+              description: The read-only calendar/contact routes exist.
+    Providers:
+      type: object
+      properties:
+        providers:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, enum: [basic, digest, oauth2] }
+              enabled: { type: boolean }
+        oauth2Issuers:
+          type: array
+          items: { type: string }
     Tenant:
       type: object
       properties:

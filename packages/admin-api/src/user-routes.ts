@@ -9,6 +9,7 @@ import {
 import type { Request, Response, Router } from 'express';
 import { sendAdminError } from './admin-error-response.js';
 import { requirePrincipal, requireTenant } from './admin-request.util.js';
+import { paginate, parseListQuery } from './pagination.util.js';
 import {
   isNonEmptyString,
   isQuotaLimit,
@@ -165,8 +166,16 @@ export function registerUserRoutes(
   });
 
   router.get('/users', tenantAdmin, async (req, res) => {
-    const all = await users.listUsers(requireTenant(req).id);
-    res.json({ users: all.map(toUserBody) });
+    const query = parseListQuery(req, res);
+    if (!query) {
+      return;
+    }
+    const { items, total } = paginate(
+      await users.listUsers(requireTenant(req).id),
+      query,
+      (user) => [user.username, user.email],
+    );
+    res.json({ users: items.map(toUserBody), total });
   });
 
   router.get('/users/:userId', tenantAdmin, async (req, res) => {

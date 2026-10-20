@@ -8,6 +8,7 @@ import {
 import type { Request, Response, Router } from 'express';
 import { sendAdminError } from './admin-error-response.js';
 import { requireTenant } from './admin-request.util.js';
+import { paginate, parseListQuery } from './pagination.util.js';
 import { isNonEmptyString, parseJsonBody } from './request-body.util.js';
 import { requireAdminRole } from './require-admin-role.middleware.js';
 
@@ -86,8 +87,16 @@ export function registerGroupRoutes(
   });
 
   router.get('/groups', tenantAdmin, async (req, res) => {
-    const all = await groups.listGroups(requireTenant(req).id);
-    res.json({ groups: all.map(toGroupBody) });
+    const query = parseListQuery(req, res);
+    if (!query) {
+      return;
+    }
+    const { items, total } = paginate(
+      await groups.listGroups(requireTenant(req).id),
+      query,
+      (group) => [group.name, group.description],
+    );
+    res.json({ groups: items.map(toGroupBody), total });
   });
 
   router.get('/groups/:groupId', tenantAdmin, async (req, res) => {
