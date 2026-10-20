@@ -15,6 +15,7 @@ import { GroupDetailPage } from './features/groups/GroupDetailPage';
 import { GroupsPage } from './features/groups/GroupsPage';
 import { LoginPage } from './features/LoginPage';
 import { OverviewPage } from './features/OverviewPage';
+import { UserContentPage } from './features/content/UserContentPage';
 import { QuotaPage } from './features/quota/QuotaPage';
 import {
   ForbiddenPage,
@@ -80,6 +81,7 @@ export function App() {
           <Route element={<AppShell />}>
             <Route index element={<OverviewPage />} />
             <Route path="users" element={<UsersPage />} />
+            <Route path="users/:userId/content" element={<UserContentPage />} />
             <Route path="groups" element={<GroupsPage />} />
             <Route path="groups/:groupId" element={<GroupDetailPage />} />
             <Route path="quota" element={<QuotaPage />} />

@@ -125,3 +125,8 @@ export type Group = Schemas['Group'];
 export type Tenant = Schemas['Tenant'];
 export type Member = Schemas['Member'];
 export type QuotaOverview = Schemas['QuotaOverview'];
+
+export type Calendar = Schemas['Calendar'];
+export type CalendarEvent = Schemas['Event'];
+export type Addressbook = Schemas['Addressbook'];
+export type Contact = Schemas['Contact'];

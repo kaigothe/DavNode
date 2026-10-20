@@ -1,5 +1,6 @@
 import {
   DeleteOutlined,
+  CalendarOutlined,
   EditOutlined,
   KeyOutlined,
   LinkOutlined,
@@ -24,6 +25,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import type { Providers, User } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
 import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
@@ -134,6 +136,17 @@ export function UsersPage() {
               onClick={() => setPasswordFor(user)}
             />
           </Tooltip>
+          {me?.capabilities.contentView && (
+            <Tooltip title={t('content.open')}>
+              <Link
+                to={`/users/${user.id}/content`}
+                aria-label={`${t('content.open')} ${user.username}`}
+                style={{ display: 'inline-flex', padding: '4px 15px' }}
+              >
+                <CalendarOutlined />
+              </Link>
+            </Tooltip>
+          )}
           {oauth2Enabled && (
             <Tooltip title={t('users.oauth2')}>
               <Button

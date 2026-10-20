@@ -1,6 +1,9 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
+// Calendar tests compare local dates; run them in a fixed zone.
+process.env.TZ = 'UTC';
+
 export default defineConfig({
   plugins: [react()],
   test: {
