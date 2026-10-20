@@ -29,7 +29,7 @@ describe('login', () => {
 
   it('signs in with the credentials as a Basic header and shows the overview', async () => {
     const user = userEvent.setup();
-    const calls = stubApi({
+    stubApi({
       'GET /me': () => Response.json(adminMe),
       'GET /providers': () => Response.json(providers),
     });
@@ -40,7 +40,8 @@ describe('login', () => {
     expect(await screen.findByText('Your account')).toBeInTheDocument();
     expect(screen.getByText('boss@example.com')).toBeInTheDocument();
     expect(screen.getByText('Tenant administrator')).toBeInTheDocument();
-    expect(calls[0]?.init.headers).toMatchObject({
+    expect(fetch).toHaveBeenCalled();
+    expect(vi.mocked(fetch).mock.calls[0]?.[1]?.headers).toMatchObject({
       Authorization: basicAuthorization('boss', 'pw'),
     });
     expect(

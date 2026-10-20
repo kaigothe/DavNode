@@ -9,5 +9,7 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
     css: false,
+    // The first render of Ant Design's components in jsdom is slow.
+    testTimeout: 20_000,
   },
 });

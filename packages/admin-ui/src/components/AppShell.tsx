@@ -1,7 +1,10 @@
 import {
+  ApartmentOutlined,
+  CloudOutlined,
   DashboardOutlined,
   LogoutOutlined,
   MenuOutlined,
+  TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import {
@@ -36,6 +39,18 @@ export function AppShell() {
 
   const items = [
     { key: '/', icon: <DashboardOutlined />, label: t('nav.overview') },
+    { key: '/users', icon: <UserOutlined />, label: t('nav.users') },
+    { key: '/groups', icon: <TeamOutlined />, label: t('nav.groups') },
+    { key: '/quota', icon: <CloudOutlined />, label: t('nav.quota') },
+    ...(me?.role === 'server_admin'
+      ? [
+          {
+            key: '/tenants',
+            icon: <ApartmentOutlined />,
+            label: t('nav.tenants'),
+          },
+        ]
+      : []),
   ];
   const selected = items
     .filter((item) =>

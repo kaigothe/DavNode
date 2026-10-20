@@ -119,3 +119,9 @@ export async function apiRequest<T>(
   }
   return (await response.json()) as T;
 }
+
+export type User = Schemas['User'];
+export type Group = Schemas['Group'];
+export type Tenant = Schemas['Tenant'];
+export type Member = Schemas['Member'];
+export type QuotaOverview = Schemas['QuotaOverview'];

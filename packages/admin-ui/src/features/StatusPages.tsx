@@ -32,3 +32,20 @@ export function NotFoundPage() {
     />
   );
 }
+
+/** Shown when a signed-in administrator opens a page that needs a higher role. */
+export function ForbiddenPage() {
+  const { t } = useTranslation();
+  return (
+    <Result
+      status="403"
+      title={t('forbidden.title')}
+      subTitle={t('forbidden.text')}
+      extra={
+        <Link to="/">
+          <Button type="primary">{t('notFound.back')}</Button>
+        </Link>
+      }
+    />
+  );
+}
