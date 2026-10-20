@@ -84,7 +84,9 @@ export function UsersPage() {
       dataIndex: 'username',
       render: (name: string, user) => (
         <Space>
-          <Typography.Text strong>{name}</Typography.Text>
+          <Link to={`/users/${user.id}`}>
+            <Typography.Text strong>{name}</Typography.Text>
+          </Link>
           {user.id === me?.id && <Tag>{t('users.you')}</Tag>}
         </Space>
       ),

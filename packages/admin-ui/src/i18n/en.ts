@@ -126,6 +126,18 @@ export const en = {
     deleteText:
       'The user and all their files, calendars and contacts are deleted for good. This cannot be undone.',
   },
+  userDetail: {
+    back: 'All users',
+    account: 'Account',
+    storage: 'Storage',
+    groups: 'Groups',
+    noGroups: 'This user is not a member of any group.',
+    membership: 'Membership',
+    direct: 'Direct member',
+    via: 'Via {{groups}}',
+    groupsHint:
+      'Groups inside a group count too: a member of the team is also a member of the groups the team belongs to.',
+  },
   groups: {
     title: 'Groups',
     create: 'New group',

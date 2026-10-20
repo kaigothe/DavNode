@@ -107,6 +107,11 @@ const TenantsPage = lazy(() =>
     default: m.TenantsPage,
   })),
 );
+const UserDetailPage = lazy(() =>
+  import('./features/users/UserDetailPage').then((m) => ({
+    default: m.UserDetailPage,
+  })),
+);
 const UserContentPage = lazy(() =>
   import('./features/content/UserContentPage').then((m) => ({
     default: m.UserContentPage,
@@ -149,6 +154,7 @@ export function App() {
           <Route element={<AppShell />}>
             <Route index element={<OverviewPage />} />
             <Route path="users" element={<UsersPage />} />
+            <Route path="users/:userId" element={<UserDetailPage />} />
             <Route path="users/:userId/content" element={<UserContentPage />} />
             <Route path="groups" element={<GroupsPage />} />
             <Route path="groups/:groupId" element={<GroupDetailPage />} />

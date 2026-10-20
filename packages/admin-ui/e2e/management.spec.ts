@@ -69,6 +69,66 @@ test.describe('managing the server', () => {
     void request;
   });
 
+  test('opens a user, shows their groups and returns to the list', async ({
+    page,
+  }) => {
+    const name = `detail-${suffix}`;
+    await page.getByRole('menuitem', { name: 'Users' }).click();
+    await page.getByRole('button', { name: /New user/ }).click();
+    const create = page.getByRole('dialog');
+    await create.getByLabel('Username').fill(name);
+    await create.getByLabel('E-mail').fill(`${name}@example.com`);
+    await create.getByLabel('Password').fill('pw');
+    await create.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByText('User created.')).toBeVisible();
+
+    // Two groups, one inside the other, the user in the inner one.
+    for (const group of [`inner-${suffix}`, `outer-${suffix}`]) {
+      await page.getByRole('menuitem', { name: 'Groups' }).click();
+      await page.getByRole('button', { name: /New group/ }).click();
+      const dialog = page.getByRole('dialog');
+      await dialog.getByLabel('Name', { exact: true }).fill(group);
+      await dialog.getByRole('button', { name: 'Create' }).click();
+      await expect(page.getByText('Group created.').first()).toBeVisible();
+    }
+    for (const [group, member] of [
+      [`inner-${suffix}`, name],
+      [`outer-${suffix}`, `inner-${suffix}`],
+    ]) {
+      await page.getByRole('menuitem', { name: 'Groups' }).click();
+      await page.getByRole('link', { name: new RegExp(group) }).click();
+      await page.getByRole('combobox', { name: 'Add a member' }).click();
+      await page
+        .locator('.ant-select-item-option-content', { hasText: member })
+        .first()
+        .click();
+      await page.getByRole('button', { name: 'Add', exact: true }).click();
+      await expect(page.getByText('Member added.')).toBeVisible();
+    }
+
+    await page.getByRole('menuitem', { name: 'Users' }).click();
+    await page
+      .getByRole('textbox', { name: 'Search by name or e-mail' })
+      .fill(name);
+    await page.getByRole('link', { name, exact: true }).click();
+    await expect(page.getByRole('heading', { name })).toBeVisible();
+    const inner = page.getByRole('row', {
+      name: new RegExp(`inner-${suffix}`),
+    });
+    await expect(inner.getByText('Direct member')).toBeVisible();
+    const outer = page.getByRole('row', {
+      name: new RegExp(`outer-${suffix}`),
+    });
+    await expect(outer.getByText(`Via inner-${suffix}`)).toBeVisible();
+
+    await page.getByRole('button', { name: /^delete Delete$/ }).click();
+    const confirm = page.getByRole('dialog');
+    await confirm.getByLabel('Confirmation').fill(name);
+    await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(page.getByText('User deleted.')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible();
+  });
+
   test('recounts the storage', async ({ page }) => {
     await page.getByRole('menuitem', { name: 'Storage' }).click();
     await page.getByRole('button', { name: /Recount/ }).click();

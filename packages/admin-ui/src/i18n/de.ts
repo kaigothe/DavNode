@@ -128,6 +128,18 @@ export const de: Translation = {
     deleteText:
       'Der Nutzer und alle seine Dateien, Kalender und Kontakte werden endgültig gelöscht. Das lässt sich nicht rückgängig machen.',
   },
+  userDetail: {
+    back: 'Alle Nutzer',
+    account: 'Konto',
+    storage: 'Speicher',
+    groups: 'Gruppen',
+    noGroups: 'Dieser Nutzer ist in keiner Gruppe.',
+    membership: 'Mitgliedschaft',
+    direct: 'Direktes Mitglied',
+    via: 'Über {{groups}}',
+    groupsHint:
+      'Gruppen in Gruppen zählen mit: Wer im Team ist, ist auch in den Gruppen, zu denen das Team gehört.',
+  },
   groups: {
     title: 'Gruppen',
     create: 'Neue Gruppe',

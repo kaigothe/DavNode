@@ -80,6 +80,25 @@ const routes: Routes = {
   ...baseRoutes(me),
   'GET /users': () => Response.json({ users: [boss, alice], total: 2 }),
   [`GET /users/${alice.id}`]: () => Response.json(alice),
+  [`GET /users/${alice.id}/groups`]: () =>
+    Response.json({
+      groups: [
+        {
+          id: group.id,
+          name: 'Sales',
+          description: 'The sales team',
+          direct: true,
+          via: [],
+        },
+        {
+          id: id(9),
+          name: 'Company',
+          description: null,
+          direct: false,
+          via: ['Sales'],
+        },
+      ],
+    }),
   'GET /groups': () => Response.json({ groups: [group], total: 1 }),
   [`GET /groups/${group.id}`]: () => Response.json(group),
   [`GET /groups/${group.id}/members`]: () =>
@@ -141,6 +160,7 @@ const routes: Routes = {
 const PAGES: { name: string; path: string; ready: string | RegExp }[] = [
   { name: 'overview', path: '/', ready: 'Your account' },
   { name: 'users', path: '/users', ready: 'alice' },
+  { name: 'user detail', path: `/users/${alice.id}`, ready: 'Direct member' },
   { name: 'groups', path: '/groups', ready: 'Sales' },
   {
     name: 'group detail',
