@@ -756,4 +756,17 @@ Inhalts-Endpoints hinter eigenem Flag), alles in der OpenAPI-Spec.
 
 ---
 
+## 2026-10-21 — Admin-UI-Erweiterungen (M15)
+
+**Umfang**: Nutzer-Detailseite mit Gruppen, Visitenkarte bei Kontakten
+(Initialen statt Foto), Log-Ansicht, Apple-artige Kalenderansicht.
+**Logs**: Ringpuffer im Speicher, nur `server_admin`, eigenes Flag
+`DAVNODE_ADMIN_UI_LOG_VIEW` (Default aus); keine dauerhafte Speicherung.
+**Kalender**: Termin-Details im Drawer von rechts; keine Jahresansicht.
+
+*Status: entschieden* — Aufgaben in
+[milestones/M15-admin-ui-extensions](../milestones/M15-admin-ui-extensions/00-setting-goal.md).
+
+---
+
 <!-- Weitere Einträge werden hier ergänzt -->
