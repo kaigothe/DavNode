@@ -44,6 +44,9 @@ jobs:
         run: |
           npm run generate:api -w @davnode/admin-ui
           git diff --exit-code packages/admin-ui/src/api/schema.d.ts
+      # The admin UI must stay within its download budget (gzip).
+      - name: Admin UI stays within its bundle budget
+        run: npm run check:budget -w @davnode/admin-ui
 
   test:
     needs: lint-and-build
@@ -113,6 +116,31 @@ jobs:
       - run: npm ci
       - run: npm run build --workspaces
       - run: npm test --workspaces
+
+  # The admin UI in a real browser against a real server (M14): the
+  # management and calendar/contact flows, axe accessibility checks with
+  # colour contrast in both themes, the keyboard and the XSS case.
+  admin-ui-e2e:
+    needs: lint-and-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspaces
+      - run: npx playwright install --with-deps chromium
+        working-directory: packages/admin-ui
+      - run: npm run test:e2e -w @davnode/admin-ui
+      - name: Upload the traces of failed tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-ui-e2e-traces
+          path: packages/admin-ui/test-results
+          if-no-files-found: ignore
 
   # WebDAV conformance (M11, milestones/M11-client-compatibility/
   # 06-conformance-suite-ci): the litmus suites run against a real server
@@ -235,7 +263,15 @@ jobs:
 
   release:
     needs:
-      [lint-and-build, test, litmus, caldavtester, docker-smoke, upgrade-test]
+      [
+        lint-and-build,
+        test,
+        admin-ui-e2e,
+        litmus,
+        caldavtester,
+        docker-smoke,
+        upgrade-test,
+      ]
     # Only push events to main create releases — pull_request runs (and
     # pushes to any other branch) skip this job. .releaserc.json's own
     # `branches: ["main"]` would refuse a release anyway, but gating here
