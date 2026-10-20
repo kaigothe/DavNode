@@ -882,13 +882,27 @@ components:
     Calendar:
       type: object
       required:
-        [id, name, displayName, description, timezone, objectCount, updatedAt]
+        [
+          id,
+          name,
+          displayName,
+          description,
+          timezone,
+          color,
+          objectCount,
+          updatedAt,
+        ]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         displayName: { type: string }
         description: { type: string, nullable: true }
         timezone: { type: string, nullable: true }
+        color:
+          type: string
+          nullable: true
+          pattern: '^#[0-9a-f]{6}$'
+          description: The colour a client gave the calendar (Apple's `calendar-color`), or `null`.
         objectCount: { type: integer }
         updatedAt: { type: string, format: date-time }
     Event:

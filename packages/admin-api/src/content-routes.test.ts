@@ -6,6 +6,7 @@ import {
   AddressObjectContent,
   AddressbookCollection,
   CalendarCollection,
+  CalendarProperty,
   CalendarObject,
   CalendarObjectContent,
   computeTimeRangeIndex,
@@ -244,6 +245,52 @@ describe('content routes', () => {
       expect(await response.json()).toMatchObject({
         calendars: [{ id: calendar.id, displayName: 'Work', objectCount: 2 }],
       });
+    });
+
+    it('gives the colour a client set, as #rrggbb, and null otherwise', async () => {
+      const properties = dataSource.getRepository(CalendarProperty);
+      await properties.save({
+        calendarId: calendar.id,
+        namespace: 'http://apple.com/ns/ical/',
+        name: 'calendar-color',
+        value: '#FF2968FF',
+      });
+      const second = await dataSource.getRepository(CalendarCollection).save(
+        dataSource.getRepository(CalendarCollection).create({
+          tenantId: acme.id,
+          ownerPrincipalId: alice.principalId,
+          name: 'odd',
+          displayName: 'Odd',
+          supportedComponentSet: ['VEVENT'],
+        }),
+      );
+      await properties.save({
+        calendarId: second.id,
+        namespace: 'http://apple.com/ns/ical/',
+        name: 'calendar-color',
+        value: 'red;background:url(x)',
+      });
+      const third = await dataSource.getRepository(CalendarCollection).save(
+        dataSource.getRepository(CalendarCollection).create({
+          tenantId: acme.id,
+          ownerPrincipalId: alice.principalId,
+          name: 'plain',
+          displayName: 'Plain',
+          supportedComponentSet: ['VEVENT'],
+        }),
+      );
+
+      const body = (await (
+        await get(`/users/${alice.id}/calendars`)
+      ).json()) as {
+        calendars: { id: string; color: string | null }[];
+      };
+
+      const color = (id: string) =>
+        body.calendars.find((c) => c.id === id)?.color;
+      expect(color(calendar.id)).toBe('#ff2968');
+      expect(color(second.id)).toBeNull();
+      expect(color(third.id)).toBeNull();
     });
 
     it('expands a recurring event into its instances within the window', async () => {

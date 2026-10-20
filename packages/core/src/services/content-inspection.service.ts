@@ -14,12 +14,37 @@ import { AddressObjectIndex } from '../entities/address-object-index.entity.js';
 import { AddressObject } from '../entities/address-object.entity.js';
 import { AddressbookCollection } from '../entities/addressbook-collection.entity.js';
 import { CalendarCollection } from '../entities/calendar-collection.entity.js';
+import { CalendarProperty } from '../entities/calendar-property.entity.js';
 import { CalendarObjectContent } from '../entities/calendar-object-content.entity.js';
 import {
   CalendarObject,
   type CalendarStatus,
   type CalendarTransparency,
 } from '../entities/calendar-object.entity.js';
+
+/** The XML namespace Apple's clients use for `calendar-color`. */
+const APPLE_ICAL_NAMESPACE = 'http://apple.com/ns/ical/';
+
+/**
+ * `#rgb`, `#rrggbb` or Apple's `#rrggbbaa` as lower-case `#rrggbb` (the alpha
+ * is dropped); `null` for anything else. The value ends up in a style
+ * attribute of the admin UI, so only this exact shape is let through.
+ */
+export function normalizeCalendarColor(value: string): string | null {
+  const text = value.trim().toLowerCase();
+  const match = /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/.exec(text);
+  if (!match) {
+    return null;
+  }
+  const digits = match[1];
+  if (digits === undefined) {
+    return null;
+  }
+  if (digits.length === 3) {
+    return `#${[...digits].map((d) => d + d).join('')}`;
+  }
+  return `#${digits.slice(0, 6)}`;
+}
 
 /** The longest time window {@link ContentInspectionService.listEvents} accepts. */
 export const MAX_EVENT_WINDOW_MS = 366 * 24 * 3_600_000;
@@ -37,6 +62,8 @@ export interface InspectedCalendar {
   displayName: string;
   description: string | null;
   timezone: string | null;
+  /** The colour a client gave the calendar (`#rrggbb`), or `null`. */
+  color: string | null;
   objectCount: number;
   updatedAt: Date;
 }
@@ -159,15 +186,39 @@ export class ContentInspectionService {
       'calendarId',
       calendars.map((calendar) => calendar.id),
     );
+    const colors = await this.calendarColors(calendars.map((c) => c.id));
     return calendars.map((calendar) => ({
       id: calendar.id,
       name: calendar.name,
       displayName: calendar.displayName,
       description: calendar.description,
       timezone: calendar.timezone,
+      color: colors.get(calendar.id) ?? null,
       objectCount: counts.get(calendar.id) ?? 0,
       updatedAt: calendar.updatedAt,
     }));
+  }
+
+  /** The colours clients set (Apple's `calendar-color`), by calendar id. */
+  private async calendarColors(
+    calendarIds: readonly string[],
+  ): Promise<Map<string, string>> {
+    if (calendarIds.length === 0) {
+      return new Map();
+    }
+    const rows = await this.dataSource.getRepository(CalendarProperty).findBy({
+      calendarId: In([...calendarIds]),
+      namespace: APPLE_ICAL_NAMESPACE,
+      name: 'calendar-color',
+    });
+    const colors = new Map<string, string>();
+    for (const row of rows) {
+      const color = normalizeCalendarColor(row.value);
+      if (color !== null) {
+        colors.set(row.calendarId, color);
+      }
+    }
+    return colors;
   }
 
   /** A calendar of the tenant, or `null`. */
