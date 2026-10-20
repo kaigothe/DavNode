@@ -89,6 +89,11 @@ export interface CreateAppOptions {
   logger?: Logger;
   /** Rate limit and proxy settings; defaults to the built-in limit, no proxy. */
   security?: SecurityConfig;
+  /**
+   * Enables the Admin API's read-only calendar/contact inspection routes
+   * (`DAVNODE_ADMIN_UI_CONTENT_VIEW`); every read is logged. Off by default.
+   */
+  adminContentView?: boolean;
 }
 
 /**
@@ -199,6 +204,9 @@ export function createApp(
         : undefined,
       oauth2Issuers: authConfig.oauth2Issuers.map((issuer) => issuer.issuer),
       authProviders: authConfig.providers,
+      contentView: options.adminContentView === true,
+      onContentAccess: (access) =>
+        logger.info(access, 'Admin read user content'),
       metrics,
     }),
   );

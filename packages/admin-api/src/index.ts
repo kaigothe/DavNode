@@ -2,6 +2,7 @@
 export const VERSION = '0.0.1';
 
 export { createAdminRouter, type AdminRouterOptions } from './router.js';
+export type { ContentAccess } from './content-routes.js';
 export type { MetricsSource } from './metrics-routes.js';
 export { sendAdminError, type AdminErrorBody } from './admin-error-response.js';
 export { adminErrorHandler } from './admin-error-handler.middleware.js';

@@ -20,6 +20,7 @@ interface Layer {
 function registeredRoutes(): string[] {
   const router = createAdminRouter({} as DataSource, {
     metrics: { contentType: 'text/plain', render: async () => '' },
+    contentView: true,
   });
   const out: string[] = [];
   for (const layer of (router as unknown as { stack: Layer[] }).stack) {

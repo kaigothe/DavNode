@@ -1,6 +1,7 @@
 import type { DataSource } from '@davnode/core';
 import express, { type Router } from 'express';
 import { adminErrorHandler } from './admin-error-handler.middleware.js';
+import { registerContentRoutes, type ContentAccess } from './content-routes.js';
 import { registerGroupRoutes } from './group-routes.js';
 import { registerMetricsRoute, type MetricsSource } from './metrics-routes.js';
 import { registerQuotaRoutes } from './quota-routes.js';
@@ -34,6 +35,11 @@ export interface AdminRouterOptions {
    * Off by default: they let admins read other users' data.
    */
   contentView?: boolean;
+  /**
+   * Called for every read of a user's calendar or contact data (only with
+   * `contentView`), so the server can write an audit log entry.
+   */
+  onContentAccess?: (access: ContentAccess) => void;
 }
 
 /**
@@ -69,6 +75,9 @@ export function createAdminRouter(
   registerUserRoutes(router, dataSource, options);
   registerGroupRoutes(router, dataSource);
   registerQuotaRoutes(router, dataSource);
+  if (options.contentView) {
+    registerContentRoutes(router, dataSource, options);
+  }
   if (options.metrics) {
     registerMetricsRoute(router, dataSource, options.metrics);
   }

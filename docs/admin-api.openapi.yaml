@@ -55,6 +55,132 @@ paths:
               schema: { $ref: '#/components/schemas/Providers' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /users/{userId}/calendars:
+    get:
+      summary: Calendars of a user (read-only)
+      description: |
+        Only present when the server runs with the admin content view enabled
+        (`DAVNODE_ADMIN_UI_CONTENT_VIEW`); otherwise `404`. Every request is
+        written to the server log.
+      operationId: listUserCalendars
+      tags: [Content]
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: The calendars.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  calendars:
+                    type: array
+                    items: { $ref: '#/components/schemas/Calendar' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users/{userId}/calendars/{calendarId}/events:
+    get:
+      summary: Event instances of a calendar in a time window (read-only)
+      description: |
+        Recurring events are expanded. Only `VEVENT`s are listed. The window
+        may span at most 366 days; at most 5000 instances are returned
+        (`truncated`). Only present with the admin content view enabled.
+      operationId: listUserCalendarEvents
+      tags: [Content]
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - name: calendarId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          required: true
+          description: Exclusive end, after `from`.
+          schema: { type: string, format: date-time }
+        - $ref: '#/components/parameters/raw'
+      responses:
+        '200':
+          description: The event instances, ordered by start.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: '#/components/schemas/Event' }
+                  truncated: { type: boolean }
+                  skipped:
+                    type: integer
+                    description: Objects that could not be read or expand too densely.
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users/{userId}/addressbooks:
+    get:
+      summary: Address books of a user (read-only)
+      description: Only present with the admin content view enabled.
+      operationId: listUserAddressbooks
+      tags: [Content]
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: The address books.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  addressbooks:
+                    type: array
+                    items: { $ref: '#/components/schemas/Addressbook' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users/{userId}/addressbooks/{addressbookId}/contacts:
+    get:
+      summary: Contacts of an address book (read-only)
+      description: |
+        Paged (default `limit` 50, ordered by resource name). `q` searches
+        name, e-mail, phone and organization. Only present with the admin
+        content view enabled.
+      operationId: listUserContacts
+      tags: [Content]
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - name: addressbookId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/q'
+        - $ref: '#/components/parameters/raw'
+      responses:
+        '200':
+          description: One page of contacts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  contacts:
+                    type: array
+                    items: { $ref: '#/components/schemas/Contact' }
+                  total: { type: integer }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /tenants:
     get:
       summary: List all tenants
@@ -565,6 +691,11 @@ components:
       in: query
       description: Case-insensitive search text.
       schema: { type: string }
+    raw:
+      name: raw
+      in: query
+      description: Include the stored iCalendar/vCard text.
+      schema: { type: boolean, default: false }
     targetSlug:
       name: targetSlug
       in: path
@@ -666,6 +797,70 @@ components:
         oauth2Issuers:
           type: array
           items: { type: string }
+    Calendar:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        displayName: { type: string }
+        description: { type: string, nullable: true }
+        timezone: { type: string, nullable: true }
+        objectCount: { type: integer }
+        updatedAt: { type: string, format: date-time }
+    Event:
+      type: object
+      properties:
+        objectId: { type: string, format: uuid }
+        uid: { type: string }
+        name: { type: string }
+        summary: { type: string, nullable: true }
+        location: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time }
+        isAllDay: { type: boolean }
+        isRecurring: { type: boolean }
+        isOverride: { type: boolean }
+        status:
+          type: string
+          nullable: true
+          enum: [tentative, confirmed, cancelled]
+        transparency: { type: string, enum: [opaque, transparent] }
+        raw: { type: string, description: Only with `raw=true`. }
+    Addressbook:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string }
+        description: { type: string, nullable: true }
+        contactCount: { type: integer }
+        updatedAt: { type: string, format: date-time }
+    ContactValue:
+      type: object
+      properties:
+        value: { type: string }
+        types: { type: array, items: { type: string } }
+    Contact:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        uid: { type: string }
+        name: { type: string }
+        displayName: { type: string }
+        organization: { type: string, nullable: true }
+        title: { type: string, nullable: true }
+        emails:
+          type: array
+          items: { $ref: '#/components/schemas/ContactValue' }
+        phones:
+          type: array
+          items: { $ref: '#/components/schemas/ContactValue' }
+        addresses: { type: array, items: { type: string } }
+        birthday: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+        hasPhoto: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+        raw: { type: string, description: Only with `raw=true`. }
     Tenant:
       type: object
       properties:
