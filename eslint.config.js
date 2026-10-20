@@ -149,7 +149,14 @@ export default tseslint.config(
   {
     files: ['packages/admin-ui/{e2e,scripts}/**/*.mjs'],
     languageOptions: {
-      globals: { process: 'readonly', console: 'readonly' },
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        Buffer: 'readonly',
+        // Code passed to page.evaluate() runs in the browser.
+        document: 'readonly',
+      },
     },
   },
   eslintConfigPrettier,

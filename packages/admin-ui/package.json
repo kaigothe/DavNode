@@ -11,7 +11,8 @@
     "generate:api": "openapi-typescript ../../docs/admin-api.openapi.yaml -o src/api/schema.d.ts",
     "test": "vitest run --root ../.. --project \"$npm_package_name\"",
     "check:budget": "node scripts/check-bundle-size.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "screenshots": "node scripts/screenshots.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",

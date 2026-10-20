@@ -8,7 +8,11 @@ async function violations(page: Page) {
   // once every animation and transition has finished.
   await page.evaluate(() =>
     Promise.all(
-      document.getAnimations().map((a) => a.finished.catch(() => undefined)),
+      document
+        .getAnimations()
+        // Wait only for animations that end; a progress bar's shimmer never does.
+        .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
     ),
   );
   const result = await new AxeBuilder({ page }).analyze();

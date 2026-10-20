@@ -1,6 +1,8 @@
 // Starts a throwaway DavNode for the end-to-end tests: a fresh SQLite file,
 // one bootstrapped tenant ("e2e", admin/admin-pw) and the admin UI with the
 // content view on. Run by Playwright's webServer; stays in the foreground.
+// E2E_TENANT and E2E_TENANT_NAME rename the tenant (the screenshot script
+// uses "demo").
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -35,8 +37,8 @@ execFileSync(
   process.execPath,
   [
     path.join(root, 'packages/core/dist/cli/bootstrap.js'),
-    '--tenant-slug=e2e',
-    '--tenant-name=End to End',
+    `--tenant-slug=${process.env.E2E_TENANT ?? 'e2e'}`,
+    `--tenant-name=${process.env.E2E_TENANT_NAME ?? 'End to End'}`,
     '--username=admin',
     '--email=admin@example.com',
     '--password=admin-pw',
