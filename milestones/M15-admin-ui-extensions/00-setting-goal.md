@@ -33,4 +33,17 @@ Kalender fühlt sich wie ein echter Kalender an.
 4. Kalenderansicht (Farben aus `calendar-color`, Zeitraster, Layout)
 
 ## Stand
-- ⏳ alle offen
+- ✅ 1 Nutzer-Detailseite und Gruppen (`GET /users/{id}/groups`, Seite
+  `/users/:id`, Initialen-Avatar)
+- ✅ 2 Visitenkarte (`ContactCard` im Kontakt-Drawer)
+- ✅ 3 Logs (`LogBuffer`, `GET /logs`, `DAVNODE_ADMIN_UI_LOG_VIEW`/`_BUFFER`,
+  Seite „Server log“)
+- ✅ 4 Kalenderansicht im Apple-Stil (Tag/Woche/Monat, Seitenleiste, Farben
+  aus `calendar-color`, Termin-Details im Drawer von rechts)
+- ✅ Doku, Screenshots, Demo-Daten, E2E- und axe-Tests für alles
+
+Abweichungen vom Plan: keine. Zusätzlich gefunden und behoben: ein Menü-Knopf
+hieß fälschlich „Overview“; der axe-Lauf im echten Browser deckte mehrere
+Barrierefreiheitsfehler der neuen Kalender-Komponenten auf (ARIA-Grid ohne
+Zeilen, Namen ohne sichtbaren Text, doppelte Landmarks, Kontrast des
+Heute-Rots im Dunkelmodus).

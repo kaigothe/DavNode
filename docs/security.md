@@ -38,6 +38,9 @@ operator. Report problems as described in [SECURITY.md](../SECURITY.md).
   sends the user's credentials with every request and keeps them in the tab's
   session storage, with no cookies and no server-side session.
 - A Content Security Policy applies to `/admin-ui/` only.
+- The recent server log can be shown to server administrators with
+  `DAVNODE_ADMIN_UI_LOG_VIEW`; it is kept in memory only. The log never holds
+  passwords or `Authorization` headers.
 - Reading users' calendars and contacts needs a second switch
   (`DAVNODE_ADMIN_UI_CONTENT_VIEW`); every such read is written to the log
   with the administrator and the user, never the content.
