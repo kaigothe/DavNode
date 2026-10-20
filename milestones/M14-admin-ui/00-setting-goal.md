@@ -59,7 +59,13 @@ barrierearm, mit System/Hell/Dunkel-Theme und standardmäßig abgeschaltet.
   HTML-Injection und `console`. Bewusst anders als geplant: keine `msw`
   (die Fakes laufen über `stubApi` + Contract-Check) und keine
   Coverage-Schwelle (die übrigen Pakete haben keine).
-- ⏳ 8 offen.
+- ✅ 8 Doku, Screenshots, Demo: Doku-Kapitel `docs/admin-ui.md`, 23
+  Screenshots per Skript (`npm run screenshots -w @davnode/admin-ui`),
+  Demo-Compose mit UI und lebendigeren Daten, README/Positionierung/
+  Fact-Sheet angepasst.
+
+**M14 ist damit vollständig.** Offen bleibt nur, was ohnehin Sache der
+Maintainer ist (Merge, Release, Veröffentlichung).
 
 ## Große Aufgaben (Übersicht)
 1. [Backend-Ergänzungen](01-backend-additions/00-overview.md)
