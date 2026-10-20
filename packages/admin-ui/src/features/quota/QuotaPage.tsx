@@ -10,6 +10,7 @@ import { ErrorAlert } from '../../components/ErrorAlert';
 import { QuotaBar } from '../../components/QuotaBar';
 import { QuotaLimitModal } from '../../components/QuotaLimitModal';
 import { useFeedback } from '../../hooks/useFeedback';
+import { PageTitle } from '../../components/Headings';
 
 type QuotaUser = QuotaOverview['users'][number];
 
@@ -80,9 +81,7 @@ export function QuotaPage() {
   return (
     <Flex vertical gap={16}>
       <Flex justify="space-between" align="center" wrap gap={8}>
-        <Typography.Title level={3} style={{ margin: 0 }}>
-          {t('quota.title')}
-        </Typography.Title>
+        <PageTitle>{t('quota.title')}</PageTitle>
         <Button
           icon={<ReloadOutlined />}
           loading={recounting}

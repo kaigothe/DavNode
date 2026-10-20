@@ -1,6 +1,6 @@
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Flex, Result, Skeleton, Tabs, Typography } from 'antd';
+import { Alert, Flex, Result, Skeleton, Tabs } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 import { ApiError, type User } from '../../api/client';
@@ -9,6 +9,7 @@ import { ErrorAlert } from '../../components/ErrorAlert';
 import { NotFoundPage } from '../StatusPages';
 import { CalendarsTab } from './CalendarsTab';
 import { ContactsTab } from './ContactsTab';
+import { PageTitle } from '../../components/Headings';
 
 /** The calendars and contacts of one user, read-only. Only exists when the server has the content view on. */
 export function UserContentPage() {
@@ -41,14 +42,14 @@ export function UserContentPage() {
       <Link to="/users">
         <ArrowLeftOutlined /> {t('content.back')}
       </Link>
-      {user.isPending && <Skeleton active paragraph={false} />}
+      {user.isPending && <Skeleton.Input active />}
       {user.isError && (
         <ErrorAlert error={user.error} onRetry={() => void user.refetch()} />
       )}
       {user.data && (
-        <Typography.Title level={3} style={{ margin: 0 }}>
+        <PageTitle>
           {t('content.title', { name: user.data.username })}
-        </Typography.Title>
+        </PageTitle>
       )}
       <Alert type="info" showIcon message={t('content.logged')} />
       {user.data && (

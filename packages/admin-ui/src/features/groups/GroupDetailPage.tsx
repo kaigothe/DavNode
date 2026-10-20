@@ -31,6 +31,7 @@ import { ErrorAlert } from '../../components/ErrorAlert';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useFeedback } from '../../hooks/useFeedback';
 import { NotFoundPage } from '../StatusPages';
+import { PageTitle } from '../../components/Headings';
 
 interface Candidate {
   principalId: string;
@@ -174,16 +175,14 @@ export function GroupDetailPage() {
       <Link to="/groups">
         <ArrowLeftOutlined /> {t('groups.back')}
       </Link>
-      {group.isPending && <Skeleton active />}
+      {group.isPending && <Skeleton active title={false} />}
       {group.isError && (
         <ErrorAlert error={group.error} onRetry={() => void group.refetch()} />
       )}
       {group.data && (
         <>
           <div>
-            <Typography.Title level={3} style={{ margin: 0 }}>
-              {group.data.name}
-            </Typography.Title>
+            <PageTitle>{group.data.name}</PageTitle>
             {group.data.description && (
               <Typography.Text type="secondary">
                 {group.data.description}

@@ -130,7 +130,7 @@ export function ContactDrawer({
               {showRaw ? t('content.hideRawCard') : t('content.showRawCard')}
             </Button>
           </div>
-          {showRaw && raw.isPending && <Skeleton active />}
+          {showRaw && raw.isPending && <Skeleton active title={false} />}
           {showRaw && raw.isError && (
             <ErrorAlert error={raw.error} onRetry={() => void raw.refetch()} />
           )}

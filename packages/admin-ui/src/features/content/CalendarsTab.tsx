@@ -1,3 +1,4 @@
+import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import {
   Alert,
@@ -10,6 +11,7 @@ import {
   List,
   Select,
   Skeleton,
+  Space,
   Tag,
   Typography,
 } from 'antd';
@@ -21,6 +23,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { dayKey, formatTimeRange, groupByDay } from '../../lib/events';
 import { EventDrawer } from './EventDrawer';
+import { SectionTitle } from '../../components/Headings';
 
 const MAX_IN_CELL = 3;
 
@@ -67,7 +70,7 @@ export function CalendarsTab({ userId }: { userId: string }) {
   const fullscreen = screens.md ?? false;
 
   if (calendars.isPending) {
-    return <Skeleton active />;
+    return <Skeleton active title={false} />;
   }
   if (calendars.isError) {
     return (
@@ -124,7 +127,38 @@ export function CalendarsTab({ userId }: { userId: string }) {
         value={value}
         fullscreen={fullscreen}
         onSelect={(date) => setValue(date)}
-        onPanelChange={(date) => setValue(date)}
+        onChange={(date) => setValue(date)}
+        headerRender={({ value: shown, onChange }) => (
+          <Flex
+            align="center"
+            justify="space-between"
+            gap={8}
+            wrap
+            style={{ padding: '8px 0' }}
+          >
+            <SectionTitle>
+              {new Intl.DateTimeFormat(i18n.language, {
+                month: 'long',
+                year: 'numeric',
+              }).format(shown.toDate())}
+            </SectionTitle>
+            <Space>
+              <Button
+                icon={<LeftOutlined />}
+                aria-label={t('content.previousMonth')}
+                onClick={() => onChange(shown.subtract(1, 'month'))}
+              />
+              <Button onClick={() => onChange(dayjs())}>
+                {t('content.today')}
+              </Button>
+              <Button
+                icon={<RightOutlined />}
+                aria-label={t('content.nextMonth')}
+                onClick={() => onChange(shown.add(1, 'month'))}
+              />
+            </Space>
+          </Flex>
+        )}
         cellRender={(date, info) => {
           if (info.type !== 'date') {
             return info.originNode;
@@ -170,15 +204,15 @@ export function CalendarsTab({ userId }: { userId: string }) {
         }}
       />
       <div>
-        <Typography.Title level={5}>
+        <SectionTitle>
           {t('content.agenda', {
             date: new Intl.DateTimeFormat(i18n.language, {
               dateStyle: 'full',
             }).format(value.toDate()),
           })}
-        </Typography.Title>
+        </SectionTitle>
         {events.isFetching && todays.length === 0 ? (
-          <Skeleton active paragraph={{ rows: 2 }} />
+          <Skeleton active title={false} paragraph={{ rows: 2 }} />
         ) : (
           <List
             bordered
@@ -198,18 +232,25 @@ export function CalendarsTab({ userId }: { userId: string }) {
                   </Button>,
                 ]}
               >
-                <List.Item.Meta
-                  title={event.summary ?? t('content.untitled')}
-                  description={[
-                    event.isAllDay
-                      ? t('content.allDay')
-                      : formatTimeRange(event, i18n.language, dayKey(value)) ||
-                        t('content.allDay'),
-                    event.location,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                />
+                <Flex vertical gap={2} style={{ flex: 1, minWidth: 0 }}>
+                  <Typography.Text strong>
+                    {event.summary ?? t('content.untitled')}
+                  </Typography.Text>
+                  <Typography.Text type="secondary">
+                    {[
+                      event.isAllDay
+                        ? t('content.allDay')
+                        : formatTimeRange(
+                            event,
+                            i18n.language,
+                            dayKey(value),
+                          ) || t('content.allDay'),
+                      event.location,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </Typography.Text>
+                </Flex>
                 {event.status === 'cancelled' && (
                   <Tag color="red">{t('content.statusValue.cancelled')}</Tag>
                 )}

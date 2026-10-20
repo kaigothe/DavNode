@@ -7,23 +7,18 @@ import {
 } from 'antd';
 import deDE from 'antd/locale/de_DE';
 import enUS from 'antd/locale/en_US';
+import { lazy } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet, Route, Routes } from 'react-router';
 import { AppShell } from './components/AppShell';
 import { useAuth } from './auth/AuthContext';
-import { GroupDetailPage } from './features/groups/GroupDetailPage';
-import { GroupsPage } from './features/groups/GroupsPage';
 import { LoginPage } from './features/LoginPage';
 import { OverviewPage } from './features/OverviewPage';
-import { UserContentPage } from './features/content/UserContentPage';
-import { QuotaPage } from './features/quota/QuotaPage';
 import {
   ForbiddenPage,
   NoAdminPage,
   NotFoundPage,
 } from './features/StatusPages';
-import { TenantsPage } from './features/tenants/TenantsPage';
-import { UsersPage } from './features/users/UsersPage';
 import { useTheme } from './theme/ThemeContext';
 
 /** Applies the chosen theme and language to Ant Design's components. */
@@ -38,12 +33,85 @@ export function Themed({ children }: { children: React.ReactNode }) {
           resolved === 'dark'
             ? antdTheme.darkAlgorithm
             : antdTheme.defaultAlgorithm,
+        // Ant Design's defaults miss the 4.5:1 contrast of WCAG AA: the
+        // primary colour on tinted backgrounds, links and secondary text.
+        // The dark theme cannot use one blue for everything — white text on
+        // a primary button needs a dark blue, links and the selected menu
+        // item on a dark background need a light one.
+        token:
+          resolved === 'dark'
+            ? {
+                colorPrimary: '#2f6fd6',
+                colorLink: '#69b1ff',
+                colorLinkHover: '#8ec1ff',
+                colorTextSecondary: 'rgba(255, 255, 255, 0.72)',
+                colorTextDescription: 'rgba(255, 255, 255, 0.66)',
+                colorTextTertiary: 'rgba(255, 255, 255, 0.6)',
+              }
+            : {
+                colorPrimary: '#0958d9',
+                colorLink: '#0958d9',
+                // Darker status colours, with their tinted backgrounds pinned:
+                // Ant Design would derive murky ones from the darker seeds.
+                colorSuccess: '#237804',
+                colorSuccessBg: '#f6ffed',
+                colorSuccessBorder: '#b7eb8f',
+                colorWarning: '#ad4e00',
+                colorWarningBg: '#fffbe6',
+                colorWarningBorder: '#ffe58f',
+                colorError: '#cf1322',
+                colorErrorBg: '#fff2f0',
+                colorErrorBorder: '#ffccc7',
+                colorTextSecondary: 'rgba(0, 0, 0, 0.72)',
+                colorTextDescription: 'rgba(0, 0, 0, 0.68)',
+                colorTextTertiary: 'rgba(0, 0, 0, 0.62)',
+              },
+        components:
+          resolved === 'dark'
+            ? {
+                Menu: { itemSelectedColor: '#8ec1ff' },
+                Tabs: {
+                  itemSelectedColor: '#8ec1ff',
+                  itemHoverColor: '#a8cdff',
+                  inkBarColor: '#69b1ff',
+                },
+              }
+            : {},
       }}
     >
       <AntApp style={{ height: '100%' }}>{children}</AntApp>
     </ConfigProvider>
   );
 }
+
+// The pages are loaded when they are first opened, so signing in does not
+// download the tables, the calendar and the forms nobody asked for yet.
+const UsersPage = lazy(() =>
+  import('./features/users/UsersPage').then((m) => ({ default: m.UsersPage })),
+);
+const GroupsPage = lazy(() =>
+  import('./features/groups/GroupsPage').then((m) => ({
+    default: m.GroupsPage,
+  })),
+);
+const GroupDetailPage = lazy(() =>
+  import('./features/groups/GroupDetailPage').then((m) => ({
+    default: m.GroupDetailPage,
+  })),
+);
+const QuotaPage = lazy(() =>
+  import('./features/quota/QuotaPage').then((m) => ({ default: m.QuotaPage })),
+);
+const TenantsPage = lazy(() =>
+  import('./features/tenants/TenantsPage').then((m) => ({
+    default: m.TenantsPage,
+  })),
+);
+const UserContentPage = lazy(() =>
+  import('./features/content/UserContentPage').then((m) => ({
+    default: m.UserContentPage,
+  })),
+);
 
 function RequireAuth() {
   const { status } = useAuth();

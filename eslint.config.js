@@ -125,8 +125,32 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       ...jsxA11y.flatConfigs.recommended.rules,
+      // The UI shows other people's calendar and contact text: it is always
+      // rendered as text, never as markup (M14, 07-quality).
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+          message:
+            'Never inject HTML: event and contact text must be rendered as text.',
+        },
+        {
+          selector: "MemberExpression[property.name='innerHTML']",
+          message:
+            'Never assign innerHTML: event and contact text must be rendered as text.',
+        },
+      ],
+      // Credentials live in the session; nothing may end up in a console.
+      'no-console': 'error',
     },
     languageOptions: { ...jsxA11y.flatConfigs.recommended.languageOptions },
+  },
+  // Node scripts of the admin UI package (end-to-end server, bundle budget).
+  {
+    files: ['packages/admin-ui/{e2e,scripts}/**/*.mjs'],
+    languageOptions: {
+      globals: { process: 'readonly', console: 'readonly' },
+    },
   },
   eslintConfigPrettier,
 );

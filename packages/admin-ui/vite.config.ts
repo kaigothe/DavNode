@@ -18,16 +18,8 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
+        // React rarely changes; keeping it apart keeps it cached across releases.
         manualChunks(id) {
-          if (id.includes('node_modules/antd') || id.includes('@ant-design')) {
-            return 'antd';
-          }
-          if (
-            id.includes('node_modules/@rc-component') ||
-            id.includes('node_modules/rc-')
-          ) {
-            return 'antd';
-          }
           if (
             /node_modules\/(react|react-dom|react-router|scheduler)\//.test(id)
           ) {

@@ -30,6 +30,7 @@ import { ErrorAlert } from '../../components/ErrorAlert';
 import { useFeedback } from '../../hooks/useFeedback';
 import { useListState } from '../../hooks/useListState';
 import { validated } from '../../lib/forms';
+import { PageTitle } from '../../components/Headings';
 
 /** The groups of the tenant: search, create, delete; a name opens the members. */
 export function GroupsPage() {
@@ -94,9 +95,7 @@ export function GroupsPage() {
   return (
     <Flex vertical gap={16}>
       <Flex justify="space-between" align="center" wrap gap={8}>
-        <Typography.Title level={3} style={{ margin: 0 }}>
-          {t('groups.title')}
-        </Typography.Title>
+        <PageTitle>{t('groups.title')}</PageTitle>
         <Button
           type="primary"
           icon={<PlusOutlined />}

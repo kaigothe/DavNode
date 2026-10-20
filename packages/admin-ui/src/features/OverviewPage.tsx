@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import type { Providers } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { ErrorAlert } from '../components/ErrorAlert';
+import { PageTitle } from '../components/Headings';
 
 /** Who is logged in, and how the server authenticates users. */
 export function OverviewPage() {
@@ -27,9 +28,7 @@ export function OverviewPage() {
   }
   return (
     <Flex vertical gap={16}>
-      <Typography.Title level={3} style={{ margin: 0 }}>
-        {t('overview.title')}
-      </Typography.Title>
+      <PageTitle>{t('overview.title')}</PageTitle>
       <Card title={t('overview.account')}>
         <Descriptions column={{ xs: 1, md: 2 }}>
           <Descriptions.Item label={t('overview.username')}>
@@ -56,7 +55,9 @@ export function OverviewPage() {
           <Typography.Text type="secondary">
             {t('overview.providersHint')}
           </Typography.Text>
-          {providers.isPending && <Skeleton active paragraph={{ rows: 2 }} />}
+          {providers.isPending && (
+            <Skeleton active title={false} paragraph={{ rows: 2 }} />
+          )}
           {providers.isError && (
             <ErrorAlert
               error={providers.error}

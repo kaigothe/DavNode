@@ -49,7 +49,7 @@ export function ContactsTab({ userId }: { userId: string }) {
   });
 
   if (books.isPending) {
-    return <Skeleton active />;
+    return <Skeleton active title={false} />;
   }
   if (books.isError) {
     return (

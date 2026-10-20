@@ -34,6 +34,7 @@ import { QuotaBar } from '../../components/QuotaBar';
 import { useFeedback } from '../../hooks/useFeedback';
 import { useListState } from '../../hooks/useListState';
 import { OAuth2Modal, PasswordModal, UserFormModal } from './UserModals';
+import { PageTitle } from '../../components/Headings';
 
 const ROLE_COLOR = {
   server_admin: 'red',
@@ -181,9 +182,7 @@ export function UsersPage() {
   return (
     <Flex vertical gap={16}>
       <Flex justify="space-between" align="center" wrap gap={8}>
-        <Typography.Title level={3} style={{ margin: 0 }}>
-          {t('users.title')}
-        </Typography.Title>
+        <PageTitle>{t('users.title')}</PageTitle>
         <Button
           type="primary"
           icon={<PlusOutlined />}

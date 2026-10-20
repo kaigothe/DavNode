@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext';
 import { loadLastTenant } from '../auth/session';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { Preferences } from '../components/Preferences';
+import { PageTitle } from '../components/Headings';
 
 interface LoginValues {
   tenant: string;
@@ -46,6 +47,7 @@ export function LoginPage() {
 
   return (
     <Flex
+      component="main"
       vertical
       align="center"
       justify="center"
@@ -54,9 +56,7 @@ export function LoginPage() {
     >
       <Card style={{ width: '100%', maxWidth: 400 }}>
         <Flex vertical gap={4} style={{ marginBottom: 16 }}>
-          <Typography.Title level={3} style={{ margin: 0 }}>
-            {t('app.title')}
-          </Typography.Title>
+          <PageTitle>{t('app.title')}</PageTitle>
           <Typography.Text type="secondary">
             {t('login.subtitle')}
           </Typography.Text>

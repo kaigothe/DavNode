@@ -34,6 +34,7 @@ import { QuotaInput, useQuotaRules } from '../../components/QuotaInput';
 import { useFeedback } from '../../hooks/useFeedback';
 import { useListState } from '../../hooks/useListState';
 import { validated } from '../../lib/forms';
+import { PageTitle } from '../../components/Headings';
 
 const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
@@ -172,9 +173,7 @@ export function TenantsPage() {
   return (
     <Flex vertical gap={16}>
       <Flex justify="space-between" align="center" wrap gap={8}>
-        <Typography.Title level={3} style={{ margin: 0 }}>
-          {t('tenants.title')}
-        </Typography.Title>
+        <PageTitle>{t('tenants.title')}</PageTitle>
         <Button
           type="primary"
           icon={<PlusOutlined />}

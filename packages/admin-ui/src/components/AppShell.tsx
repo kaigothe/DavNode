@@ -18,10 +18,11 @@ import {
   theme,
   Typography,
 } from 'antd';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../auth/AuthContext';
+import { PageLoading } from './PageLoading';
 import { Preferences } from './Preferences';
 
 const { Header, Sider, Content } = Layout;
@@ -84,12 +85,12 @@ export function AppShell() {
             borderInlineEnd: `1px solid ${token.colorSplit}`,
           }}
         >
-          <Typography.Title
-            level={5}
-            style={{ margin: 0, padding: '16px 24px' }}
+          <Typography.Text
+            strong
+            style={{ display: 'block', padding: '16px 24px' }}
           >
             {t('app.title')}
-          </Typography.Title>
+          </Typography.Text>
           {menu}
         </Sider>
       )}
@@ -141,7 +142,9 @@ export function AppShell() {
           </Flex>
         </Header>
         <Content style={{ padding: 16 }}>
-          <Outlet />
+          <Suspense fallback={<PageLoading />}>
+            <Outlet />
+          </Suspense>
         </Content>
       </Layout>
       <Drawer

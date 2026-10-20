@@ -123,7 +123,7 @@ export function EventDrawer({
               {showRaw ? t('content.hideRaw') : t('content.showRaw')}
             </Button>
           </div>
-          {showRaw && raw.isPending && <Skeleton active />}
+          {showRaw && raw.isPending && <Skeleton active title={false} />}
           {showRaw && raw.isError && (
             <ErrorAlert error={raw.error} onRetry={() => void raw.refetch()} />
           )}
