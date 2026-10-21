@@ -1,6 +1,13 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { createUser, dav, seedCalendar, signIn, ymd } from './support';
+import {
+  createUser,
+  dav,
+  seedCalendar,
+  signIn,
+  todayInBrowserZone,
+  ymd,
+} from './support';
 
 /** Every violation axe finds, rendered for the failure message. */
 async function violations(page: Page) {
@@ -111,7 +118,7 @@ for (const scheme of ['light', 'dark'] as const) {
         request,
         `a11y-cal-${scheme}-${Date.now().toString(36)}`,
       );
-      const today = ymd(new Date());
+      const today = todayInBrowserZone();
       // Every default colour, and light ones that need the darkened text.
       const colors = [
         '#1badf8',
