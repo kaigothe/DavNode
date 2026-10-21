@@ -75,7 +75,7 @@ jobs:
       # Scan after publishing so the report covers exactly what was shipped;
       # a finding blocks the next release's approval, not this signed image.
       - name: Scan the image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
           severity: CRITICAL,HIGH
