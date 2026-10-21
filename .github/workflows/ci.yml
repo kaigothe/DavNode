@@ -289,6 +289,10 @@ jobs:
           # semantic-release needs the full commit history (and tags) to
           # determine the next version, not just the latest commit.
           fetch-depth: 0
+          # main is protected: the release commit (version, changelog) is
+          # pushed with the maintainer's token, which may bypass the rules,
+          # not with the job's GITHUB_TOKEN, which may not.
+          token: ${{ secrets.RELEASE_TOKEN }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -299,9 +303,9 @@ jobs:
         run: echo "tag=$(git describe --tags --abbrev=0 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
       - run: npx semantic-release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Events created with GITHUB_TOKEN do not trigger other workflows, so
-      # the image job below is chained to this one instead of to the tag.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      # The image job below is chained to this one instead of to the tag, so
+      # a release that is created with a personal token cannot publish twice.
       - name: Detect a new release
         id: version
         run: |
