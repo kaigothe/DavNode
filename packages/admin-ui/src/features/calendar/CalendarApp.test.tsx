@@ -463,15 +463,15 @@ describe('the sidebar', () => {
   });
 
   it('has a mini month that jumps to a date', async () => {
+    // The days are found by their label: a role query with a name has to work
+    // out the name of every button in the month, which takes seconds in jsdom.
     const { user: u } = await open();
     await openSidebar(u);
 
     const mini = await screen.findByRole('region', {
       name: 'Month navigation',
     });
-    await u.click(
-      within(mini).getByRole('button', { name: 'Friday, October 23, 2026' }),
-    );
+    await u.click(within(mini).getByLabelText('Friday, October 23, 2026'));
 
     expect(
       screen.getByRole('heading', {
@@ -480,10 +480,10 @@ describe('the sidebar', () => {
       }),
     ).toBeInTheDocument();
     expect(
-      within(mini).getByRole('button', { name: 'Friday, October 23, 2026' }),
+      within(mini).getByLabelText('Friday, October 23, 2026'),
     ).toHaveAttribute('aria-pressed', 'true');
     expect(
-      within(mini).getByRole('button', { name: 'Wednesday, October 14, 2026' }),
+      within(mini).getByLabelText('Wednesday, October 14, 2026'),
     ).toHaveAttribute('aria-current', 'date');
   });
 
