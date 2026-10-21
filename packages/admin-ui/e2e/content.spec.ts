@@ -1,8 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createUser, dav, seedCalendar, signIn, ymd } from './support';
+import {
+  createUser,
+  dav,
+  seedCalendar,
+  signIn,
+  todayInBrowserZone,
+} from './support';
 
-const ym = new Date().toISOString().slice(0, 7).replace('-', '');
-const today = ymd(new Date());
+const today = todayInBrowserZone();
+const ym = today.slice(0, 6);
 const vcard = (uid: string, fn: string, email: string) =>
   `BEGIN:VCARD\r\nVERSION:3.0\r\nUID:${uid}\r\nFN:${fn}\r\nEMAIL;TYPE=WORK:${email}\r\nNOTE:<b>not bold</b>\r\nEND:VCARD\r\n`;
 
