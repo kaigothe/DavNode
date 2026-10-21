@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- Build stage: compiles all workspace packages ----
-FROM node:22-slim AS build
+FROM node:25-slim AS build
 WORKDIR /app
 
 # Copy only the manifests first so `npm ci` is cached unless a
@@ -18,7 +18,7 @@ COPY packages ./packages
 RUN npm run build --workspaces
 
 # ---- Runtime stage: production dependencies + compiled output only ----
-FROM node:22-slim AS runtime
+FROM node:25-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
