@@ -31,6 +31,10 @@ COPY packages/admin-ui/package.json packages/admin-ui/package.json
 # static bundle, its React/Ant Design dependencies are not needed at runtime.
 RUN npm ci --omit=dev --workspace=@davnode/server --include-workspace-root=false
 
+# The server is started with node; npm (and the packages it bundles, which
+# the image scan reports) is only needed for the install above.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+
 COPY --from=build /app/packages/core/dist packages/core/dist
 COPY --from=build /app/packages/server/dist packages/server/dist
 COPY --from=build /app/packages/admin-api/dist packages/admin-api/dist
