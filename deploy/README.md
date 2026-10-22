@@ -19,6 +19,10 @@ docker compose exec app node packages/core/dist/cli/bootstrap.js \
 
 Check it: `curl -u admin:choose-a-password https://$DOMAIN/dav/demo/files/`.
 
+The image contains Node.js but not npm (nothing in it needs npm, and the
+packages npm bundles would only add findings to the image scan). Run
+DavNode's own commands with `node`, as above.
+
 ## Upgrade
 
 Back up first (see the backup runbook in the project documentation), then:
