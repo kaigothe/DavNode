@@ -136,7 +136,7 @@ jobs:
       - run: npm run test:e2e -w @davnode/admin-ui
       - name: Upload the traces of failed tests
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: admin-ui-e2e-traces
           path: packages/admin-ui/test-results
@@ -166,7 +166,7 @@ jobs:
         run: scripts/conformance/stop-server.sh
       - name: Upload the litmus log and the server log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: litmus-results
           path: |
@@ -198,7 +198,7 @@ jobs:
         run: scripts/conformance/stop-server.sh
       - name: Upload the CalDAVTester logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: caldavtester-results
           path: |
