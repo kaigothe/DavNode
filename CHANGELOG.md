@@ -1,3 +1,10 @@
+## [1.31.1](https://github.com/kaigothe/DavNode/compare/v1.31.0...v1.31.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* **docker:** say in the deploy README that the image has no npm ([5fb02f0](https://github.com/kaigothe/DavNode/commit/5fb02f0efbbb5eb4a2b112aee126dc35c9d950e8))
+
 # [1.31.0](https://github.com/kaigothe/DavNode/compare/v1.30.0...v1.31.0) (2026-10-21)
 
 
