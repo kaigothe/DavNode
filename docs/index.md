@@ -5,7 +5,7 @@ hero:
   text: Files, calendars and contacts on your own server
   tagline: A self-hosted WebDAV, CalDAV and CardDAV server with tenants, access control and quotas. Everything in one database, so one backup is a complete backup.
   image:
-    src: /assets/logo.svg
+    src: /logo.svg
     alt: DavNode
   actions:
     - theme: brand
