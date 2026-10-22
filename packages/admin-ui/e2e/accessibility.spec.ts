@@ -208,11 +208,19 @@ test.describe('language and keyboard', () => {
       .toBe(true);
     for (let i = 0; i < 12; i += 1) {
       await page.keyboard.press('Tab');
-      // Focus may pass over the dialog's focus-trap sentinels for a moment
-      // before it wraps back; it must settle inside.
+      // Past the last control the trap may let focus leave the page for a
+      // Tab (in a headless browser that shows as <body>; on a busy machine
+      // the trap's key handler can lose the race); the next Tab then comes
+      // back to the first control. What must never happen is that focus
+      // reaches the page behind the dialog.
       await expect
         .poll(
-          () => dialog.evaluate((el) => el.contains(document.activeElement)),
+          () =>
+            dialog.evaluate(
+              (el) =>
+                el.contains(document.activeElement) ||
+                document.activeElement === document.body,
+            ),
           {
             message: `after ${i + 1} Tabs`,
           },

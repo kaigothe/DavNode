@@ -154,9 +154,15 @@ test.describe('calendars and contacts of a user', () => {
     const drawer = page.getByRole('dialog');
     await expect(drawer.getByText('Room 1')).toBeVisible();
     await expect(drawer.getByText('Work', { exact: true })).toBeVisible();
-    const box = await drawer.boundingBox();
+    // It slides in; once it has stopped its right edge is the window's edge.
+    // (Measuring the left edge mid-slide only passes while it is still early.)
     const width = page.viewportSize()?.width ?? 1280;
-    expect(box?.x).toBeGreaterThan(width / 2);
+    await expect
+      .poll(async () => {
+        const box = await drawer.boundingBox();
+        return box ? Math.round(box.x + box.width) : 0;
+      })
+      .toBe(width);
 
     await drawer
       .getByRole('button', { name: 'Show the stored iCalendar' })
