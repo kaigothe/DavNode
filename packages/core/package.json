@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "argon2": "^0.45.1",
-    "better-sqlite3": "^12.11.1",
+    "better-sqlite3": "^13.0.3",
     "ical.js": "^2.2.1",
     "jose": "^6.2.12",
     "mysql2": "^3.24.6",
