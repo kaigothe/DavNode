@@ -1,3 +1,37 @@
+# [1.31.0](https://github.com/kaigothe/DavNode/compare/v1.30.0...v1.31.0) (2026-10-21)
+
+
+### Bug Fixes
+
+* **admin-ui:** keep the generated API types exactly as generated ([0eb871d](https://github.com/kaigothe/DavNode/commit/0eb871dbf3ea6bef0e36e9aa247b4bf372ebd04a))
+* **admin-ui:** regenerate the API types after merging main ([5b75d7a](https://github.com/kaigothe/DavNode/commit/5b75d7ae0b8a58b9ccf9cfdaf1b2b65be1e86b11))
+
+
+### Features
+
+* **admin-api:** add me and providers routes and paged, searchable lists ([f6f9b79](https://github.com/kaigothe/DavNode/commit/f6f9b79e8681088aac832ae993839c3b3d886c04))
+* **admin-api:** add read-only calendar and contact routes behind a flag ([3b6877e](https://github.com/kaigothe/DavNode/commit/3b6877eacad6482ac7ae5baf51b0a2fc5876b5b7))
+* **admin-api:** document the admin API with an OpenAPI spec checked in CI ([871ff45](https://github.com/kaigothe/DavNode/commit/871ff453d25a8378f6f981ae90734edc069a6f8b))
+* **admin-api:** let server administrators read the recent server log ([86c757d](https://github.com/kaigothe/DavNode/commit/86c757d67a27c07e51f6df92511daed1118cf407))
+* **admin-api:** list the groups a user belongs to ([c761f3a](https://github.com/kaigothe/DavNode/commit/c761f3a848c2973f6b74b8b4f11158b912beb8b4))
+* **admin-api:** report the colour of a calendar ([226baed](https://github.com/kaigothe/DavNode/commit/226baed52ced71c1faa0efbdcebed4ed5ac6e4ef)), closes [#rrggbb](https://github.com/kaigothe/DavNode/issues/rrggbb)
+* **admin-ui:** add a detail page for each user with their groups ([c98cabe](https://github.com/kaigothe/DavNode/commit/c98cabe1486a0c991f99bdd8999b5e22df22e62b))
+* **admin-ui:** add a script that takes the documentation screenshots ([6b6b318](https://github.com/kaigothe/DavNode/commit/6b6b3181d6adb5e7885b2c2eb21e24804605c3b9))
+* **admin-ui:** add the admin UI with login, shell and overview ([8d24bc7](https://github.com/kaigothe/DavNode/commit/8d24bc7ff3a8f823c0309d1d187cae42ac8270b9))
+* **admin-ui:** load pages on demand, meet WCAG AA, keep a bundle budget ([3467dbc](https://github.com/kaigothe/DavNode/commit/3467dbcca2c6552fd6f8650b7f32e01aac734908))
+* **admin-ui:** manage users, groups, storage and tenants ([21776e0](https://github.com/kaigothe/DavNode/commit/21776e046bd0bd1dcb94f95e3968ba469d3030cc))
+* **admin-ui:** photograph the user page, the log and the new calendar ([d367486](https://github.com/kaigothe/DavNode/commit/d367486cdec0470dbcf7da2dd6692d423ab2f3da))
+* **admin-ui:** show a contact as a business card ([237fe77](https://github.com/kaigothe/DavNode/commit/237fe771ab608c26fba74e33520b5acb510801ba))
+* **admin-ui:** show a user's calendars like the Apple calendar app ([77fdc9c](https://github.com/kaigothe/DavNode/commit/77fdc9c8bbf784fa3168cc7902c0c1cb36071cfa))
+* **admin-ui:** show the recent server log to server administrators ([3e9372c](https://github.com/kaigothe/DavNode/commit/3e9372cb331f0aa18c8e1d6f9d8d30eb7755f427))
+* **admin-ui:** view the calendars and contacts of a user ([105012d](https://github.com/kaigothe/DavNode/commit/105012d0ca50c29510c3c04fb8f7a49a1c033843))
+* **core:** add a read-only content inspection service ([7b41aaf](https://github.com/kaigothe/DavNode/commit/7b41aaf48e3f40ca41f91cdc39e732064796abb9))
+* **repo:** add demo environment, import script and load test ([4c63197](https://github.com/kaigothe/DavNode/commit/4c6319746a692b4fbacd281f6b90bde266f38c49))
+* **repo:** give the demo calendars colours and a busier day ([e2d7a7f](https://github.com/kaigothe/DavNode/commit/e2d7a7fc0961a7a8ad36b4e89f0d3bee4b600eaa))
+* **repo:** show the admin UI in the demo with livelier data ([ee9652f](https://github.com/kaigothe/DavNode/commit/ee9652f03efc02bed0e3ce024a738860e38d3ed8))
+* **server:** send / to the admin UI when it is enabled ([b53d5a9](https://github.com/kaigothe/DavNode/commit/b53d5a967999cb08bb66852685b963f5ad32dc42))
+* **server:** serve the admin UI at /admin-ui behind a flag ([752aacc](https://github.com/kaigothe/DavNode/commit/752aacc2243a18d68fd7b6ed4cfbba51c28a19f9))
+
 # [1.30.0](https://github.com/kaigothe/DavNode/compare/v1.29.0...v1.30.0) (2026-10-19)
 
 

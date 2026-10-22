@@ -1,6 +1,6 @@
 {
   "name": "davnode",
-  "version": "1.30.0",
+  "version": "1.31.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -30,7 +30,7 @@
     "@semantic-release/github": "^12.0.10",
     "@semantic-release/npm": "^13.2.0",
     "@semantic-release/release-notes-generator": "^14.1.1",
-    "@types/node": "^22.20.1",
+    "@types/node": "^26.6.5",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsdoc": "^64.3.2",

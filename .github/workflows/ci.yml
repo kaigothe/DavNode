@@ -11,7 +11,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Check Signed-off-by trailers
@@ -30,8 +30,8 @@ jobs:
   lint-and-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -108,8 +108,8 @@ jobs:
     # the two entities above, since they'd need to stop trusting ambient
     # env once tests genuinely vary DAVNODE_DB_TYPE per run.
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -124,8 +124,8 @@ jobs:
     needs: lint-and-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -151,8 +151,8 @@ jobs:
     needs: lint-and-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -185,8 +185,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -212,10 +212,10 @@ jobs:
     needs: lint-and-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -229,7 +229,7 @@ jobs:
     needs: lint-and-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: docker build -t davnode:ci .
       - name: Start, bootstrap and talk to the container
         run: |
@@ -284,12 +284,16 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # semantic-release needs the full commit history (and tags) to
           # determine the next version, not just the latest commit.
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+          # main is protected: the release commit (version, changelog) is
+          # pushed with the maintainer's token, which may bypass the rules,
+          # not with the job's GITHUB_TOKEN, which may not.
+          token: ${{ secrets.RELEASE_TOKEN }}
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -299,9 +303,9 @@ jobs:
         run: echo "tag=$(git describe --tags --abbrev=0 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
       - run: npx semantic-release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Events created with GITHUB_TOKEN do not trigger other workflows, so
-      # the image job below is chained to this one instead of to the tag.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      # The image job below is chained to this one instead of to the tag, so
+      # a release that is created with a personal token cannot publish twice.
       - name: Detect a new release
         id: version
         run: |

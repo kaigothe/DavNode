@@ -141,3 +141,13 @@ export async function seedCalendar(
 /** `20261014` for a date, in UTC. */
 export const ymd = (date: Date) =>
   date.toISOString().slice(0, 10).replace(/-/g, '');
+
+/**
+ * `20261014` for today in the browser's time zone (see playwright.config.ts).
+ * The UTC date is a day behind or ahead for a few hours every day, and then
+ * the calendar opens on a different day than the one the events were put on.
+ */
+export const todayInBrowserZone = () =>
+  new Date()
+    .toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
+    .replace(/-/g, '');
