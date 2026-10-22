@@ -22,3 +22,9 @@ updates:
       interval: weekly
     commit-message:
       prefix: 'chore(deps)'
+    # The base image follows a Node LTS line on purpose (see the Dockerfile
+    # and the Node version in ci.yml); a new major is switched by hand, not
+    # proposed as the newest odd, short-lived release.
+    ignore:
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
