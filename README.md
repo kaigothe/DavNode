@@ -9,6 +9,15 @@ contacts — with per-user and per-group access control, multiple tenants,
 quotas and a REST admin API. Everything lives in one database, so one
 database backup is a complete backup.**
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/admin-ui/users-dark-en.png">
+    <img src="docs/assets/admin-ui/users-light-en.png" alt="The DavNode admin UI: a list of users with their role and how much of their storage quota they use" width="820">
+  </picture>
+  <br>
+  <sub>The optional <a href="docs/admin-ui.md">admin UI</a> (off by default): users with their roles and storage quotas.</sub>
+</p>
+
 - **Files** over WebDAV (locking, ACLs, incremental sync).
 - **Calendars** over CalDAV, including invitations and replies between
   users (scheduling), free/busy, and a read-only `.ics` feed for clients
@@ -18,6 +27,23 @@ database backup is a complete backup.**
   (from your own OpenID Connect provider).
 - Health check, Prometheus metrics, rate limiting, a tested backup and
   restore runbook, and a reference deployment with automatic HTTPS.
+
+## Why DavNode?
+
+- **One database, one backup.** Files, calendars and contacts live in the
+  same PostgreSQL, MySQL or SQLite database, so a database backup is a
+  complete backup. The [restore is tested every week in CI](docs/operations/backup.md).
+- **Built for several teams on one server.** Tenants, users and groups,
+  per-user and per-group access control, storage quotas and a REST admin API
+  (plus the small admin UI above).
+- **Standards first, checked in CI.** All 104 litmus tests pass, and 222
+  CalDAVTester and CardDAVTester tests are held as a regression baseline
+  ([conformance](docs/conformance.md)).
+- **Simple to run.** One Docker image, one compose file and automatic HTTPS:
+  see the [deployment bundle](deploy/README.md).
+
+It is a server, not a groupware suite: if you want a web calendar or file
+sharing for end users, [Nextcloud is the better fit](docs/comparison.md).
 
 DavNode is licensed under the
 [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only).
