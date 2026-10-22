@@ -188,11 +188,6 @@ served at `/admin-ui/` and signs in with the same credentials as the DAV
 endpoints; use it over HTTPS. English and German, light and dark. The
 [admin UI guide](docs/admin-ui.md) has the details.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/admin-ui/users-dark-en.png">
-  <img alt="The admin UI: the user list with roles and storage use" src="docs/assets/admin-ui/users-light-en.png">
-</picture>
-
 | Variable                        | Default  | Meaning                                                                                                                                                                                                          |
 | ------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `DAVNODE_ADMIN_UI_ENABLED`      | `false`  | Serve the admin UI at `/admin-ui/`.                                                                                                                                                                              |
