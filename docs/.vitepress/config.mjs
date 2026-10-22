@@ -27,16 +27,23 @@ function repoLinks(md) {
   });
 }
 
+const base = process.env.DOCS_BASE ?? '/DavNode/';
+
 export default defineConfig({
   title: 'DavNode',
   description: 'Self-hosted WebDAV, CalDAV and CardDAV server',
-  base: process.env.DOCS_BASE ?? '/DavNode/',
+  base,
+  // Files in docs/public are copied as they are; head links are not given the
+  // base by VitePress, so it is added here.
+  head: [
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: `${base}logo.svg` }],
+  ],
   cleanUrls: true,
   srcExclude: ['api/**', 'launch/**', 'positioning.md', 'assets/README.md'],
   lastUpdated: true,
   markdown: { config: repoLinks },
   themeConfig: {
-    logo: '/assets/logo.svg',
+    logo: '/logo.svg',
     nav: [
       { text: 'Guide', link: '/' },
       { text: 'Operations', link: '/operations/handbook' },
