@@ -41,7 +41,7 @@
     "prettier": "^3.9.10",
     "semantic-release": "^25.0.9",
     "typedoc": "^0.28.20",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.71.2",
     "vitepress": "^1.6.4",
     "vitest": "^5.0.5",
