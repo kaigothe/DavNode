@@ -284,6 +284,31 @@ describe('organizer invite delivery (PUT hook)', () => {
     expect(storedIcs).toContain('SEQUENCE:1');
   });
 
+  it('sends no ETag when the server raised SEQUENCE, so the client fetches the stored object (RFC 4791 §5.3.4)', async () => {
+    const announce = (dtstart?: string) =>
+      put(
+        workUrl('event.ics'),
+        event({
+          organizer: `mailto:${alice.email}`,
+          attendees: [{ address: `mailto:${bob.email}` }],
+          dtstart,
+        }),
+      );
+    const created = await announce();
+    expect(created.status).toBe(201);
+    expect(created.headers.get('etag')).not.toBeNull();
+
+    const bumped = await announce('20261001T140000Z');
+
+    expect(bumped.status).toBe(204);
+    expect(bumped.headers.get('etag')).toBeNull();
+    const get = await fetch(`${baseUrl}${workUrl('event.ics')}`, {
+      headers: { Authorization: basicAuthHeader('alice', PASSWORD) },
+    });
+    expect(await get.text()).toContain('SEQUENCE:1');
+    expect(get.headers.get('etag')).toMatch(/^"[0-9a-f]{64}"$/);
+  });
+
   it('saves an event with only external attendees normally, without error or inbox delivery', async () => {
     const response = await put(
       workUrl('event.ics'),
