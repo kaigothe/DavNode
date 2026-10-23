@@ -55,10 +55,15 @@ export interface ExpandOptions extends RecurrenceOptions {
 
 /**
  * The most recurrence-set instances `expandOccurrences` examines for one
- * object by default — counting those before the requested range, since
- * the rule has to be walked from `DTSTART`. A rule like
- * `FREQ=SECONDLY;COUNT=999999999` is cheap to send and would otherwise
- * make every query on the calendar spin. About 55 years of a daily event.
+ * object by default. A rule like `FREQ=SECONDLY;COUNT=999999999` is cheap
+ * to send and would otherwise make every query on the calendar spin.
+ * About 55 years of a daily event.
+ *
+ * It counts the instances before the requested range too, because the rule
+ * has to be walked from `DTSTART` — except for an endless rule from
+ * `SECONDLY` to `WEEKLY` (no `COUNT`): that one is moved close to the range
+ * first ({@link fastForward}), so a dense rule that started long ago does
+ * not use the budget up before it gets to the range.
  */
 export const MAX_RECURRENCE_INSTANCES = 20_000;
 
@@ -84,6 +89,75 @@ export class RecurrenceLimitError extends Error {
 }
 
 const DAY_MS = 86_400_000;
+
+/** The frequencies {@link fastForward} can jump over, and the seconds one period of each lasts. */
+const FAST_FORWARD_UNIT_SECONDS: Readonly<Record<string, number>> = {
+  SECONDLY: 1,
+  MINUTELY: 60,
+  HOURLY: 3600,
+  DAILY: 86_400,
+  WEEKLY: 604_800,
+};
+
+/**
+ * Moves `dtstart` forward by a whole number of the rule's periods
+ * (`INTERVAL` times the frequency's unit), as far as that stays clear of
+ * `skipTo`, so the iterator does not have to count every instance of a
+ * dense rule that started long before the range.
+ *
+ * This only gives the same instances as walking from `DTSTART` where the
+ * rule has no memory of how far it has run, which is true of a rule
+ * without `COUNT` and with a frequency up to `WEEKLY`: a whole number of
+ * periods keeps the phase of `INTERVAL` (and of the week, for `WEEKLY`),
+ * and `BYxxx` parts are evaluated inside each period. `MONTHLY` and
+ * `YEARLY` periods differ in length, so those are not moved (they would
+ * need 20,000 instances for 55 years of a rule that fills every month).
+ *
+ * The jump stops two periods short of `skipTo`, and a margin more for a
+ * zone shift (two hours; a day for periods of a day or more, where the
+ * different week start of `WKST` matters too), so an instance of a period
+ * that the new `DTSTART` only partly covers falls before it. The margin
+ * stays small for the dense rules, as every instance in it is counted.
+ */
+function fastForward(
+  rule: ICAL.Recur,
+  dtstart: ICAL.Time,
+  dtstartMs: number,
+  skipTo: number | undefined,
+): ICAL.Time {
+  const unit = FAST_FORWARD_UNIT_SECONDS[rule.freq];
+  if (skipTo === undefined || unit === undefined || rule.count) {
+    return dtstart;
+  }
+  const interval = rule.interval || 1;
+  const periodMs = unit * interval * 1000;
+  const margin = unit >= 86_400 ? DAY_MS : 2 * 3_600_000;
+  const periods = Math.floor(
+    (skipTo - dtstartMs - 2 * periodMs - margin) / periodMs,
+  );
+  if (!(periods > 0)) {
+    return dtstart;
+  }
+  const steps = periods * interval;
+  const moved = dtstart.clone();
+  switch (rule.freq) {
+    case 'WEEKLY':
+      moved.adjust(steps * 7, 0, 0, 0);
+      break;
+    case 'DAILY':
+      moved.adjust(steps, 0, 0, 0);
+      break;
+    case 'HOURLY':
+      moved.adjust(0, steps, 0, 0);
+      break;
+    case 'MINUTELY':
+      moved.adjust(0, 0, steps, 0);
+      break;
+    default:
+      moved.adjust(0, 0, 0, steps);
+  }
+  return moved;
+}
 
 function resolutionFor(
   parsed: ParsedCalendarObject,
@@ -163,11 +237,17 @@ function rdateInstances(
  * evaluated by ical.js — only the union and the exclusion happen here.
  * `budget.examined` counts every instance drawn from the rule and is
  * checked against `limit` so a hostile rule cannot run away.
+ *
+ * `skipTo` is the earliest instant that matters to the caller (the start of
+ * the requested range, less one instance length). An endless dense rule
+ * then starts near it instead of at `DTSTART` ({@link fastForward}); the
+ * instances this leaves out all end before `skipTo`.
  */
 function* recurrenceSet(
   master: ParsedComponent,
   resolution: TimeResolution,
   budget: { examined: number; limit: number },
+  skipTo?: number,
 ): Generator<Instance> {
   const dtstart = startMs(master, resolution);
   const length = endMs(master, resolution) - dtstart;
@@ -184,9 +264,15 @@ function* recurrenceSet(
       yield { start: dtstart, end: dtstart + length, hasExplicitEnd };
       return;
     }
+    const rule = ICAL.Recur.fromString(master.rrule);
     const iterator = new ICAL.RecurIterator({
-      rule: ICAL.Recur.fromString(master.rrule),
-      dtstart: toIcalTime(master.dtstart, resolution),
+      rule,
+      dtstart: fastForward(
+        rule,
+        toIcalTime(master.dtstart, resolution),
+        dtstart,
+        skipTo,
+      ),
       initialized: false,
     });
     for (let next = iterator.next(); next; next = iterator.next()) {
@@ -332,7 +418,9 @@ export function expandOccurrences(
       examined: 0,
       limit: options.maxInstances ?? MAX_RECURRENCE_INSTANCES,
     };
-    for (const instance of recurrenceSet(master, resolution, budget)) {
+    const length = endMs(master, resolution) - startMs(master, resolution);
+    const skipTo = Number.isFinite(from) ? from - length : undefined;
+    for (const instance of recurrenceSet(master, resolution, budget, skipTo)) {
       if (instance.start >= to) {
         break;
       }
