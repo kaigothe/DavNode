@@ -2,6 +2,7 @@ import type { AddressInfo } from 'node:net';
 import {
   ALL_ENTITIES,
   ALL_SQLITE_MIGRATIONS,
+  AddressbookAce,
   AddressbookCollection,
   createDataSource,
   TenantService,
@@ -166,6 +167,88 @@ describe('addressbook-home route', () => {
     );
 
     expect(response.status).toBe(403);
+  });
+
+  describe("an addressbook shared via ACL, below someone else's home", () => {
+    async function bobWithAddressbook(displayName: string) {
+      const bob = await new UserService(dataSource).createUser({
+        tenantId: tenant.id,
+        username: 'bob',
+        email: 'bob@example.com',
+        password: PASSWORD,
+      });
+      const addressbooks = dataSource.getRepository(AddressbookCollection);
+      const addressbook = await addressbooks.save(
+        addressbooks.create({
+          tenantId: tenant.id,
+          ownerPrincipalId: bob.principalId,
+          displayName,
+        }),
+      );
+      return { bob, addressbook };
+    }
+
+    function grantRead(addressbookId: string, principalId: string) {
+      const aces = dataSource.getRepository(AddressbookAce);
+      return aces.save(
+        aces.create({
+          addressbookId,
+          principalId,
+          privilege: 'read',
+          grantDeny: 'grant',
+          position: 10,
+        }),
+      );
+    }
+
+    it('answers PROPFIND on the addressbook with 207 when read is granted', async () => {
+      const { bob, addressbook } = await bobWithAddressbook('Shared');
+      await grantRead(addressbook.id, alice.principalId);
+
+      const response = await propfind(
+        `/dav/acme/addressbooks/${bob.principalId}/Shared`,
+        { depth: '0' },
+      );
+
+      expect(response.status).toBe(207);
+      expect(responseHrefs(await response.text())).toEqual([
+        `/dav/acme/addressbooks/${bob.principalId}/Shared`,
+      ]);
+    });
+
+    it("keeps the owner's home private even when an addressbook in it is shared", async () => {
+      const { bob, addressbook } = await bobWithAddressbook('Shared');
+      await grantRead(addressbook.id, alice.principalId);
+
+      const response = await propfind(
+        `/dav/acme/addressbooks/${bob.principalId}`,
+        { depth: '1' },
+      );
+
+      expect(response.status).toBe(403);
+    });
+
+    it('answers 403 for an addressbook that was not shared with the requester', async () => {
+      const { bob } = await bobWithAddressbook('Shared');
+
+      const response = await propfind(
+        `/dav/acme/addressbooks/${bob.principalId}/Shared`,
+        { depth: '0' },
+      );
+
+      expect(response.status).toBe(403);
+    });
+
+    it('answers 403, not 404, for an addressbook that does not exist', async () => {
+      const { bob } = await bobWithAddressbook('Shared');
+
+      const response = await propfind(
+        `/dav/acme/addressbooks/${bob.principalId}/Nothing`,
+        { depth: '0' },
+      );
+
+      expect(response.status).toBe(403);
+    });
   });
 
   it('returns 403 for a nonexistent userId, indistinguishable from a real other user', async () => {

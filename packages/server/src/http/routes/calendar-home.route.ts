@@ -10,7 +10,9 @@ import {
   DiscoveryPropertiesProvider,
   AddMemberProvider,
   GetctagProvider,
+  hasCalendarPrivilege,
   QuotaPropertiesProvider,
+  type CalendarAclResource,
   type CalendarHomeTreeResource,
   type DataSource,
   type MultistatusPropertyResult,
@@ -20,7 +22,9 @@ import {
   type PropfindRequestBody,
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
+import { createAclAuthorizationMiddleware } from '../acl-authorization.middleware.js';
 import {
+  calendarOwnerIdParam,
   pathSegments,
   requirePrincipal,
   requireTenant,
@@ -133,14 +137,19 @@ async function resolveProperties(
  * user's virtual calendar home collection, and the actual calendars
  * owned by that user beneath it.
  *
- * **Access is intentionally simple, not ACL-based**, exactly as for
- * `registerAddressbookHomeRoute`: `{userId}` must be the requesting
- * principal's own id, or this returns `403` — regardless of whether that
- * id even names a real user, so a caller learns nothing about any
- * identity but their own. Nobody else can browse someone's calendar
- * home, even with `read` granted on every calendar inside it; this is a
- * discovery/listing endpoint, and the calendars themselves get their own
- * ACL-gated routes.
+ * **Whose calendar home it is**, exactly as for
+ * `registerAddressbookHomeRoute`: the home collection itself is private.
+ * `{userId}` must be the requesting principal's own id, or this returns
+ * `403` — regardless of whether that id even names a real user, so a
+ * caller learns nothing about any identity but their own. Nobody else can
+ * browse someone's calendar home, even with `read` granted on every
+ * calendar inside it.
+ *
+ * **A calendar shared with the requester** is reachable by its path
+ * (`/calendars/{ownerId}/{name}`), which is how clients subscribe to it
+ * (discovery, `getctag`, `sync-token`): RFC 3744 `read` on that calendar,
+ * decided by `hasCalendarPrivilege` as for GET and REPORT. Without it, or
+ * for a calendar that does not exist, the answer is the same `403`.
  *
  * `Depth` handling matches regular PROPFIND (M2): only `0`/`1` are
  * accepted, everything else (including a missing header, which
@@ -163,6 +172,28 @@ export function registerCalendarHomeRoute(
 
   app.propfind(
     '/dav/:tenantSlug/calendars/:userId{/*splat}',
+    createAclAuthorizationMiddleware<CalendarAclResource>(
+      dataSource,
+      async (req) => {
+        // Only a calendar below someone else's home needs an ACL check;
+        // everything else is decided by the handler (own home, or 403).
+        const segments = pathSegments(req);
+        const userId = calendarOwnerIdParam(req);
+        if (userId === requirePrincipal(req).id || segments.length !== 1) {
+          return null;
+        }
+        const calendar = await resolveCalendarHomeTreeResource(
+          dataSource,
+          requireTenant(req).id,
+          userId,
+          segments,
+        );
+        return calendar instanceof CalendarCollection
+          ? { resource: calendar, privilege: 'read' }
+          : null;
+      },
+      hasCalendarPrivilege,
+    ),
     express.text({ type: () => true }),
     async (req: Request, res): Promise<void> => {
       const depth = req.header('Depth');
@@ -173,13 +204,16 @@ export function registerCalendarHomeRoute(
 
       const tenant = requireTenant(req);
       const principal = requirePrincipal(req);
-      const userId = req.params.userId;
-      if (userId !== principal.id) {
+      const userId = calendarOwnerIdParam(req);
+      const segments = pathSegments(req);
+      const own = userId === principal.id;
+      // Someone else's home is private; only one calendar in it can be
+      // reached, and only if the middleware above found `read` on it.
+      if (!own && segments.length !== 1) {
         res.sendStatus(403);
         return;
       }
 
-      const segments = pathSegments(req);
       const target = await resolveCalendarHomeTreeResource(
         dataSource,
         tenant.id,
@@ -187,7 +221,9 @@ export function registerCalendarHomeRoute(
         segments,
       );
       if (!target) {
-        res.sendStatus(404);
+        // A calendar that does not exist under someone else's home is
+        // indistinguishable from one the requester may not read.
+        res.sendStatus(own ? 404 : 403);
         return;
       }
 
