@@ -31,6 +31,7 @@ import {
   resolveCalendar,
   resolveCalendarObject,
 } from './calendar-object-resolver.js';
+import { deliverWithoutFailing } from './scheduling-delivery.util.js';
 
 /**
  * Registers the DELETE route for a single calendar object resource:
@@ -221,12 +222,14 @@ export function registerCaldavDeleteRoute(
         // An Attendee deleting their own copy without first declining is
         // treated as an implicit DECLINED — delivered and merged into
         // the organizer's copy before the copy itself is actually gone.
-        await deliverAttendeeDecline(dataSource, {
-          tenant,
-          uid: target.uid,
-          ics,
-          writerAddresses,
-        });
+        await deliverWithoutFailing(target.uid, () =>
+          deliverAttendeeDecline(dataSource, {
+            tenant,
+            uid: target.uid,
+            ics,
+            writerAddresses,
+          }),
+        );
       }
 
       const deleted = await deleteCalendarObject(dataSource, {
@@ -241,12 +244,14 @@ export function registerCaldavDeleteRoute(
       }
 
       if (schedulingRole === 'organizer' && ics !== null) {
-        await deliverOrganizerCancellation(dataSource, {
-          tenant,
-          uid: target.uid,
-          ics,
-          organizerPrincipalId: principal.id,
-        });
+        await deliverWithoutFailing(target.uid, () =>
+          deliverOrganizerCancellation(dataSource, {
+            tenant,
+            uid: target.uid,
+            ics,
+            organizerPrincipalId: principal.id,
+          }),
+        );
       }
 
       res.sendStatus(204);

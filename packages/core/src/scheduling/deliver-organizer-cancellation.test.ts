@@ -202,7 +202,7 @@ describe('deliverOrganizerCancellation', () => {
         ics,
         organizerPrincipalId: alice.principalId,
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual([]);
 
     expect(await dataSource.getRepository(SchedulingInboxItem).count()).toBe(0);
   });

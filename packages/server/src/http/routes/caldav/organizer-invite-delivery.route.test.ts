@@ -8,6 +8,7 @@ import {
   createDataSource,
   extractSchedulingParticipants,
   parseCalendarObject,
+  setLogSink,
   saveCalendarObject,
   SchedulingInboxItem,
   TenantService,
@@ -16,7 +17,7 @@ import {
   type DataSource,
   type Tenant,
 } from '@davnode/core';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../../../app.js';
 
 const PASSWORD = 'correct horse battery staple';
@@ -282,6 +283,48 @@ describe('organizer invite delivery (PUT hook)', () => {
     });
     const storedIcs = await get.text();
     expect(storedIcs).toContain('SEQUENCE:1');
+  });
+
+  it("answers the organizer's PUT normally and still delivers to the others when one attendee's storage is full", async () => {
+    const warn = vi.fn();
+    setLogSink({ info: vi.fn(), warn, error: vi.fn() });
+    try {
+      // Bob comes first in the invite; his copy cannot be stored.
+      await new UserService(dataSource).updateUserQuota(bob.id, {
+        quotaLimitBytes: 1,
+      });
+
+      const response = await put(
+        workUrl('event.ics'),
+        event({
+          organizer: `mailto:${alice.email}`,
+          attendees: [
+            { address: `mailto:${bob.email}` },
+            { address: `mailto:${carol.email}` },
+          ],
+        }),
+      );
+
+      expect(response.status).toBe(201);
+      expect(await copyFor(bob, 'event-1')).toBeNull();
+      expect(await inboxItemsFor(carol)).toHaveLength(1);
+      expect(await copyFor(carol, 'event-1')).not.toBeNull();
+      expect(warn).toHaveBeenCalledWith(
+        'A scheduling message could not be delivered',
+        expect.objectContaining({
+          uid: 'event-1',
+          method: 'REQUEST',
+          recipientPrincipalId: bob.principalId,
+        }),
+      );
+      // The organizer's own object is stored, once.
+      const stored = await dataSource
+        .getRepository(CalendarObject)
+        .findBy({ calendarId: alice.defaultCalendarId ?? '', uid: 'event-1' });
+      expect(stored).toHaveLength(1);
+    } finally {
+      setLogSink();
+    }
   });
 
   it('saves an event with only external attendees normally, without error or inbox delivery', async () => {
