@@ -17,6 +17,7 @@ export {
   attemptDelivery,
   type DeliveryFailure,
 } from './scheduling/delivery-failure.js';
+export { formatEtag } from './webdav/etag.js';
 export { CollectionSyncProperties } from './webdav/properties/collection-sync-properties.js';
 export { AddMemberProvider } from './webdav/properties/add-member-provider.js';
 export {

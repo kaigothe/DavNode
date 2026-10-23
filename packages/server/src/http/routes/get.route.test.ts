@@ -73,7 +73,7 @@ describe('GET route', () => {
         collectionId: root.id,
         name: 'report.txt',
         contentType: 'text/plain',
-        etag: '"abc123"',
+        etag: 'abc123',
         sizeBytes: 5,
         ownerPrincipalId: alice.principalId,
       }),

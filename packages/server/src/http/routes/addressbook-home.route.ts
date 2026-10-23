@@ -9,7 +9,9 @@ import {
   DiscoveryPropertiesProvider,
   AddMemberProvider,
   GetctagProvider,
+  hasAddressbookPrivilege,
   QuotaPropertiesProvider,
+  type AddressbookAclResource,
   type AddressbookHomeTreeResource,
   type DataSource,
   type MultistatusPropertyResult,
@@ -18,7 +20,9 @@ import {
   type PropfindRequestBody,
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
+import { createAclAuthorizationMiddleware } from '../acl-authorization.middleware.js';
 import {
+  addressbookOwnerIdParam,
   pathSegments,
   requirePrincipal,
   requireTenant,
@@ -131,17 +135,20 @@ async function resolveProperties(
  * a user's virtual addressbook home collection, and the actual
  * addressbooks owned by that user beneath it.
  *
- * **Access is intentionally simple, not ACL-based**: `{userId}` must be
- * the requesting principal's own id, or this returns `403` —
- * regardless of whether that id even names a real user, so a caller
- * learns nothing about any identity but their own through this route.
- * No other principal can browse someone else's addressbook home, even
- * with `read` granted on every individual addressbook inside it (a
- * deliberate simplification, same rationale as
- * `registerPrincipalsRoute`'s "no resource-specific ACL check" — this
- * is a discovery/listing endpoint, not the addressbook resources
- * themselves, which get their own real ACL-gated CRUD routes (M5 Große
- * Aufgabe 5, `carddav/get.route.ts` et al.).
+ * **Whose addressbook home it is**: the home collection itself is
+ * private. `{userId}` must be the requesting principal's own id, or this
+ * returns `403` — regardless of whether that id even names a real user,
+ * so a caller learns nothing about any identity but their own through
+ * this route. No other principal can browse someone else's addressbook
+ * home, even with `read` granted on every individual addressbook inside
+ * it.
+ *
+ * **An addressbook shared with the requester** is reachable by its path
+ * (`/addressbooks/{ownerId}/{name}`), which is how clients subscribe to
+ * it (discovery, `getctag`, `sync-token`): RFC 3744 `read` on that
+ * addressbook, decided by `hasAddressbookPrivilege` as for GET and
+ * REPORT. Without it, or for an addressbook that does not exist, the
+ * answer is the same `403`.
  *
  * `Depth` handling matches regular PROPFIND (M2): only `0`/`1` are
  * accepted, everything else (including a missing header, which
@@ -165,6 +172,29 @@ export function registerAddressbookHomeRoute(
 
   app.propfind(
     '/dav/:tenantSlug/addressbooks/:userId{/*splat}',
+    createAclAuthorizationMiddleware<AddressbookAclResource>(
+      dataSource,
+      async (req) => {
+        // Only an addressbook below someone else's home needs an ACL
+        // check; everything else is decided by the handler (own home, or
+        // 403).
+        const segments = pathSegments(req);
+        const userId = addressbookOwnerIdParam(req);
+        if (userId === requirePrincipal(req).id || segments.length !== 1) {
+          return null;
+        }
+        const addressbook = await resolveAddressbookHomeTreeResource(
+          dataSource,
+          requireTenant(req).id,
+          userId,
+          segments,
+        );
+        return addressbook instanceof AddressbookCollection
+          ? { resource: addressbook, privilege: 'read' }
+          : null;
+      },
+      hasAddressbookPrivilege,
+    ),
     express.text({ type: () => true }),
     async (req: Request, res): Promise<void> => {
       const depth = req.header('Depth');
@@ -175,13 +205,16 @@ export function registerAddressbookHomeRoute(
 
       const tenant = requireTenant(req);
       const principal = requirePrincipal(req);
-      const userId = req.params.userId;
-      if (userId !== principal.id) {
+      const userId = addressbookOwnerIdParam(req);
+      const segments = pathSegments(req);
+      const own = userId === principal.id;
+      // Someone else's home is private; only one addressbook in it can be
+      // reached, and only if the middleware above found `read` on it.
+      if (!own && segments.length !== 1) {
         res.sendStatus(403);
         return;
       }
 
-      const segments = pathSegments(req);
       const target = await resolveAddressbookHomeTreeResource(
         dataSource,
         tenant.id,
@@ -189,7 +222,9 @@ export function registerAddressbookHomeRoute(
         segments,
       );
       if (!target) {
-        res.sendStatus(404);
+        // An addressbook that does not exist under someone else's home is
+        // indistinguishable from one the requester may not read.
+        res.sendStatus(own ? 404 : 403);
         return;
       }
 

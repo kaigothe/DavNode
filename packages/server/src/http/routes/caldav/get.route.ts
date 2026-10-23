@@ -3,6 +3,7 @@ import {
   hasCalendarPrivilege,
   type CalendarAclResource,
   type DataSource,
+  formatEtag,
 } from '@davnode/core';
 import type { Express, Request } from 'express';
 import { createAclAuthorizationMiddleware } from '../../acl-authorization.middleware.js';
@@ -107,7 +108,7 @@ export function registerCaldavGetRoute(
         ifNoneMatch !== undefined &&
         ifNoneMatchMatches(ifNoneMatch, target.etag)
       ) {
-        res.set('ETag', target.etag).sendStatus(304);
+        res.set('ETag', formatEtag(target.etag)).sendStatus(304);
         return;
       }
 
@@ -118,7 +119,7 @@ export function registerCaldavGetRoute(
       res
         .status(200)
         .set('Content-Type', 'text/calendar; charset=utf-8')
-        .set('ETag', target.etag)
+        .set('ETag', formatEtag(target.etag))
         .send(content.icsData);
     },
   );

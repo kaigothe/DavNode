@@ -439,7 +439,7 @@ describe('buildCalendarObjectResponses and findCalendarObjectsByName', () => {
     );
 
     expect(responses[0]?.properties).toEqual([
-      { namespace: 'DAV:', name: 'getetag', value: 'etag-1', status: 200 },
+      { namespace: 'DAV:', name: 'getetag', value: '"etag-1"', status: 200 },
     ]);
   });
 });

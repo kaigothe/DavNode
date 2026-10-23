@@ -3,6 +3,7 @@ import {
   hasAddressbookPrivilege,
   type AddressbookAclResource,
   type DataSource,
+  formatEtag,
 } from '@davnode/core';
 import type { Express, Request } from 'express';
 import { createAclAuthorizationMiddleware } from '../../acl-authorization.middleware.js';
@@ -15,21 +16,7 @@ import {
   resolveAddressbook,
   resolveAddressObject,
 } from './address-object-resolver.js';
-
-/**
- * Whether `headerValue` (an `If-None-Match` header, possibly a
- * comma-separated list, per RFC 7232 §3.2) matches `etag`. Mirrors the
- * WebDAV GET route's own copy of this logic (`get.route.ts`) — see there
- * for the weak-comparison rationale.
- */
-function ifNoneMatchMatches(headerValue: string, etag: string): boolean {
-  if (headerValue.trim() === '*') {
-    return true;
-  }
-  return headerValue
-    .split(',')
-    .some((candidate) => candidate.trim().replace(/^W\//, '') === etag);
-}
+import { ifNoneMatchMatches } from '../conditional-request.util.js';
 
 /**
  * Registers the GET route for a single CardDAV contact:
@@ -125,7 +112,7 @@ export function registerCarddavGetRoute(
         ifNoneMatch !== undefined &&
         ifNoneMatchMatches(ifNoneMatch, target.etag)
       ) {
-        res.set('ETag', target.etag).sendStatus(304);
+        res.set('ETag', formatEtag(target.etag)).sendStatus(304);
         return;
       }
 
@@ -136,7 +123,7 @@ export function registerCarddavGetRoute(
       res
         .status(200)
         .set('Content-Type', 'text/vcard; charset=utf-8')
-        .set('ETag', target.etag)
+        .set('ETag', formatEtag(target.etag))
         .send(content.vcardData);
     },
   );

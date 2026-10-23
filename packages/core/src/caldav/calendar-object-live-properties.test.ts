@@ -18,7 +18,7 @@ describe('CalendarObjectLiveProperties', () => {
     const value = (name: string) =>
       properties.find((p) => p.name === name)?.value;
 
-    expect(value('getetag')).toBe('abc123');
+    expect(value('getetag')).toBe('"abc123"');
     expect(value('getcontenttype')).toBe('text/calendar; charset=utf-8');
     expect(value('displayname')).toBe('a &amp; b.ics');
     expect(value('resourcetype')).toBe('');

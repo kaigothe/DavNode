@@ -35,7 +35,7 @@ function makeFileResource(overrides: Partial<FileResource> = {}): FileResource {
     collectionId: 'collection-1',
     name: 'report.txt',
     contentType: 'text/plain',
-    etag: '"abc123"',
+    etag: 'abc123',
     sizeBytes: 1024,
     ownerPrincipalId: 'principal-1',
     createdAt: new Date('2024-01-01T00:00:00.000Z'),
@@ -105,7 +105,7 @@ describe('WebDavLiveProperties', () => {
         makeFileResource({
           sizeBytes: 42,
           contentType: 'text/plain',
-          etag: '"xyz"',
+          etag: 'xyz',
         }),
         FAKE_CONTEXT,
       );

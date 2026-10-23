@@ -2,6 +2,7 @@ import type { AddressInfo } from 'node:net';
 import {
   ALL_ENTITIES,
   ALL_SQLITE_MIGRATIONS,
+  CalendarAce,
   CalendarCollection,
   CalendarProperty,
   createDataSource,
@@ -212,6 +213,107 @@ describe('calendar-home route', () => {
     );
 
     expect(response.status).toBe(403);
+  });
+
+  describe("a calendar shared via ACL, below someone else's home", () => {
+    function grantRead(calendar: CalendarCollection, user: User) {
+      const aces = dataSource.getRepository(CalendarAce);
+      return aces.save(
+        aces.create({
+          calendarId: calendar.id,
+          principalId: user.principalId,
+          privilege: 'read',
+          grantDeny: 'grant',
+          position: 10,
+        }),
+      );
+    }
+
+    it('answers PROPFIND on the calendar with 207 and its properties when read is granted', async () => {
+      const alice = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ username: 'alice' });
+      const bob = await createUser('bob');
+      const shared = await createCalendar(bob, 'shared', {
+        displayName: 'Shared with Alice',
+      });
+      await grantRead(shared, alice);
+
+      const response = await propfind(
+        `/dav/acme/calendars/${bob.principalId}/shared`,
+        {
+          depth: '0',
+          body: '<D:propfind xmlns:D="DAV:"><D:prop><D:displayname/><D:resourcetype/></D:prop></D:propfind>',
+        },
+      );
+
+      expect(response.status).toBe(207);
+      const xml = await response.text();
+      expect(responseHrefs(xml)).toEqual([
+        `/dav/acme/calendars/${bob.principalId}/shared`,
+      ]);
+      expect(elementsOf(xml).find((e) => e.name === 'displayname')?.text).toBe(
+        'Shared with Alice',
+      );
+    });
+
+    it("lists no children at Depth 1: a calendar's objects are read through REPORT", async () => {
+      const alice = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ username: 'alice' });
+      const bob = await createUser('bob');
+      const shared = await createCalendar(bob, 'shared');
+      await grantRead(shared, alice);
+
+      const response = await propfind(
+        `/dav/acme/calendars/${bob.principalId}/shared`,
+        { depth: '1' },
+      );
+
+      expect(response.status).toBe(207);
+      expect(responseHrefs(await response.text())).toHaveLength(1);
+    });
+
+    it("keeps the owner's home private even when a calendar in it is shared", async () => {
+      const alice = await dataSource
+        .getRepository(User)
+        .findOneByOrFail({ username: 'alice' });
+      const bob = await createUser('bob');
+      await grantRead(await createCalendar(bob, 'shared'), alice);
+
+      const response = await propfind(
+        `/dav/acme/calendars/${bob.principalId}`,
+        {
+          depth: '1',
+        },
+      );
+
+      expect(response.status).toBe(403);
+    });
+
+    it('answers 403 for a calendar that was not shared with the requester', async () => {
+      const bob = await createUser('bob');
+      const carol = await createUser('carol');
+      await grantRead(await createCalendar(bob, 'shared'), carol);
+
+      const response = await propfind(
+        `/dav/acme/calendars/${bob.principalId}/shared`,
+        { depth: '0' },
+      );
+
+      expect(response.status).toBe(403);
+    });
+
+    it('answers 403, not 404, for a calendar that does not exist', async () => {
+      const bob = await createUser('bob');
+
+      const response = await propfind(
+        `/dav/acme/calendars/${bob.principalId}/nothing-here`,
+        { depth: '0' },
+      );
+
+      expect(response.status).toBe(403);
+    });
   });
 
   it('returns 403 for a nonexistent userId, indistinguishable from a real other user', async () => {
