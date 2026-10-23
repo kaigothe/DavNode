@@ -179,8 +179,8 @@ describe('SyncCollectionReportHandler for calendars', () => {
       href('b.ics'),
     ]);
     expect(result.body).toContain('HTTP/1.1 200 OK');
-    expect(result.body).toContain('<D:getetag>etag-a.ics</D:getetag>');
-    expect(result.body).toContain('<D:getetag>etag-b.ics</D:getetag>');
+    expect(result.body).toContain('<D:getetag>"etag-a.ics"</D:getetag>');
+    expect(result.body).toContain('<D:getetag>"etag-b.ics"</D:getetag>');
   });
 
   it('a sync with a valid older token reports only new and modified objects since then', async () => {
@@ -201,7 +201,7 @@ describe('SyncCollectionReportHandler for calendars', () => {
       href('c.ics'),
     ]);
     expect(result.body).not.toContain('b.ics');
-    expect(result.body).toContain('<D:getetag>etag-a.ics-v2</D:getetag>');
+    expect(result.body).toContain('<D:getetag>"etag-a.ics-v2"</D:getetag>');
   });
 
   it('an object deleted since the last sync is reported with a bare 404 and no propstat', async () => {
@@ -277,7 +277,7 @@ describe('SyncCollectionReportHandler for calendars', () => {
 
     const result = await handler.handle(body, context());
 
-    expect(result.body).toContain('<D:getetag>etag-a.ics</D:getetag>');
+    expect(result.body).toContain('<D:getetag>"etag-a.ics"</D:getetag>');
     expect(result.body).toContain(
       '<D:getcontenttype>text/calendar; charset=utf-8</D:getcontenttype>',
     );

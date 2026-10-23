@@ -27,8 +27,8 @@ async function valuesOf(
 }
 
 describe('AddressObjectLiveProperties', () => {
-  it('reports the ETag verbatim as getetag', async () => {
-    expect((await valuesOf(contact())).getetag).toBe('abc123');
+  it('reports the ETag, quoted, as getetag', async () => {
+    expect((await valuesOf(contact())).getetag).toBe('"abc123"');
   });
 
   it('reports the vCard media type as getcontenttype', async () => {

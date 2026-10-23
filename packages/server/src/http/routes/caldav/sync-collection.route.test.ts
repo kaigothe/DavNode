@@ -58,7 +58,7 @@ describe('CalDAV sync-collection REPORT', () => {
     expect(response.status).toBe(207);
     const body = await response.text();
     expect(hrefs(body)).toEqual([href('b.ics'), world.eventUrl].sort());
-    expect(body).toContain(`<D:getetag>${world.event.etag}</D:getetag>`);
+    expect(body).toContain(`<D:getetag>"${world.event.etag}"</D:getetag>`);
     expect(tokenOf(body)).toMatch(/\S+/);
   });
 

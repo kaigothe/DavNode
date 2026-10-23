@@ -186,7 +186,7 @@ describe('AddressbookMultigetReportHandler', () => {
         addressbookId: book.id,
         name,
         uid: `uid-${name}`,
-        etag: `"etag-${name}"`,
+        etag: `etag-${name}`,
         ownerPrincipalId: book.ownerPrincipalId,
       }),
     );

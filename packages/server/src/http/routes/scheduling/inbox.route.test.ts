@@ -226,7 +226,7 @@ describe('inbox route', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('text/calendar');
-    expect(response.headers.get('etag')).toBe('the-etag');
+    expect(response.headers.get('etag')).toBe('"the-etag"');
     expect(await response.text()).toContain('UID:uid-42');
   });
 

@@ -22,6 +22,7 @@ import {
   type CalendarAclResource,
   type DataSource,
   type ParsedCalendarObject,
+  formatEtag,
 } from '@davnode/core';
 import express, {
   type ErrorRequestHandler,
@@ -421,7 +422,7 @@ export function registerCaldavPutRoute(
         });
       }
 
-      res.set('ETag', etag).sendStatus(created ? 201 : 204);
+      res.set('ETag', formatEtag(etag)).sendStatus(created ? 201 : 204);
     },
     bodyParserErrors,
   );

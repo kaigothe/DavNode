@@ -14,6 +14,7 @@ import {
   VCardParseError,
   type AddressbookAclResource,
   type DataSource,
+  formatEtag,
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
 import { createAclAuthorizationMiddleware } from '../../acl-authorization.middleware.js';
@@ -29,6 +30,7 @@ import {
   resolveAddressbook,
   resolveAddressObject,
 } from './address-object-resolver.js';
+import { ifMatchSatisfied } from '../conditional-request.util.js';
 
 /** UTF-8 byte length of `text` — quota is measured in bytes, not characters (umlauts/emoji in a name/note are multi-byte). */
 function byteLength(text: string): number {
@@ -208,7 +210,7 @@ export function registerCarddavPutRoute(
 
       if (target) {
         const ifMatch = req.header('If-Match');
-        if (ifMatch !== undefined && ifMatch !== target.etag) {
+        if (ifMatch !== undefined && !ifMatchSatisfied(ifMatch, target.etag)) {
           res.sendStatus(412);
           return;
         }
@@ -253,7 +255,7 @@ export function registerCarddavPutRoute(
           throw error;
         }
 
-        res.set('ETag', etag).sendStatus(204);
+        res.set('ETag', formatEtag(etag)).sendStatus(204);
         return;
       }
 
@@ -313,7 +315,7 @@ export function registerCarddavPutRoute(
         throw error;
       }
 
-      res.set('ETag', etag).sendStatus(201);
+      res.set('ETag', formatEtag(etag)).sendStatus(201);
     },
   );
 }

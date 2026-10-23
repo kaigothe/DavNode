@@ -237,7 +237,9 @@ describe('CalendarMultigetReportHandler', () => {
     ]);
     const aResponse = responses.find((r) => r.href === href('a.ics'));
     const props = aResponse?.propstats[0]?.props ?? [];
-    expect(props.find((p) => p.name === 'getetag')?.value).toBe(a.etag);
+    expect(props.find((p) => p.name === 'getetag')?.value).toBe(
+      `"${a.etag}"`,
+    );
     expect(props.find((p) => p.name === 'calendar-data')?.value).toContain(
       'SUMMARY:Standup',
     );

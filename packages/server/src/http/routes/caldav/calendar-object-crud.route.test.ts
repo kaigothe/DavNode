@@ -215,14 +215,14 @@ describe('calendar object CRUD routes', () => {
       const created = await put(url('event.ics'), ics);
 
       expect(created.status).toBe(201);
-      expect(created.headers.get('etag')).toBe(etagOf(ics));
+      expect(created.headers.get('etag')).toBe(`"${etagOf(ics)}"`);
 
       const read = await request('GET', url('event.ics'));
       expect(read.status).toBe(200);
       expect(read.headers.get('content-type')).toBe(
         'text/calendar; charset=utf-8',
       );
-      expect(read.headers.get('etag')).toBe(etagOf(ics));
+      expect(read.headers.get('etag')).toBe(`"${etagOf(ics)}"`);
       expect(await read.text()).toBe(ics);
     });
 
@@ -301,7 +301,7 @@ describe('calendar object CRUD routes', () => {
       const response = await put(url('event.ics'), updated);
 
       expect(response.status).toBe(204);
-      expect(response.headers.get('etag')).toBe(etagOf(updated));
+      expect(response.headers.get('etag')).toBe(`"${etagOf(updated)}"`);
       expect(await objects().count()).toBe(1);
       const stored = await objects().findOneByOrFail({ name: 'event.ics' });
       expect(stored.dtstart.toISOString()).toBe('2026-11-01T08:00:00.000Z');
@@ -324,7 +324,7 @@ describe('calendar object CRUD routes', () => {
       const response = await request('HEAD', url('event.ics'));
 
       expect(response.status).toBe(200);
-      expect(response.headers.get('etag')).toBe(etagOf(ics));
+      expect(response.headers.get('etag')).toBe(`"${etagOf(ics)}"`);
       expect(await response.text()).toBe('');
     });
 

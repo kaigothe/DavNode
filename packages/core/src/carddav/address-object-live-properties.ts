@@ -6,6 +6,7 @@ import type {
 } from '../webdav/properties/property-provider.interface.js';
 import { DAV_NAMESPACE } from '../webdav/xml/request-parser.js';
 import { escapeXmlText } from '../webdav/xml/xml-value.js';
+import { formatEtag } from '../webdav/etag.js';
 
 const LIVE_PROPERTY_NAMES = new Set([
   'creationdate',
@@ -55,7 +56,7 @@ export class AddressObjectLiveProperties implements PropertyProvider<AddressObje
       property('displayname', escapeXmlText(resource.name)),
       property('resourcetype', ''),
       property('getcontenttype', escapeXmlText(VCARD_CONTENT_TYPE)),
-      property('getetag', escapeXmlText(resource.etag)),
+      property('getetag', escapeXmlText(formatEtag(resource.etag))),
     ];
   }
 

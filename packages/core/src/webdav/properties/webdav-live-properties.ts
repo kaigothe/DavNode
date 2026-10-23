@@ -8,6 +8,7 @@ import type {
   PropertyValue,
   WebDavResource,
 } from './property-provider.interface.js';
+import { formatEtag } from '../etag.js';
 
 const LIVE_PROPERTY_NAMES = new Set([
   'creationdate',
@@ -70,7 +71,7 @@ export class WebDavLiveProperties implements PropertyProvider<WebDavResource> {
         property('resourcetype', ''),
         property('getcontentlength', String(resource.sizeBytes)),
         property('getcontenttype', escapeXmlText(resource.contentType)),
-        property('getetag', escapeXmlText(resource.etag)),
+        property('getetag', escapeXmlText(formatEtag(resource.etag))),
       );
     }
 

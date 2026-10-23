@@ -2,7 +2,7 @@
 interface ListedEntityTag {
   /** `true` for a weak validator (`W/"..."`). */
   weak: boolean;
-  /** The tag itself, unquoted — the form this server stores and sends ETags in. */
+  /** The tag itself, unquoted — the form this server stores ETags in (it quotes them when it sends them). */
   tag: string;
 }
 
@@ -12,9 +12,9 @@ type ParsedConditional = '*' | ListedEntityTag[];
 /**
  * Parses an `If-Match`/`If-None-Match` header value (RFC 7232 §3.1/§3.2):
  * `*`, or a comma-separated list of entity-tags, quoted (`"abc"`,
- * `W/"abc"`) or — since this server sends its ETags unquoted, and a client
- * echoes them as it got them — bare. Splits with a tokenizer rather than
- * on commas, as a quoted tag may itself contain one.
+ * `W/"abc"`) or bare: this server used to send its ETags unquoted, and a
+ * client may still echo one it stored back that way. Splits with a
+ * tokenizer rather than on commas, as a quoted tag may itself contain one.
  */
 function parseConditional(headerValue: string): ParsedConditional {
   if (headerValue.trim() === '*') {

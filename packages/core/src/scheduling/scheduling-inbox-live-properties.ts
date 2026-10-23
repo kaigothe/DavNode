@@ -10,6 +10,7 @@ import {
   SchedulingInboxCollection,
   type SchedulingInboxTreeResource,
 } from './scheduling-inbox-tree-resource.js';
+import { formatEtag } from '../webdav/etag.js';
 
 const DAV_LIVE_PROPERTY_NAMES = new Set([
   'displayname',
@@ -61,7 +62,7 @@ export class SchedulingInboxLiveProperties implements PropertyProvider<Schedulin
 
     return [
       property('resourcetype', ''),
-      property('getetag', resource.etag),
+      property('getetag', formatEtag(resource.etag)),
       property('getcontenttype', 'text/calendar; charset=utf-8'),
       property('getlastmodified', resource.createdAt.toUTCString()),
     ];

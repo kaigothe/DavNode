@@ -203,7 +203,7 @@ describe('AddressbookQueryReportHandler', () => {
           addressbookId: book.id,
           name,
           uid: parsed.uid,
-          etag: `"etag-${name}"`,
+          etag: `etag-${name}`,
           ownerPrincipalId: alice.id,
         }),
       );

@@ -12,6 +12,7 @@ import {
   type PropertyProviderContext,
   type PropfindRequestBody,
   type SchedulingInboxTreeResource,
+  formatEtag,
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
 import {
@@ -230,7 +231,7 @@ export function registerInboxRoute(app: Express, dataSource: DataSource): void {
       res
         .status(200)
         .set('Content-Type', 'text/calendar; charset=utf-8')
-        .set('ETag', item.etag)
+        .set('ETag', formatEtag(item.etag))
         .send(item.icsData);
     },
   );
