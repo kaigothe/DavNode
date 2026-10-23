@@ -1,3 +1,10 @@
+## [1.31.4](https://github.com/kaigothe/DavNode/compare/v1.31.3...v1.31.4) (2026-10-23)
+
+
+### Bug Fixes
+
+* **server:** send no ETag when the server changed what the client PUT ([c6d122f](https://github.com/kaigothe/DavNode/commit/c6d122fc3a63f0f172938abf53fece05c362391c)), closes [#42](https://github.com/kaigothe/DavNode/issues/42)
+
 ## [1.31.3](https://github.com/kaigothe/DavNode/compare/v1.31.2...v1.31.3) (2026-10-23)
 
 
