@@ -1,3 +1,11 @@
+## [1.31.2](https://github.com/kaigothe/DavNode/compare/v1.31.1...v1.31.2) (2026-10-23)
+
+
+### Bug Fixes
+
+* **server:** allow PROPFIND on a calendar or addressbook shared via ACL ([986b30f](https://github.com/kaigothe/DavNode/commit/986b30fa3ce21e1cf09e245da4d06b29fc9e925c)), closes [#44](https://github.com/kaigothe/DavNode/issues/44)
+* **server:** send ETags in double quotes ([6d3ff9e](https://github.com/kaigothe/DavNode/commit/6d3ff9e26439911f9442e050fdebf880f98f2a92)), closes [#41](https://github.com/kaigothe/DavNode/issues/41)
+
 ## [1.31.1](https://github.com/kaigothe/DavNode/compare/v1.31.0...v1.31.1) (2026-10-22)
 
 

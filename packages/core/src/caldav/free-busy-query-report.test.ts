@@ -1,6 +1,7 @@
 import type { DataSource } from 'typeorm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDataSource } from '../db/data-source.js';
+import { setLogSink } from '../logging/log-sink.js';
 import {
   ALL_ENTITIES,
   CalendarAce,
@@ -204,6 +205,56 @@ describe('FreeBusyQueryReportHandler', () => {
     expect(freebusyLines(result.body)).toEqual([
       { fbtype: 'BUSY', start: '20260924T100000Z', end: '20260924T110000Z' },
     ]);
+  });
+
+  it('reports the busy time of a dense endless rule that started years ago (#43)', async () => {
+    // Hourly since 2024: more than 20,000 instances before the range, which
+    // used to make the event vanish and the slots look free.
+    await addEvent(
+      'hourly.ics',
+      event('uid-hourly', {
+        start: '20240101T000000Z',
+        end: '20240101T010000Z',
+        extra: ['RRULE:FREQ=HOURLY'],
+      }),
+    );
+
+    const result = await handler.handle(
+      requestBody('20261020T000000Z', '20261021T000000Z'),
+      context(),
+    );
+
+    expect(freebusyLines(result.body)).toEqual([
+      { fbtype: 'BUSY', start: '20261020T000000Z', end: '20261021T000000Z' },
+    ]);
+  });
+
+  it('leaves out an event whose rule is too long to expand, and logs it instead of staying silent', async () => {
+    const warn = vi.fn();
+    setLogSink({ info: vi.fn(), warn, error: vi.fn() });
+    try {
+      await addEvent(
+        'huge.ics',
+        event('uid-huge', {
+          start: '20200101T000000Z',
+          end: '20200101T000001Z',
+          extra: ['RRULE:FREQ=SECONDLY;COUNT=999999999'],
+        }),
+      );
+
+      const result = await handler.handle(
+        requestBody('20260924T000000Z', '20260925T000000Z'),
+        context(),
+      );
+
+      expect(freebusyLines(result.body)).toEqual([]);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('left out of a free-busy report'),
+        expect.objectContaining({ uid: 'uid-huge' }),
+      );
+    } finally {
+      setLogSink();
+    }
   });
 
   it('coalesces two overlapping busy events into one interval', async () => {

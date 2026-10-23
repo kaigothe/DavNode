@@ -271,6 +271,36 @@ describe('CalendarQueryReportHandler', () => {
     expect(parseMultistatus(result.body)).toHaveLength(1);
   });
 
+  it('finds a dense endless rule that started years ago, instead of dropping it silently (#43)', async () => {
+    // Hourly since 2024: more than 20,000 instances before the range.
+    const series = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//x//EN',
+      'BEGIN:VEVENT',
+      'UID:hourly-1',
+      'DTSTAMP:20260101T000000Z',
+      'DTSTART:20240101T000000Z',
+      'DTEND:20240101T003000Z',
+      'RRULE:FREQ=HOURLY',
+      'SUMMARY:Pulse',
+      'END:VEVENT',
+      'END:VCALENDAR',
+      '',
+    ].join('\r\n');
+    await addEvent('hourly.ics', series);
+    const handler = new CalendarQueryReportHandler();
+
+    const result = await handler.handle(
+      requestBody(
+        `${EVENT_FILTER}<C:time-range start="20261020T000000Z" end="20261021T000000Z"/></C:comp-filter>`,
+      ),
+      context(),
+    );
+
+    expect(parseMultistatus(result.body)).toHaveLength(1);
+  });
+
   it('does not find a recurring event whose span overlaps the range but has no actual instance in it (Phase 2)', async () => {
     const series = [
       'BEGIN:VCALENDAR',

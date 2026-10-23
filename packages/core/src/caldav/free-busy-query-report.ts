@@ -26,6 +26,7 @@ import {
 } from './icalendar-parser.js';
 import { parseFreeBusyQueryRequestBody } from './free-busy-query-request.js';
 import { resolveReportCalendar } from './calendar-report-support.js';
+import { getLogSink } from '../logging/log-sink.js';
 
 /** Most rows one database round trip fetches while walking a calendar's objects. */
 const PAGE_SIZE = 200;
@@ -62,8 +63,10 @@ function busyTypeOf(occurrence: Occurrence): 'BUSY' | 'BUSY-TENTATIVE' | null {
  * its own `STATUS`.
  *
  * A recurrence set too large to walk to the end of the range
- * (`RecurrenceLimitError`) contributes nothing — the same "exclude
- * rather than fail the whole report" choice `calendar-query` makes.
+ * (`RecurrenceLimitError`) contributes nothing, and is logged — the same
+ * "exclude rather than fail the whole report" choice `calendar-query`
+ * makes. (A dense endless rule that started long ago is not such a case:
+ * it is expanded from near the range.)
  */
 function busyIntervalsOf(
   parsed: ParsedCalendarObject,
@@ -78,6 +81,10 @@ function busyIntervalsOf(
     });
   } catch (error) {
     if (error instanceof RecurrenceLimitError) {
+      getLogSink().warn(
+        'A calendar object was left out of a free-busy report: its recurrence set is too large to expand',
+        { uid: parsed.uid, limit: error.limit },
+      );
       return [];
     }
     throw error;
