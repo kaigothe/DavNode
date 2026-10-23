@@ -1,3 +1,11 @@
+## [1.31.3](https://github.com/kaigothe/DavNode/compare/v1.31.2...v1.31.3) (2026-10-23)
+
+
+### Bug Fixes
+
+* **core:** expand a dense endless recurrence from near the range ([c4dc822](https://github.com/kaigothe/DavNode/commit/c4dc822e1d461d0d0de5f976418e561bf9cde5db)), closes [#43](https://github.com/kaigothe/DavNode/issues/43)
+* **server:** do not fail a PUT or DELETE because a scheduling delivery failed ([1ede8b7](https://github.com/kaigothe/DavNode/commit/1ede8b7617061cd029baf159ba87cb38354a6b88)), closes [#45](https://github.com/kaigothe/DavNode/issues/45)
+
 ## [1.31.2](https://github.com/kaigothe/DavNode/compare/v1.31.1...v1.31.2) (2026-10-23)
 
 
