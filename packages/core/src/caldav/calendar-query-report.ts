@@ -47,6 +47,7 @@ import {
   type CalendarTimeRangeFilter,
   type UnsupportedCalendarFilterParts,
 } from './calendar-query-request.js';
+import { getLogSink } from '../logging/log-sink.js';
 
 /**
  * The most calendar objects one `calendar-query` response carries,
@@ -323,9 +324,11 @@ export class CalendarQueryReportHandler implements ReportHandler {
    * (`matchesTimeRange`/`matchesPropFilters`) before its ACL is
    * evaluated, so access checks are never wasted on a non-match; an
    * object whose own recurrence set is too large to walk
-   * (`RecurrenceLimitError`) is excluded rather than failing the whole
-   * query — a pathological rule, not something a real query should ever
-   * hit for an object this server itself accepted at `PUT`.
+   * (`RecurrenceLimitError`) is excluded, and logged, rather than failing
+   * the whole query. An endless rule up to `WEEKLY` does not count the
+   * instances before the range, so this is a `COUNT` rule that is too
+   * long, or a monthly or yearly one that fills every month for decades —
+   * not something a real query should hit.
    */
   private async findMatches(
     filter: CalendarFilter,
@@ -451,6 +454,10 @@ export class CalendarQueryReportHandler implements ReportHandler {
         }
       } catch (error) {
         if (error instanceof RecurrenceLimitError) {
+          getLogSink().warn(
+            'A calendar object was left out of a calendar-query: its recurrence set is too large to expand',
+            { calendarObjectId: object.id, limit: error.limit },
+          );
           continue;
         }
         throw error;

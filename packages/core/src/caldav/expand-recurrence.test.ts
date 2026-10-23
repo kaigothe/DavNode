@@ -767,6 +767,224 @@ describe('expandOccurrences', () => {
       ).toHaveLength(100);
     });
 
+    describe('an endless dense rule that started long before the range', () => {
+      it('finds the events of FREQ=HOURLY from 2.8 years ago, which used up the limit before the range (#43)', () => {
+        const parsed = object([
+          [
+            'UID:h',
+            'DTSTART:20240101T000000Z',
+            'DTEND:20240101T003000Z',
+            'RRULE:FREQ=HOURLY',
+          ],
+        ]);
+
+        const occurrences = expandOccurrences(
+          parsed,
+          at('2026-10-20T00:00:00Z'),
+          at('2026-10-21T00:00:00Z'),
+        );
+
+        expect(occurrences).toHaveLength(24);
+        expect(iso(occurrences)[0]).toBe('2026-10-20T00:00Z');
+        expect(iso(occurrences)[23]).toBe('2026-10-20T23:00Z');
+      });
+
+      it('finds the events of FREQ=DAILY;BYHOUR=8,12,18 from 18 years ago (#43)', () => {
+        const parsed = object([
+          [
+            'UID:d',
+            'DTSTART:20080101T080000Z',
+            'DTEND:20080101T090000Z',
+            'RRULE:FREQ=DAILY;BYHOUR=8,12,18',
+          ],
+        ]);
+
+        const occurrences = expandOccurrences(
+          parsed,
+          at('2026-10-20T00:00:00Z'),
+          at('2026-10-21T00:00:00Z'),
+        );
+
+        expect(iso(occurrences)).toEqual([
+          '2026-10-20T08:00Z',
+          '2026-10-20T12:00Z',
+          '2026-10-20T18:00Z',
+        ]);
+      });
+
+      it('does not spin on FREQ=SECONDLY from years ago', () => {
+        const parsed = object([
+          [
+            'UID:s',
+            'DTSTART:20200101T000000Z',
+            'DTEND:20200101T000001Z',
+            'RRULE:FREQ=SECONDLY',
+          ],
+        ]);
+        const started = Date.now();
+
+        const occurrences = expandOccurrences(
+          parsed,
+          at('2026-10-20T10:00:00Z'),
+          at('2026-10-20T10:01:00Z'),
+        );
+
+        expect(occurrences).toHaveLength(60);
+        expect(Date.now() - started).toBeLessThan(3000);
+      });
+
+      it('still counts the instances of a rule with COUNT, which cannot be skipped', () => {
+        const parsed = object([
+          [
+            'UID:c',
+            'DTSTART:20200101T000000Z',
+            'DTEND:20200101T003000Z',
+            'RRULE:FREQ=HOURLY;COUNT=30000',
+          ],
+        ]);
+
+        expect(() =>
+          expandOccurrences(
+            parsed,
+            at('2023-06-01T00:00:00Z'),
+            at('2023-06-02T00:00:00Z'),
+          ),
+        ).toThrow(RecurrenceLimitError);
+      });
+
+      // Walking from DTSTART is the definition; jumping must never give
+      // anything else. Each case is expanded for a range far from DTSTART
+      // (jumps) and the same instances are taken from a walk that starts at
+      // DTSTART (an open start never jumps).
+      const berlin = (line: string) =>
+        `${line.replace(':', ';TZID=Europe/Berlin:')}`;
+      const cases: [string, string[], string[]][] = [
+        [
+          'HOURLY;INTERVAL=7',
+          ['DTSTART:20250302T050000Z', 'RRULE:FREQ=HOURLY;INTERVAL=7'],
+          [],
+        ],
+        [
+          'HOURLY;BYMINUTE=0,20,40',
+          ['DTSTART:20250601T000000Z', 'RRULE:FREQ=HOURLY;BYMINUTE=0,20,40'],
+          [],
+        ],
+        [
+          'MINUTELY;INTERVAL=45',
+          ['DTSTART:20260101T000000Z', 'RRULE:FREQ=MINUTELY;INTERVAL=45'],
+          [],
+        ],
+        [
+          'DAILY;INTERVAL=3;BYHOUR=8,12',
+          [
+            'DTSTART:20100203T090000Z',
+            'RRULE:FREQ=DAILY;INTERVAL=3;BYHOUR=8,12',
+          ],
+          [],
+        ],
+        [
+          'DAILY;BYDAY=MO,WE from a Thursday',
+          ['DTSTART:20050106T100000Z', 'RRULE:FREQ=DAILY;BYDAY=MO,WE'],
+          [],
+        ],
+        [
+          'DAILY;BYMONTH=6,7;BYHOUR=8',
+          ['DTSTART:20000101T080000Z', 'RRULE:FREQ=DAILY;BYMONTH=6,7;BYHOUR=8'],
+          [],
+        ],
+        [
+          'DAILY;BYSETPOS=-1;BYHOUR=8,12,18',
+          [
+            'DTSTART:20150101T080000Z',
+            'RRULE:FREQ=DAILY;BYHOUR=8,12,18;BYSETPOS=-1',
+          ],
+          [],
+        ],
+        [
+          'WEEKLY every day',
+          [
+            'DTSTART:19750101T100000Z',
+            'RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA,SU',
+          ],
+          [],
+        ],
+        [
+          'WEEKLY;INTERVAL=2;WKST=SU',
+          [
+            'DTSTART:19900103T100000Z',
+            'RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,TH;WKST=SU',
+          ],
+          [],
+        ],
+        [
+          'DAILY floating',
+          ['DTSTART:20120101T093000', 'RRULE:FREQ=DAILY;INTERVAL=2'],
+          [],
+        ],
+        [
+          'DAILY all-day;INTERVAL=2',
+          ['DTSTART;VALUE=DATE:20000101', 'RRULE:FREQ=DAILY;INTERVAL=2'],
+          [],
+        ],
+        [
+          'HOURLY with UNTIL',
+          [
+            'DTSTART:20250101T000000Z',
+            'RRULE:FREQ=HOURLY;UNTIL=20261021T120000Z',
+          ],
+          [],
+        ],
+        [
+          'HOURLY with EXDATE',
+          [
+            'DTSTART:20250101T000000Z',
+            'RRULE:FREQ=HOURLY',
+            'EXDATE:20261020T080000Z,20261020T090000Z',
+          ],
+          [],
+        ],
+        [
+          'DAILY;BYHOUR=2,3,12 in Europe/Berlin',
+          [berlin('DTSTART:20130101T090000'), 'RRULE:FREQ=DAILY;BYHOUR=2,3,12'],
+          BERLIN_VTIMEZONE,
+        ],
+        [
+          'HOURLY in Europe/Berlin',
+          [berlin('DTSTART:20250101T000000'), 'RRULE:FREQ=HOURLY;INTERVAL=3'],
+          BERLIN_VTIMEZONE,
+        ],
+      ];
+      const ranges: [string, string][] = [
+        ['2026-10-20T00:00:00Z', '2026-10-22T00:00:00Z'],
+        ['2026-10-24T00:00:00Z', '2026-10-27T00:00:00Z'], // the end of summer time
+        ['2026-03-28T00:00:00Z', '2026-03-31T00:00:00Z'], // the start of summer time
+        ['2026-10-21T11:30:00Z', '2026-10-21T13:30:00Z'], // across UNTIL
+      ];
+
+      it.each(cases)(
+        'gives the same occurrences as walking from DTSTART: %s',
+        (_name, lines, preamble) => {
+          const parsed = object(
+            [['UID:x', ...lines, 'DURATION:PT1H']],
+            preamble,
+          );
+          for (const [fromText, toText] of ranges) {
+            const from = at(fromText);
+            const to = at(toText);
+
+            const jumped = expandOccurrences(parsed, from, to);
+            const walked = expandOccurrences(parsed, null, to, {
+              maxInstances: 2_000_000,
+            }).filter((o) => o.end.getTime() > from.getTime() && o.start < to);
+
+            expect(iso(jumped), `${fromText} to ${toText}`).toEqual(
+              iso(walked),
+            );
+          }
+        },
+      );
+    });
+
     it('walks as many instances as the default limit allows', () => {
       const parsed = object([
         [
