@@ -6,6 +6,7 @@ import {
 import { parseCalendarObject } from '../caldav/icalendar-parser.js';
 import type { Tenant } from '../entities/tenant.entity.js';
 import { User } from '../entities/user.entity.js';
+import { attemptDelivery, type DeliveryFailure } from './delivery-failure.js';
 import {
   buildCancelMessage,
   buildRequestMessage,
@@ -169,14 +170,18 @@ export interface DeliverOrganizerInvitesInput {
  *   (built from `oldIcs`, the last version that still listed them) and
  *   their auto-filed copy deleted.
  *
- * Each attendee is handled independently — one failing to resolve or
- * deliver doesn't stop the others.
+ * Each attendee is handled independently — one failing to deliver
+ * (their storage is full, say) is logged and returned in the result, and
+ * doesn't stop the others.
+ *
+ * @returns The deliveries that failed; empty when all went through.
  */
 export async function deliverOrganizerInvites(
   dataSource: DataSource,
   input: DeliverOrganizerInvitesInput,
-): Promise<void> {
+): Promise<DeliveryFailure[]> {
   const { tenant, uid, newIcs, oldIcs, organizerPrincipalId } = input;
+  const failures: DeliveryFailure[] = [];
   const newByAddress = byLowerAddress(
     extractSchedulingParticipants(newIcs).attendees,
   );
@@ -189,19 +194,26 @@ export async function deliverOrganizerInvites(
     if (!user || user.principalId === organizerPrincipalId) {
       continue;
     }
-    await deliverRequest(
-      dataSource,
-      tenant,
-      uid,
-      newIcs,
-      user,
-      attendee.address,
-      oldByAddress.has(key),
+    const failure = await attemptDelivery(
+      { uid, method: 'REQUEST', recipientPrincipalId: user.principalId },
+      () =>
+        deliverRequest(
+          dataSource,
+          tenant,
+          uid,
+          newIcs,
+          user,
+          attendee.address,
+          oldByAddress.has(key),
+        ),
     );
+    if (failure) {
+      failures.push(failure);
+    }
   }
 
   if (!oldIcs) {
-    return;
+    return failures;
   }
   for (const [key, attendee] of oldByAddress) {
     if (newByAddress.has(key)) {
@@ -211,13 +223,14 @@ export async function deliverOrganizerInvites(
     if (!user || user.principalId === organizerPrincipalId) {
       continue;
     }
-    await deliverCancel(
-      dataSource,
-      tenant,
-      uid,
-      oldIcs,
-      user,
-      attendee.address,
+    const failure = await attemptDelivery(
+      { uid, method: 'CANCEL', recipientPrincipalId: user.principalId },
+      () =>
+        deliverCancel(dataSource, tenant, uid, oldIcs, user, attendee.address),
     );
+    if (failure) {
+      failures.push(failure);
+    }
   }
+  return failures;
 }

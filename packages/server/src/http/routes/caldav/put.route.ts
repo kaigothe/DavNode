@@ -48,6 +48,7 @@ import {
   resolveCalendarObject,
 } from './calendar-object-resolver.js';
 import { sendCalDavPrecondition } from './precondition.util.js';
+import { deliverWithoutFailing } from './scheduling-delivery.util.js';
 
 /** SHA-256 of `content`, hex-encoded — the scheme every PUT route of this server derives its ETag by. */
 function computeEtag(content: string): string {
@@ -405,21 +406,25 @@ export function registerCaldavPutRoute(
       }
 
       if (schedulingRole === 'organizer') {
-        await deliverOrganizerInvites(dataSource, {
-          tenant,
-          uid: parsed.uid,
-          newIcs: ics,
-          oldIcs,
-          organizerPrincipalId: principal.id,
-        });
+        await deliverWithoutFailing(parsed.uid, () =>
+          deliverOrganizerInvites(dataSource, {
+            tenant,
+            uid: parsed.uid,
+            newIcs: ics,
+            oldIcs,
+            organizerPrincipalId: principal.id,
+          }),
+        );
       } else if (schedulingRole === 'attendee' && oldIcs !== null) {
-        await deliverAttendeeReply(dataSource, {
-          tenant,
-          uid: parsed.uid,
-          newIcs: ics,
-          oldIcs,
-          writerAddresses,
-        });
+        await deliverWithoutFailing(parsed.uid, () =>
+          deliverAttendeeReply(dataSource, {
+            tenant,
+            uid: parsed.uid,
+            newIcs: ics,
+            oldIcs,
+            writerAddresses,
+          }),
+        );
       }
 
       res.set('ETag', formatEtag(etag)).sendStatus(created ? 201 : 204);

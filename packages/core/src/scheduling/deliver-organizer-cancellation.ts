@@ -2,6 +2,7 @@ import type { DataSource } from 'typeorm';
 import { deleteCalendarObject } from '../caldav/calendar-object-writes.js';
 import type { Tenant } from '../entities/tenant.entity.js';
 import { buildCancelMessage } from './build-itip-message.js';
+import { attemptDelivery, type DeliveryFailure } from './delivery-failure.js';
 import { extractSchedulingParticipants } from './detect-scheduling-role.js';
 import {
   findOwnCalendarObjectCopy,
@@ -33,15 +34,19 @@ export interface DeliverOrganizerCancellationInput {
  * `buildCancelMessage(ics)` call with no address list — RFC 5546 §3.2.5
  * explicitly allows "a single CANCEL message for all Attendees" — reused
  * for every recipient, since they're all being told the same thing.
+ *
+ * Each attendee is handled independently: a failed delivery is logged and
+ * returned, and doesn't stop the others.
  */
 export async function deliverOrganizerCancellation(
   dataSource: DataSource,
   input: DeliverOrganizerCancellationInput,
-): Promise<void> {
+): Promise<DeliveryFailure[]> {
   const { tenant, uid, ics, organizerPrincipalId } = input;
   const attendees = extractSchedulingParticipants(ics).attendees;
+  const failures: DeliveryFailure[] = [];
   if (attendees.length === 0) {
-    return;
+    return failures;
   }
   const cancelMessage = buildCancelMessage(ics);
 
@@ -50,29 +55,38 @@ export async function deliverOrganizerCancellation(
     if (!user || user.principalId === organizerPrincipalId) {
       continue;
     }
-    await insertInboxItem(
-      dataSource,
-      tenant,
-      user,
-      'CANCEL',
-      uid,
-      cancelMessage,
-    );
+    const failure = await attemptDelivery(
+      { uid, method: 'CANCEL', recipientPrincipalId: user.principalId },
+      async () => {
+        await insertInboxItem(
+          dataSource,
+          tenant,
+          user,
+          'CANCEL',
+          uid,
+          cancelMessage,
+        );
 
-    if (!user.defaultCalendarId) {
-      continue;
-    }
-    const copy = await findOwnCalendarObjectCopy(
-      dataSource,
-      user,
-      uid,
-      user.defaultCalendarId,
+        if (!user.defaultCalendarId) {
+          return;
+        }
+        const copy = await findOwnCalendarObjectCopy(
+          dataSource,
+          user,
+          uid,
+          user.defaultCalendarId,
+        );
+        if (copy) {
+          await deleteCalendarObject(dataSource, {
+            calendarId: user.defaultCalendarId,
+            object: copy,
+          });
+        }
+      },
     );
-    if (copy) {
-      await deleteCalendarObject(dataSource, {
-        calendarId: user.defaultCalendarId,
-        object: copy,
-      });
+    if (failure) {
+      failures.push(failure);
     }
   }
+  return failures;
 }
