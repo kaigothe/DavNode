@@ -293,6 +293,7 @@ export function registerCaldavPutRoute(
         return;
       }
       let ics = typeof req.body === 'string' ? req.body : '';
+      const sentIcs = ics;
       let parsed: ParsedCalendarObject;
       try {
         parsed = parseCalendarObject(ics);
@@ -427,7 +428,17 @@ export function registerCaldavPutRoute(
         );
       }
 
-      res.set('ETag', formatEtag(etag)).sendStatus(created ? 201 : 204);
+      // RFC 4791 §5.3.4: a server that stored something other than what the
+      // client sent (here: the SEQUENCE it raised) must not answer with a
+      // strong ETag. The client would take its own copy for current and keep
+      // the old SEQUENCE; without the header it fetches the stored object.
+      if (ics === sentIcs) {
+        res.set('ETag', formatEtag(etag)).sendStatus(created ? 201 : 204);
+      } else {
+        // end(), not sendStatus(): Express would make a weak ETag of the
+        // status text, the same one for every object.
+        res.status(created ? 201 : 204).end();
+      }
     },
     bodyParserErrors,
   );

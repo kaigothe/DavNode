@@ -285,6 +285,31 @@ describe('organizer invite delivery (PUT hook)', () => {
     expect(storedIcs).toContain('SEQUENCE:1');
   });
 
+  it('sends no ETag when the server raised SEQUENCE, so the client fetches the stored object (RFC 4791 §5.3.4)', async () => {
+    const announce = (dtstart?: string) =>
+      put(
+        workUrl('event.ics'),
+        event({
+          organizer: `mailto:${alice.email}`,
+          attendees: [{ address: `mailto:${bob.email}` }],
+          dtstart,
+        }),
+      );
+    const created = await announce();
+    expect(created.status).toBe(201);
+    expect(created.headers.get('etag')).not.toBeNull();
+
+    const bumped = await announce('20261001T140000Z');
+
+    expect(bumped.status).toBe(204);
+    expect(bumped.headers.get('etag')).toBeNull();
+    const get = await fetch(`${baseUrl}${workUrl('event.ics')}`, {
+      headers: { Authorization: basicAuthHeader('alice', PASSWORD) },
+    });
+    expect(await get.text()).toContain('SEQUENCE:1');
+    expect(get.headers.get('etag')).toMatch(/^"[0-9a-f]{64}"$/);
+  });
+
   it("answers the organizer's PUT normally and still delivers to the others when one attendee's storage is full", async () => {
     const warn = vi.fn();
     setLogSink({ info: vi.fn(), warn, error: vi.fn() });
