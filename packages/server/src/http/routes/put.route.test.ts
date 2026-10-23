@@ -202,13 +202,36 @@ describe('PUT route', () => {
     expect(await getResponse.text()).toBe('hello');
   });
 
+  it('sends the ETag in double quotes and takes it back as If-Match, quoted or bare', async () => {
+    const first = await put('/dav/acme/files/report.txt', {
+      body: 'hello',
+      contentType: 'text/plain',
+    });
+    const etag = first.headers.get('etag') ?? '';
+    expect(etag).toMatch(/^"[0-9a-f]{64}"$/);
+
+    const quoted = await put('/dav/acme/files/report.txt', {
+      body: 'second',
+      contentType: 'text/plain',
+      ifMatch: etag,
+    });
+    expect(quoted.status).toBe(204);
+
+    const bare = await put('/dav/acme/files/report.txt', {
+      body: 'third',
+      contentType: 'text/plain',
+      ifMatch: (quoted.headers.get('etag') ?? '').replaceAll('"', ''),
+    });
+    expect(bare.status).toBe(204);
+  });
+
   it('produces the same ETag for two PUTs with identical content (determinism)', async () => {
     const responseA = await put('/dav/acme/files/a.txt', { body: 'same' });
     const responseB = await put('/dav/acme/files/b.txt', { body: 'same' });
 
     expect(responseA.headers.get('etag')).toBe(responseB.headers.get('etag'));
     expect(responseA.headers.get('etag')).toBe(
-      createHash('sha256').update('same').digest('hex'),
+      `"${createHash('sha256').update('same').digest('hex')}"`,
     );
   });
 

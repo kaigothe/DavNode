@@ -4,26 +4,12 @@ import {
   hasPrivilege,
   ResourcePathResolver,
   type DataSource,
+  formatEtag,
 } from '@davnode/core';
 import type { Express, Request } from 'express';
 import { createAclAuthorizationMiddleware } from '../acl-authorization.middleware.js';
 import { pathSegments, requireTenant } from './dav-request.util.js';
-
-/**
- * Whether `headerValue` (an `If-None-Match` header, possibly a
- * comma-separated list, per RFC 7232 §3.2) matches `etag`. `*` matches
- * any existing resource. Weak validators (`W/"..."`) are compared using
- * their opaque tag, ignoring the weakness indicator — RFC 7232 requires
- * only weak comparison for GET's conditional semantics anyway.
- */
-function ifNoneMatchMatches(headerValue: string, etag: string): boolean {
-  if (headerValue.trim() === '*') {
-    return true;
-  }
-  return headerValue
-    .split(',')
-    .some((candidate) => candidate.trim().replace(/^W\//, '') === etag);
-}
+import { ifNoneMatchMatches } from './conditional-request.util.js';
 
 /**
  * Registers the GET route for `/dav/{tenantSlug}/files{/*path}`: returns
@@ -75,7 +61,7 @@ export function registerGetRoute(app: Express, dataSource: DataSource): void {
         ifNoneMatch !== undefined &&
         ifNoneMatchMatches(ifNoneMatch, target.etag)
       ) {
-        res.set('ETag', target.etag).sendStatus(304);
+        res.set('ETag', formatEtag(target.etag)).sendStatus(304);
         return;
       }
 
@@ -87,7 +73,7 @@ export function registerGetRoute(app: Express, dataSource: DataSource): void {
         .status(200)
         .set('Content-Type', target.contentType)
         .set('Content-Length', String(target.sizeBytes))
-        .set('ETag', target.etag)
+        .set('ETag', formatEtag(target.etag))
         .send(Buffer.from(content.data));
     },
   );

@@ -179,8 +179,8 @@ describe('SyncCollectionReportHandler for addressbooks', () => {
       `/dav/acme/addressbooks/${principal.id}/Contacts/b.vcf`,
     ]);
     expect(result.body).toContain('HTTP/1.1 200 OK');
-    expect(result.body).toContain('<D:getetag>etag-a.vcf</D:getetag>');
-    expect(result.body).toContain('<D:getetag>etag-b.vcf</D:getetag>');
+    expect(result.body).toContain('<D:getetag>"etag-a.vcf"</D:getetag>');
+    expect(result.body).toContain('<D:getetag>"etag-b.vcf"</D:getetag>');
   });
 
   it('a sync with a valid older token reports only new and modified contacts since then', async () => {
@@ -201,7 +201,7 @@ describe('SyncCollectionReportHandler for addressbooks', () => {
       `/dav/acme/addressbooks/${principal.id}/Contacts/c.vcf`,
     ]);
     expect(result.body).not.toContain('b.vcf');
-    expect(result.body).toContain('<D:getetag>etag-a.vcf-v2</D:getetag>');
+    expect(result.body).toContain('<D:getetag>"etag-a.vcf-v2"</D:getetag>');
   });
 
   it('a contact deleted since the last sync is reported with a bare 404 and no propstat', async () => {
@@ -271,7 +271,7 @@ describe('SyncCollectionReportHandler for addressbooks', () => {
 
     const result = await handler.handle(body, context());
 
-    expect(result.body).toContain('<D:getetag>etag-a.vcf</D:getetag>');
+    expect(result.body).toContain('<D:getetag>"etag-a.vcf"</D:getetag>');
     expect(result.body).toContain('HTTP/1.1 404 Not Found');
     expect(result.body).toContain('<D:nonexistent/>');
   });

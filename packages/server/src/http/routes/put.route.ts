@@ -12,6 +12,7 @@ import {
   ResourcePathResolver,
   User,
   type DataSource,
+  formatEtag,
 } from '@davnode/core';
 import express, { type Express, type Request } from 'express';
 import { createAclAuthorizationMiddleware } from '../acl-authorization.middleware.js';
@@ -22,6 +23,7 @@ import {
   requireTenant,
 } from './dav-request.util.js';
 import { sendQuotaExceededResponse } from './quota-error.util.js';
+import { ifMatchSatisfied } from './conditional-request.util.js';
 
 const DEFAULT_CONTENT_TYPE = 'application/octet-stream';
 
@@ -149,7 +151,7 @@ export function registerPutRoute(app: Express, dataSource: DataSource): void {
 
       if (target instanceof FileResource) {
         const ifMatch = req.header('If-Match');
-        if (ifMatch !== undefined && ifMatch !== target.etag) {
+        if (ifMatch !== undefined && !ifMatchSatisfied(ifMatch, target.etag)) {
           res.sendStatus(412);
           return;
         }
@@ -196,7 +198,7 @@ export function registerPutRoute(app: Express, dataSource: DataSource): void {
           throw error;
         }
 
-        res.set('ETag', etag).sendStatus(204);
+        res.set('ETag', formatEtag(etag)).sendStatus(204);
         return;
       }
 
@@ -256,7 +258,7 @@ export function registerPutRoute(app: Express, dataSource: DataSource): void {
         throw error;
       }
 
-      res.set('ETag', etag).sendStatus(201);
+      res.set('ETag', formatEtag(etag)).sendStatus(201);
     },
   );
 }

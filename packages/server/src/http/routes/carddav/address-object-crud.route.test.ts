@@ -270,6 +270,38 @@ describe('CardDAV AddressObject CRUD routes', () => {
     expect(await getResponse.text()).toBe(vcard('uid-1', 'A'));
   });
 
+  it('sends the ETag in double quotes and takes it back as If-Match, quoted or bare', async () => {
+    const created = await put('forrest.vcf', { body: vcard('uid-1', 'A') });
+    const etag = created.headers.get('etag') ?? '';
+    expect(etag).toMatch(/^"[0-9a-f]{64}"$/);
+
+    const quoted = await put('forrest.vcf', {
+      body: vcard('uid-1', 'B'),
+      ifMatch: etag,
+    });
+    expect(quoted.status).toBe(204);
+
+    const bare = await put('forrest.vcf', {
+      body: vcard('uid-1', 'C'),
+      ifMatch: (quoted.headers.get('etag') ?? '').replaceAll('"', ''),
+    });
+    expect(bare.status).toBe(204);
+  });
+
+  it('answers 304 to If-None-Match with the quoted ETag it sent', async () => {
+    const created = await put('forrest.vcf', { body: vcard('uid-1', 'A') });
+    const etag = created.headers.get('etag') ?? '';
+
+    const response = await fetch(`${baseUrl}${objectUrl('forrest.vcf')}`, {
+      headers: {
+        Authorization: basicAuthHeader('alice', PASSWORD),
+        'If-None-Match': etag,
+      },
+    });
+
+    expect(response.status).toBe(304);
+  });
+
   it('DELETE removes the AddressObject, its content, index rows, and dead properties, with no orphans', async () => {
     await put('forrest.vcf', { body: vcard('uid-1') });
     const addressObject = await dataSource

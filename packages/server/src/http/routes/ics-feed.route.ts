@@ -3,6 +3,7 @@ import {
   CalendarCollection,
   loadCalendarFeedIcsData,
   type DataSource,
+  formatEtag,
 } from '@davnode/core';
 import type { Express, Request, Response } from 'express';
 import { ifNoneMatchMatches } from './conditional-request.util.js';
@@ -23,7 +24,9 @@ function setCachingHeaders(
   etag: string,
   lastModified: Date,
 ): void {
-  res.set('ETag', etag).set('Last-Modified', lastModified.toUTCString());
+  res
+    .set('ETag', formatEtag(etag))
+    .set('Last-Modified', lastModified.toUTCString());
 }
 
 /**
