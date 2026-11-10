@@ -15,10 +15,10 @@
     "bootstrap": "npm run build && node dist/cli/bootstrap.js"
   },
   "dependencies": {
-    "argon2": "^0.45.1",
+    "argon2": "^0.45.2",
     "better-sqlite3": "^12.11.1",
     "ical.js": "^2.2.1",
-    "jose": "^6.2.12",
+    "jose": "^6.2.15",
     "mysql2": "^3.24.6",
     "node-cron": "^4.6.0",
     "pg": "^8.23.1",
