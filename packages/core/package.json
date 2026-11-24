@@ -15,16 +15,16 @@
     "bootstrap": "npm run build && node dist/cli/bootstrap.js"
   },
   "dependencies": {
-    "argon2": "^0.45.1",
+    "argon2": "^0.45.2",
     "better-sqlite3": "^12.11.1",
     "ical.js": "^2.2.1",
-    "jose": "^6.2.12",
+    "jose": "^6.2.18",
     "mysql2": "^3.24.6",
     "node-cron": "^4.6.0",
     "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
     "saxes": "^6.0.0",
-    "typeorm": "^1.1.2",
+    "typeorm": "^1.1.3",
     "vcf": "^2.1.2",
     "xmlbuilder2": "^4.0.3"
   },
